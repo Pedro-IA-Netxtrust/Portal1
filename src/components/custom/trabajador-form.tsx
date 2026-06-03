@@ -1,0 +1,953 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Trabajador, useTrabajadoresStore } from "@/store/trabajadores-store";
+import { X, Save, AlertCircle, CheckCircle, Info } from "lucide-react";
+
+interface TrabajadorFormProps {
+  trabajadorId?: string; // If provided, we are editing
+  onClose: () => void;
+}
+
+export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorFormProps) {
+  const { trabajadores, addTrabajador, updateTrabajador } = useTrabajadoresStore();
+  const isEditing = !!trabajadorId;
+
+  // Active Tab State
+  const [activeTab, setActiveTab] = useState<"personal" | "laboral" | "prevision" | "operativo">("personal");
+
+  // Form State
+  const [formData, setFormData] = useState<Omit<Trabajador, "id_trabajador">>({
+    apellido_paterno: "",
+    apellido_materno: "",
+    nombre_1: "",
+    nombre_2: "",
+    sexo: "M",
+    fecha_nacimiento: "",
+    ciudad_nacimiento: "",
+    nacionalidad: "Chilena",
+    tipo_identificacion: "RUT",
+    numero_identificacion: "",
+    fecha_vencimiento_id: "",
+    estado_civil: "Soltero",
+    email_corporativo: "",
+    email_personal: "",
+    celular_personal: "",
+    telefono_emergencia: "",
+    nombre_contacto_emergencia: "",
+    parentesco_emergencia: "",
+    region: "",
+    ciudad: "",
+    comuna: "",
+    calle: "",
+    numero_domicilio: "",
+    departamento_casa: "",
+    afp: "",
+    sistema_salud: "Fonasa",
+    nombre_isapre: "",
+    valor_plan_uf: 0,
+    banco: "",
+    tipo_cuenta: "Corriente",
+    numero_cuenta: "",
+    fecha_ingreso: new Date().toISOString().split("T")[0],
+    tipo_contrato: "Indefinido",
+    fecha_vencimiento_contrato: "",
+    cargo: "",
+    area_departamento: "",
+    modalidad_trabajo: "Presencial",
+    talla_chaqueta: "",
+    talla_polera: "",
+    calzado_seguridad: "",
+    chaleco_geologo: "",
+    respirador: "",
+    vencimiento_carnet: "",
+    vencimiento_altura_geo: "",
+    vencimiento_psicosensometrico: "",
+    vencimiento_licencia_conducir: "",
+    titulo_profesional: "",
+    mencion_titulo: "",
+    universidad_titulo: "",
+    postgrado_1: "",
+    mencion_postgrado_1: "",
+    universidad_postgrado_1: "",
+    cursos_certificaciones: "",
+    cv_actualizado: false,
+    fecha_actualizacion_cv: "",
+    cert_sap_lms: false,
+    cert_soma_lms: false,
+    cert_ti: false
+  });
+
+  // Validation States
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Load existing data if editing
+  useEffect(() => {
+    if (isEditing && trabajadorId) {
+      const existing = trabajadores.find(t => t.id_trabajador === trabajadorId);
+      if (existing) {
+        const { id_trabajador, ...rest } = existing;
+        setFormData(rest);
+      }
+    }
+  }, [isEditing, trabajadorId, trabajadores]);
+
+  // Helper: Validar RUT Chileno
+  const validarRutChileno = (rut: string): boolean => {
+    // Limpiar puntos y guiones
+    const valor = rut.replace(/\./g, "").replace(/-/g, "").trim().toUpperCase();
+    if (valor.length < 2) return false;
+
+    const cuerpo = valor.slice(0, -1);
+    let dv = valor.slice(-1);
+
+    if (!/^\d+$/.test(cuerpo)) return false;
+
+    // Calcular dígito verificador
+    let suma = 0;
+    let multiplicador = 2;
+
+    for (let i = cuerpo.length - 1; i >= 0; i--) {
+      suma += parseInt(cuerpo[i]) * multiplicador;
+      multiplicador = multiplicador === 7 ? 2 : multiplicador + 1;
+    }
+
+    const dvEsperado = 11 - (suma % 11);
+    let dvCalculado = dvEsperado === 11 ? "0" : dvEsperado === 10 ? "K" : dvEsperado.toString();
+
+    return dvCalculado === dv;
+  };
+
+  // Helper: Formatear RUT automáticamente mientras escribe
+  const formatearRut = (value: string): string => {
+    let clean = value.replace(/\./g, "").replace(/-/g, "").replace(/\s/g, "").toUpperCase();
+    if (clean.length === 0) return "";
+    
+    // Extraer DV
+    let dv = "";
+    if (clean.length > 1) {
+      dv = clean.slice(-1);
+      clean = clean.slice(0, -1);
+    } else {
+      return clean;
+    }
+
+    // Formatear cuerpo con puntos
+    let formatted = "";
+    while (clean.length > 3) {
+      formatted = "." + clean.slice(-3) + formatted;
+      clean = clean.slice(0, -3);
+    }
+    formatted = clean + formatted;
+
+    return `${formatted}-${dv}`;
+  };
+
+  // Helper: Validar y Formatear Celular E.164
+  const formatearCelular = (value: string): string => {
+    let clean = value.replace(/[^\d+]/g, ""); // Permitir solo números y el símbolo +
+    if (!clean.startsWith("+") && clean.length > 0) {
+      clean = "+" + clean;
+    }
+    return clean;
+  };
+
+  // Handle Input Changes
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value, type } = e.target;
+    
+    let finalValue: any = value;
+    if (type === "checkbox") {
+      finalValue = (e.target as HTMLInputElement).checked;
+    } else if (name === "numero_identificacion" && formData.tipo_identificacion === "RUT") {
+      finalValue = formatearRut(value);
+    } else if (name === "celular_personal" || name === "telefono_emergencia") {
+      finalValue = formatearCelular(value);
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: finalValue
+    }));
+
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
+  };
+
+  // Validate entire form / tab
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Campos Requeridos Base
+    if (!formData.nombre_1.trim()) newErrors.nombre_1 = "El primer nombre es obligatorio";
+    if (!formData.apellido_paterno.trim()) newErrors.apellido_paterno = "El apellido paterno es obligatorio";
+    if (!formData.apellido_materno.trim()) newErrors.apellido_materno = "El apellido materno es obligatorio";
+    if (!formData.fecha_nacimiento) newErrors.fecha_nacimiento = "La fecha de nacimiento es obligatoria";
+    if (!formData.numero_identificacion.trim()) newErrors.numero_identificacion = "El número de identificación es obligatorio";
+    if (!formData.fecha_ingreso) newErrors.fecha_ingreso = "La fecha de ingreso laboral es obligatoria";
+
+    // Validación RUT Chileno si corresponde
+    if (formData.tipo_identificacion === "RUT" && formData.numero_identificacion) {
+      if (!validarRutChileno(formData.numero_identificacion)) {
+        newErrors.numero_identificacion = "El RUT ingresado no es válido";
+      }
+    }
+
+    // Obligatoriedad de fecha de vencimiento de ID para extranjeros
+    if (formData.tipo_identificacion !== "RUT" && !formData.fecha_vencimiento_id) {
+      newErrors.fecha_vencimiento_id = "Vencimiento obligatorio para DNI/Pasaporte";
+    }
+
+    // Validación Email Corporativo
+    if (!formData.email_corporativo.trim()) {
+      newErrors.email_corporativo = "El correo corporativo es obligatorio";
+    } else if (!formData.email_corporativo.endsWith("@monitoring.cl")) {
+      newErrors.email_corporativo = "Debe utilizar el dominio corporativo @monitoring.cl";
+    }
+
+    // Validación de celular personal (E.164 simple: mínimo 8 dígitos y comenzar con +)
+    if (!formData.celular_personal.trim()) {
+      newErrors.celular_personal = "El celular personal es obligatorio";
+    } else if (!formData.celular_personal.startsWith("+") || formData.celular_personal.length < 9) {
+      newErrors.celular_personal = "Formato inválido. Ej: +56912345678";
+    }
+
+    // Validación de fecha de vencimiento de contrato a plazo fijo
+    if (formData.tipo_contrato === "Plazo Fijo" && !formData.fecha_vencimiento_contrato) {
+      newErrors.fecha_vencimiento_contrato = "Fecha obligatoria para contrato a plazo fijo";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Submit Form
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) {
+      // Switch tab to first error
+      if (errors.nombre_1 || errors.apellido_paterno || errors.numero_identificacion || errors.fecha_vencimiento_id) {
+        setActiveTab("personal");
+      } else if (errors.email_corporativo || errors.celular_personal || errors.fecha_vencimiento_contrato) {
+        setActiveTab("laboral");
+      }
+      return;
+    }
+
+    if (isEditing && trabajadorId) {
+      updateTrabajador(trabajadorId, formData);
+    } else {
+      addTrabajador(formData);
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-end animate-fadeIn">
+      <div className="w-full max-w-3xl h-full bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl">
+        {/* Form Header */}
+        <div className="h-16 px-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+          <div>
+            <h2 className="text-lg font-bold text-white">
+              {isEditing ? "Editar Ficha de Trabajador" : "Registrar Nuevo Trabajador"}
+            </h2>
+            <p className="text-xs text-zinc-500">
+              Complete todos los datos personales, previsionales y operativos
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-700"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Form Category Tabs */}
+        <div className="flex px-6 border-b border-zinc-800 bg-zinc-950 space-x-4">
+          {[
+            { id: "personal", label: "1. Identidad y Domicilio" },
+            { id: "laboral", label: "2. Contacto y Laboral" },
+            { id: "prevision", label: "3. Previsión y Banco" },
+            { id: "operativo", label: "4. EPP y Operaciones" }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`py-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all ${
+                activeTab === tab.id 
+                  ? "border-blue-500 text-blue-400" 
+                  : "border-transparent text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Scrollable Form Content */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* TAB 1: IDENTIDAD Y DOMICILIO */}
+          {activeTab === "personal" && (
+            <div className="space-y-6">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                Datos de Identificación
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Primer Nombre *</label>
+                  <input
+                    type="text"
+                    name="nombre_1"
+                    value={formData.nombre_1}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.nombre_1 ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.nombre_1 && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.nombre_1}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Segundo Nombre</label>
+                  <input
+                    type="text"
+                    name="nombre_2"
+                    value={formData.nombre_2 || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Apellido Paterno *</label>
+                  <input
+                    type="text"
+                    name="apellido_paterno"
+                    value={formData.apellido_paterno}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.apellido_paterno ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.apellido_paterno && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.apellido_paterno}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Apellido Materno *</label>
+                  <input
+                    type="text"
+                    name="apellido_materno"
+                    value={formData.apellido_materno}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.apellido_materno ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.apellido_materno && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.apellido_materno}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Sexo *</label>
+                  <select
+                    name="sexo"
+                    value={formData.sexo}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Fecha Nacimiento *</label>
+                  <input
+                    type="date"
+                    name="fecha_nacimiento"
+                    value={formData.fecha_nacimiento}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.fecha_nacimiento ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.fecha_nacimiento && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.fecha_nacimiento}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Nacionalidad *</label>
+                  <input
+                    type="text"
+                    name="nacionalidad"
+                    value={formData.nacionalidad}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 p-4 rounded-lg bg-zinc-900/40 border border-zinc-900/80">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Identificación *</label>
+                  <select
+                    name="tipo_identificacion"
+                    value={formData.tipo_identificacion}
+                    onChange={(e) => {
+                      handleChange(e);
+                      // Clear ID number on change to reset formatters
+                      setFormData(prev => ({ ...prev, numero_identificacion: "", tipo_identificacion: e.target.value as any }));
+                    }}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="RUT">RUT (Chile)</option>
+                    <option value="DNI">DNI (Extranjero)</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Número Identidad *</label>
+                  <input
+                    type="text"
+                    name="numero_identificacion"
+                    placeholder={formData.tipo_identificacion === "RUT" ? "12.345.678-9" : "Número Identificación"}
+                    value={formData.numero_identificacion}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.numero_identificacion ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.numero_identificacion && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.numero_identificacion}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">
+                    Vencimiento Identidad {formData.tipo_identificacion !== "RUT" && " *"}
+                  </label>
+                  <input
+                    type="date"
+                    name="fecha_vencimiento_id"
+                    disabled={formData.tipo_identificacion === "RUT"}
+                    value={formData.fecha_vencimiento_id || ""}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 disabled:opacity-40 transition-colors ${
+                      errors.fecha_vencimiento_id ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.fecha_vencimiento_id && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.fecha_vencimiento_id}</p>}
+                </div>
+              </div>
+
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2 mt-6">
+                Datos de Residencia (Domicilio)
+              </h3>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Región</label>
+                  <input
+                    type="text"
+                    name="region"
+                    value={formData.region || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Comuna</label>
+                  <input
+                    type="text"
+                    name="comuna"
+                    value={formData.comuna || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Ciudad</label>
+                  <input
+                    type="text"
+                    name="ciudad"
+                    value={formData.ciudad || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Calle</label>
+                  <input
+                    type="text"
+                    name="calle"
+                    value={formData.calle || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Nº y Depto</label>
+                  <input
+                    type="text"
+                    name="numero_domicilio"
+                    placeholder="Nº Domicilio / Depto"
+                    value={formData.numero_domicilio || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: CONTACTO Y LABORAL */}
+          {activeTab === "laboral" && (
+            <div className="space-y-6">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                Datos de Contacto
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Correo Corporativo *</label>
+                  <input
+                    type="email"
+                    name="email_corporativo"
+                    placeholder="ejemplo@monitoring.cl"
+                    value={formData.email_corporativo}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.email_corporativo ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.email_corporativo ? (
+                    <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.email_corporativo}</p>
+                  ) : (
+                    <p className="text-[9px] text-zinc-500 flex items-center gap-1"><Info size={10} /> Debe pertenecer al dominio @monitoring.cl</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Correo Personal</label>
+                  <input
+                    type="email"
+                    name="email_personal"
+                    value={formData.email_personal || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Celular Personal *</label>
+                  <input
+                    type="text"
+                    name="celular_personal"
+                    placeholder="+56912345678"
+                    value={formData.celular_personal}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                      errors.celular_personal ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.celular_personal && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.celular_personal}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Contacto de Emergencia</label>
+                  <input
+                    type="text"
+                    name="nombre_contacto_emergencia"
+                    placeholder="Nombre Completo"
+                    value={formData.nombre_contacto_emergencia || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2 mt-6">
+                Ficha Laboral
+              </h3>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Fecha Ingreso *</label>
+                  <input
+                    type="date"
+                    name="fecha_ingreso"
+                    value={formData.fecha_ingreso}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Tipo Contrato *</label>
+                  <select
+                    name="tipo_contrato"
+                    value={formData.tipo_contrato}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Indefinido">Indefinido</option>
+                    <option value="Plazo Fijo">Plazo Fijo</option>
+                    <option value="Honorarios">Honorarios</option>
+                    <option value="Práctica">Práctica</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">
+                    Vencimiento Contrato {formData.tipo_contrato === "Plazo Fijo" && " *"}
+                  </label>
+                  <input
+                    type="date"
+                    name="fecha_vencimiento_contrato"
+                    disabled={formData.tipo_contrato === "Indefinido"}
+                    value={formData.fecha_vencimiento_contrato || ""}
+                    onChange={handleChange}
+                    className={`w-full bg-zinc-900 border text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 disabled:opacity-40 transition-colors ${
+                      errors.fecha_vencimiento_contrato ? "border-red-500/50" : "border-zinc-800"
+                    }`}
+                  />
+                  {errors.fecha_vencimiento_contrato && <p className="text-[10px] text-red-400 flex items-center gap-1"><AlertCircle size={10} />{errors.fecha_vencimiento_contrato}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Cargo Laboral</label>
+                  <input
+                    type="text"
+                    name="cargo"
+                    value={formData.cargo || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Área / Departamento</label>
+                  <input
+                    type="text"
+                    name="area_departamento"
+                    value={formData.area_departamento || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Modalidad de Trabajo *</label>
+                  <select
+                    name="modalidad_trabajo"
+                    value={formData.modalidad_trabajo}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Presencial">Presencial</option>
+                    <option value="Teletrabajo">Teletrabajo</option>
+                    <option value="Híbrido">Híbrido</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: PREVISIÓN Y BANCO */}
+          {activeTab === "prevision" && (
+            <div className="space-y-6">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                Datos de Previsión y Salud
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">AFP</label>
+                  <input
+                    type="text"
+                    name="afp"
+                    placeholder="Ej: Habitat, Provida, Cuprum"
+                    value={formData.afp || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Sistema de Salud</label>
+                  <select
+                    name="sistema_salud"
+                    value={formData.sistema_salud || "Fonasa"}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Fonasa">Fonasa</option>
+                    <option value="Isapre">Isapre</option>
+                  </select>
+                </div>
+              </div>
+
+              {formData.sistema_salud === "Isapre" && (
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-zinc-900/40 border border-zinc-900/80 animate-fadeIn">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Nombre Isapre</label>
+                    <input
+                      type="text"
+                      name="nombre_isapre"
+                      placeholder="Ej: Colmena, Banmédica"
+                      value={formData.nombre_isapre || ""}
+                      onChange={handleChange}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Valor Plan (UF)</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      name="valor_plan_uf"
+                      value={formData.valor_plan_uf || 0}
+                      onChange={handleChange}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2 mt-6">
+                Datos Bancarios
+              </h3>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Banco</label>
+                  <input
+                    type="text"
+                    name="banco"
+                    value={formData.banco || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Tipo de Cuenta</label>
+                  <select
+                    name="tipo_cuenta"
+                    value={formData.tipo_cuenta || "Corriente"}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Corriente">Cuenta Corriente</option>
+                    <option value="Vista">Cuenta Vista</option>
+                    <option value="CuentaRUT">Cuenta RUT</option>
+                    <option value="Ahorro">Cuenta de Ahorro</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Número de Cuenta</label>
+                  <input
+                    type="text"
+                    name="numero_cuenta"
+                    value={formData.numero_cuenta || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: OPERATIVO Y EPP */}
+          {activeTab === "operativo" && (
+            <div className="space-y-6">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                Tallas de Equipo de Protección Personal (EPP)
+              </h3>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Talla Chaqueta</label>
+                  <input
+                    type="text"
+                    name="talla_chaqueta"
+                    placeholder="Ej: S, M, L, XL"
+                    value={formData.talla_chaqueta || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Talla Polera</label>
+                  <input
+                    type="text"
+                    name="talla_polera"
+                    value={formData.talla_polera || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Calzado de Seguridad</label>
+                  <input
+                    type="text"
+                    name="calzado_seguridad"
+                    placeholder="Nº Calzado"
+                    value={formData.calzado_seguridad || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2 mt-6">
+                Vencimientos y Licencias Operativas
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Vencimiento Altura Geográfica</label>
+                  <input
+                    type="date"
+                    name="vencimiento_altura_geo"
+                    value={formData.vencimiento_altura_geo || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Vencimiento Examen Psicosensométrico</label>
+                  <input
+                    type="date"
+                    name="vencimiento_psicosensometrico"
+                    value={formData.vencimiento_psicosensometrico || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Vencimiento Cédula Identidad</label>
+                  <input
+                    type="date"
+                    name="vencimiento_carnet"
+                    value={formData.vencimiento_carnet || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Vencimiento Licencia Conducir</label>
+                  <input
+                    type="date"
+                    name="vencimiento_licencia_conducir"
+                    value={formData.vencimiento_licencia_conducir || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2 mt-6">
+                Formación & Certificaciones LMS
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Título Profesional / Técnico</label>
+                  <input
+                    type="text"
+                    name="titulo_profesional"
+                    value={formData.titulo_profesional || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Universidad / Instituto</label>
+                  <input
+                    type="text"
+                    name="universidad_titulo"
+                    value={formData.universidad_titulo || ""}
+                    onChange={handleChange}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Certifications (LMS checkboxes) */}
+              <div className="p-4 rounded-lg bg-zinc-900/40 border border-zinc-800 space-y-3">
+                <span className="text-xs text-zinc-400 font-bold block mb-1">Certificaciones Habilitantes</span>
+                <div className="grid grid-cols-3 gap-4">
+                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="cert_sap_lms"
+                      checked={!!formData.cert_sap_lms}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 rounded focus:ring-blue-500 focus:ring-2 focus:ring-offset-zinc-900"
+                    />
+                    Certificado SAP LMS
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="cert_soma_lms"
+                      checked={!!formData.cert_soma_lms}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 rounded focus:ring-blue-500 focus:ring-2 focus:ring-offset-zinc-900"
+                    />
+                    Certificado SOMA LMS
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="cert_ti"
+                      checked={!!formData.cert_ti}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 rounded focus:ring-blue-500 focus:ring-2 focus:ring-offset-zinc-900"
+                    />
+                    Aprobación TI
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+        </form>
+
+        {/* Form Footer */}
+        <div className="h-20 px-6 border-t border-zinc-800 flex items-center justify-between bg-zinc-900/30">
+          <div className="text-xs text-zinc-500">
+            * Campos obligatorios
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg flex items-center gap-1.5 hover:shadow-lg hover:shadow-blue-600/20 transition-all"
+            >
+              <Save size={14} />
+              Guardar Ficha
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

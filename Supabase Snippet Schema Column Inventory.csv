@@ -1,0 +1,101 @@
+table_schema,table_name,ordinal_position,column_name,data_type,is_nullable,column_default
+auth,audit_log_entries,1,instance_id,uuid,YES,null
+auth,audit_log_entries,2,id,uuid,NO,null
+auth,audit_log_entries,3,payload,json,YES,null
+auth,audit_log_entries,4,created_at,timestamp with time zone,YES,null
+auth,audit_log_entries,5,ip_address,character varying,NO,''::character varying
+auth,custom_oauth_providers,1,id,uuid,NO,gen_random_uuid()
+auth,custom_oauth_providers,2,provider_type,text,NO,null
+auth,custom_oauth_providers,3,identifier,text,NO,null
+auth,custom_oauth_providers,4,name,text,NO,null
+auth,custom_oauth_providers,5,client_id,text,NO,null
+auth,custom_oauth_providers,6,client_secret,text,NO,null
+auth,custom_oauth_providers,7,acceptable_client_ids,ARRAY,NO,'{}'::text[]
+auth,custom_oauth_providers,8,scopes,ARRAY,NO,'{}'::text[]
+auth,custom_oauth_providers,9,pkce_enabled,boolean,NO,true
+auth,custom_oauth_providers,10,attribute_mapping,jsonb,NO,'{}'::jsonb
+auth,custom_oauth_providers,11,authorization_params,jsonb,NO,'{}'::jsonb
+auth,custom_oauth_providers,12,enabled,boolean,NO,true
+auth,custom_oauth_providers,13,email_optional,boolean,NO,false
+auth,custom_oauth_providers,14,issuer,text,YES,null
+auth,custom_oauth_providers,15,discovery_url,text,YES,null
+auth,custom_oauth_providers,16,skip_nonce_check,boolean,NO,false
+auth,custom_oauth_providers,17,cached_discovery,jsonb,YES,null
+auth,custom_oauth_providers,18,discovery_cached_at,timestamp with time zone,YES,null
+auth,custom_oauth_providers,19,authorization_url,text,YES,null
+auth,custom_oauth_providers,20,token_url,text,YES,null
+auth,custom_oauth_providers,21,userinfo_url,text,YES,null
+auth,custom_oauth_providers,22,jwks_uri,text,YES,null
+auth,custom_oauth_providers,23,created_at,timestamp with time zone,NO,now()
+auth,custom_oauth_providers,24,updated_at,timestamp with time zone,NO,now()
+auth,flow_state,1,id,uuid,NO,null
+auth,flow_state,2,user_id,uuid,YES,null
+auth,flow_state,3,auth_code,text,YES,null
+auth,flow_state,4,code_challenge_method,USER-DEFINED,YES,null
+auth,flow_state,5,code_challenge,text,YES,null
+auth,flow_state,6,provider_type,text,NO,null
+auth,flow_state,7,provider_access_token,text,YES,null
+auth,flow_state,8,provider_refresh_token,text,YES,null
+auth,flow_state,9,created_at,timestamp with time zone,YES,null
+auth,flow_state,10,updated_at,timestamp with time zone,YES,null
+auth,flow_state,11,authentication_method,text,NO,null
+auth,flow_state,12,auth_code_issued_at,timestamp with time zone,YES,null
+auth,flow_state,13,invite_token,text,YES,null
+auth,flow_state,14,referrer,text,YES,null
+auth,flow_state,15,oauth_client_state_id,uuid,YES,null
+auth,flow_state,16,linking_target_id,uuid,YES,null
+auth,flow_state,17,email_optional,boolean,NO,false
+auth,identities,1,provider_id,text,NO,null
+auth,identities,2,user_id,uuid,NO,null
+auth,identities,3,identity_data,jsonb,NO,null
+auth,identities,4,provider,text,NO,null
+auth,identities,5,last_sign_in_at,timestamp with time zone,YES,null
+auth,identities,6,created_at,timestamp with time zone,YES,null
+auth,identities,7,updated_at,timestamp with time zone,YES,null
+auth,identities,8,email,text,YES,null
+auth,identities,9,id,uuid,NO,gen_random_uuid()
+auth,instances,1,id,uuid,NO,null
+auth,instances,2,uuid,uuid,YES,null
+auth,instances,3,raw_base_config,text,YES,null
+auth,instances,4,created_at,timestamp with time zone,YES,null
+auth,instances,5,updated_at,timestamp with time zone,YES,null
+auth,mfa_amr_claims,1,session_id,uuid,NO,null
+auth,mfa_amr_claims,2,created_at,timestamp with time zone,NO,null
+auth,mfa_amr_claims,3,updated_at,timestamp with time zone,NO,null
+auth,mfa_amr_claims,4,authentication_method,text,NO,null
+auth,mfa_amr_claims,5,id,uuid,NO,null
+auth,mfa_challenges,1,id,uuid,NO,null
+auth,mfa_challenges,2,factor_id,uuid,NO,null
+auth,mfa_challenges,3,created_at,timestamp with time zone,NO,null
+auth,mfa_challenges,4,verified_at,timestamp with time zone,YES,null
+auth,mfa_challenges,5,ip_address,inet,NO,null
+auth,mfa_challenges,6,otp_code,text,YES,null
+auth,mfa_challenges,7,web_authn_session_data,jsonb,YES,null
+auth,mfa_factors,1,id,uuid,NO,null
+auth,mfa_factors,2,user_id,uuid,NO,null
+auth,mfa_factors,3,friendly_name,text,YES,null
+auth,mfa_factors,4,factor_type,USER-DEFINED,NO,null
+auth,mfa_factors,5,status,USER-DEFINED,NO,null
+auth,mfa_factors,6,created_at,timestamp with time zone,NO,null
+auth,mfa_factors,7,updated_at,timestamp with time zone,NO,null
+auth,mfa_factors,8,secret,text,YES,null
+auth,mfa_factors,9,phone,text,YES,null
+auth,mfa_factors,10,last_challenged_at,timestamp with time zone,YES,null
+auth,mfa_factors,11,web_authn_credential,jsonb,YES,null
+auth,mfa_factors,12,web_authn_aaguid,uuid,YES,null
+auth,mfa_factors,13,last_webauthn_challenge_data,jsonb,YES,null
+auth,oauth_authorizations,1,id,uuid,NO,null
+auth,oauth_authorizations,2,authorization_id,text,NO,null
+auth,oauth_authorizations,3,client_id,uuid,NO,null
+auth,oauth_authorizations,4,user_id,uuid,YES,null
+auth,oauth_authorizations,5,redirect_uri,text,NO,null
+auth,oauth_authorizations,6,scope,text,NO,null
+auth,oauth_authorizations,7,state,text,YES,null
+auth,oauth_authorizations,8,resource,text,YES,null
+auth,oauth_authorizations,9,code_challenge,text,YES,null
+auth,oauth_authorizations,10,code_challenge_method,USER-DEFINED,YES,null
+auth,oauth_authorizations,11,response_type,USER-DEFINED,NO,'code'::auth.oauth_response_type
+auth,oauth_authorizations,12,status,USER-DEFINED,NO,'pending'::auth.oauth_authorization_status
+auth,oauth_authorizations,13,authorization_code,text,YES,null
+auth,oauth_authorizations,14,created_at,timestamp with time zone,NO,now()
+auth,oauth_authorizations,15,expires_at,timestamp with time zone,NO,(now() + '00:03:00'::interval)
