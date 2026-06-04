@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  /* Brand Tokens */
-  --brand-blue: #1A418C;
-  --brand-orange: #F29100;
+  /* Brand Tokens: Blues, Orange, Ash White */
+  --brand-blue: #1E3A8A; /* Navy Blue */
+  --brand-orange: #EA580C; /* Accent Orange */
 
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #F7F9FC;
-  --bg-dark: #141922;
+  --bg-primary: #FDFDFD; /* Almost white for cards */
+  --bg-secondary: #F0F2F5; /* Blanco ceniza (Ash white) for main background */
+  --bg-dark: #0F172A;
 
-  --text-primary: #101828;
-  --text-secondary: #667085;
+  --text-primary: #1E293B; /* Deep blue-gray for text */
+  --text-secondary: #64748B; /* Muted slate for secondary text */
 
-  --border: #EAECF0;
+  --border: #E2E8F0; /* Soft border */
 
-  --success: #12B76A;
-  --warning: #F79009;
+  --success: #10B981;
+  --warning: #F59E0B;
   
-  --destructive: #ef4444;
+  --destructive: #EF4444;
 
   /* Theme Mapping */
   --background: var(--bg-secondary);
