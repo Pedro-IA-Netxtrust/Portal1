@@ -20,7 +20,8 @@ import {
   Laptop,
   ClipboardCheck,
   ClipboardPen,
-  CalendarDays
+  CalendarDays,
+  UserCog
 } from "lucide-react";
 
 interface SidebarProps {
@@ -42,6 +43,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     { name: "Cursos y Exámenes", href: "/control", icon: GraduationCap, badge: null },
     { name: "Tickets IT", href: "/tickets", icon: Ticket, badge: null },
     { name: "Solicitudes", href: "/solicitudes", icon: ClipboardPen, badge: "New" },
+    { name: "Usuarios", href: "/usuarios", icon: UserCog, badge: "Config" },
   ];
 
   return (
