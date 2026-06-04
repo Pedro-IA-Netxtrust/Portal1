@@ -170,19 +170,32 @@ export const useTicketsStore = create<TicketsState>()(
             .select("*")
             .order("fecha_creacion", { ascending: false });
 
-          if (tkError) throw tkError;
+          // Table doesn't exist in Supabase yet → use local mock silently
+          if (tkError) {
+            // Only log in development so the console stays clean in prod
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[tickets-store] Supabase no disponible, usando datos locales.", tkError.message);
+            }
+            // Keep whatever is already in the persisted store (or mock defaults)
+            return;
+          }
 
           const { data: comData, error: comError } = await supabase
             .from("ticket_comentarios")
             .select("*")
             .order("fecha_creacion", { ascending: true });
 
-          if (comError) throw comError;
+          if (comError) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[tickets-store] Error cargando comentarios, usando datos locales.", comError.message);
+            }
+            return;
+          }
 
           if (tkData && tkData.length > 0) {
             set({ tickets: tkData, comentarios: comData || [] });
           } else {
-            // Seed base tickets if cloud DB is completely empty
+            // Cloud DB exists but is empty → seed with mock data
             const seededTickets: Ticket[] = [];
             const seededComments: ComentarioTicket[] = [];
 
@@ -193,7 +206,12 @@ export const useTicketsStore = create<TicketsState>()(
                 .insert([dbInsertFields])
                 .select();
 
-              if (createError) throw createError;
+              if (createError) {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn("[tickets-store] No se pudo hacer seed:", createError.message);
+                }
+                break;
+              }
 
               if (createdTks && createdTks[0]) {
                 const dbTk = createdTks[0];
@@ -214,18 +232,22 @@ export const useTicketsStore = create<TicketsState>()(
                     .insert(dbComs)
                     .select();
 
-                  if (comCreateError) throw comCreateError;
-                  if (createdComs) {
+                  if (!comCreateError && createdComs) {
                     seededComments.push(...createdComs);
                   }
                 }
               }
             }
 
-            set({ tickets: seededTickets, comentarios: seededComments });
+            if (seededTickets.length > 0) {
+              set({ tickets: seededTickets, comentarios: seededComments });
+            }
           }
         } catch (err) {
-          console.error("Failed to load tickets from Supabase:", err);
+          // Network error or unexpected failure → stay silent, keep local data
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[tickets-store] Error de red al conectar con Supabase:", err);
+          }
         }
       },
 
