@@ -149,82 +149,82 @@ export default function TrabajadoresPage() {
   const trabajadoresConDatosFaltantes = trabajadores.filter(t => getDatosFaltantes(t).length > 0);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Page Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Administración de Trabajadores</h1>
-          <p className="text-xs text-zinc-500">
+          <h1 className="text-3xl font-bold tracking-tight text-text">Administración de Trabajadores</h1>
+          <p className="text-sm text-text-soft mt-1 font-medium">
             Fase 1: Módulo de registro centralizado con semáforos de control e identificaciones internacionales.
           </p>
         </div>
         <button
           onClick={handleCreate}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-blue-600/20 flex items-center gap-1.5"
+          className="btn btn-primary"
         >
-          <Plus size={16} />
+          <Plus size={18} />
           Registrar Trabajador
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
-            <Users size={18} />
+      <div className="stats-grid">
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <Users size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">TOTAL TRABAJADORES</span>
-            <span className="text-lg font-bold text-white">{totalCount}</span>
+            <span className="label">TOTAL TRABAJADORES</span>
+            <span className="value text-2xl">{totalCount}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <UserCheck size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-success/10 text-success">
+            <UserCheck size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">CONTRATO INDEFINIDO</span>
-            <span className="text-lg font-bold text-white">
+            <span className="label">CONTRATO INDEFINIDO</span>
+            <span className="value text-2xl">
               {trabajadores.filter(t => t.tipo_contrato === "Indefinido").length}
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400">
-            <Globe size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
+            <Globe size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">PERSONAL EXTRANJERO</span>
-            <span className="text-lg font-bold text-white">
+            <span className="label">PERSONAL EXTRANJERO</span>
+            <span className="value text-2xl">
               {trabajadores.filter(t => t.tipo_identificacion !== "RUT").length}
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className={`p-2.5 rounded-lg ${activeAlarms > 0 ? "bg-red-500/15 text-red-400 animate-pulse" : "bg-zinc-800 text-zinc-400"}`}>
-            <ShieldAlert size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className={`p-3 rounded-xl ${activeAlarms > 0 ? "bg-danger/15 text-danger animate-pulse" : "bg-bg-alt text-text-muted"}`}>
+            <ShieldAlert size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">EXÁMENES/DOCS VENCIDOS</span>
-            <span className="text-lg font-bold text-white">{activeAlarms}</span>
+            <span className="label">EXÁMENES VENCIDOS</span>
+            <span className="value text-2xl">{activeAlarms}</span>
           </div>
         </div>
       </div>
 
       {/* Live Search & Filter Bar */}
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20 flex flex-wrap gap-4 items-center">
+      <div className="card flex flex-wrap gap-4 items-center mb-6">
         {/* Search */}
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
           <input
             type="text"
             placeholder="Buscar por Nombre, RUT, DNI o Cargo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-600 transition-colors"
+            className="input pl-10"
           />
         </div>
 
@@ -232,11 +232,11 @@ export default function TrabajadoresPage() {
         <div className="flex flex-wrap gap-3 items-center">
           {/* Nationality Filter */}
           <div className="flex items-center gap-2">
-            <Filter size={14} className="text-zinc-500" />
+            <Filter size={16} className="text-text-soft" />
             <select
               value={selectedNationality}
               onChange={(e) => setSelectedNationality(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+              className="select py-2 px-3 text-sm min-h-0"
             >
               {uniqueNationalities.map(n => (
                 <option key={n} value={n}>{n === "Todas" ? "Todas las Nacionalidades" : n}</option>
@@ -249,7 +249,7 @@ export default function TrabajadoresPage() {
             <select
               value={selectedContract}
               onChange={(e) => setSelectedContract(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+              className="select py-2 px-3 text-sm min-h-0"
             >
               {uniqueContracts.map(c => (
                 <option key={c} value={c}>{c === "Todos" ? "Todos los Contratos" : c}</option>
@@ -262,7 +262,7 @@ export default function TrabajadoresPage() {
             <select
               value={selectedWorkMode}
               onChange={(e) => setSelectedWorkMode(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+              className="select py-2 px-3 text-sm min-h-0"
             >
               <option value="Todas">Todas las Modalidades</option>
               <option value="Presencial">Presencial</option>
@@ -276,7 +276,7 @@ export default function TrabajadoresPage() {
             <select
               value={selectedAlertStatus}
               onChange={(e) => setSelectedAlertStatus(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+              className="select py-2 px-3 text-sm min-h-0"
             >
               <option value="Todos">Todas las Alertas</option>
               <option value="Alerta">Con Vencimientos / Alertas</option>
@@ -289,7 +289,7 @@ export default function TrabajadoresPage() {
             <select
               value={selectedDataStatus}
               onChange={(e) => setSelectedDataStatus(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+              className="select py-2 px-3 text-sm min-h-0"
             >
               <option value="Todos">Todos los Estados de Ficha</option>
               <option value="Completos">Fichas Completas</option>
@@ -312,91 +312,91 @@ export default function TrabajadoresPage() {
               return (
                 <div 
                   key={trabajador.id_trabajador}
-                  className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
+                  className="card group hover:border-primary/40 flex flex-col justify-between p-5"
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {/* Identity header */}
                     <div className="flex justify-between items-start gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 font-bold text-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-bg-alt border border-border flex items-center justify-center text-text-soft font-bold text-lg shadow-sm">
                           {trabajador.nombre_1[0]}{trabajador.apellido_paterno[0]}
                         </div>
                         <div>
-                          <h3 className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">
+                          <h3 className="font-bold text-text text-sm group-hover:text-primary transition-colors">
                             {trabajador.nombre_1} {trabajador.apellido_paterno} {trabajador.apellido_materno}
                           </h3>
-                          <p className="text-xs text-zinc-500 uppercase">{trabajador.tipo_identificacion}: {trabajador.numero_identificacion}</p>
+                          <p className="text-[11px] text-text-muted font-bold mt-0.5 uppercase tracking-wider">{trabajador.tipo_identificacion}: {trabajador.numero_identificacion}</p>
                         </div>
                       </div>
 
                       <div className="flex flex-col items-end gap-1.5">
                         {hasAlarms && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-bold animate-pulse">
+                          <span className="badge bg-danger/10 text-danger border border-danger/20 animate-pulse text-[9px] py-0.5 px-1.5">
                             <ShieldAlert size={10} />
-                            Alerta Vencimiento
+                            Alerta
                           </span>
                         )}
                         {hasMissingData && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold" title={`Campos faltantes: ${missingFields.join(", ")}`}>
+                          <span className="badge bg-warning/10 text-warning border border-warning/20 text-[9px] py-0.5 px-1.5" title={`Campos faltantes: ${missingFields.join(", ")}`}>
                             <AlertTriangle size={10} />
-                            Datos Faltantes
+                            Faltantes
                           </span>
                         )}
                       </div>
                     </div>
 
                     {/* Info Rows */}
-                    <div className="space-y-1.5 text-xs text-zinc-400 pt-1 border-t border-zinc-800/40">
-                      <div className="flex items-center gap-2">
-                        <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CARGO</span>
-                        <span className="text-zinc-200 font-semibold">{trabajador.cargo || "No registrado"}</span>
+                    <div className="space-y-2 text-xs text-text-soft pt-3 border-t border-border">
+                      <div className="flex items-center gap-3">
+                        <span className="w-14 text-text-muted font-bold uppercase text-[9px] tracking-wider">CARGO</span>
+                        <span className="text-text font-bold">{trabajador.cargo || "No registrado"}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CORREO</span>
-                        <a href={`mailto:${trabajador.email_corporativo}`} className="hover:text-white hover:underline truncate">
+                      <div className="flex items-center gap-3">
+                        <span className="w-14 text-text-muted font-bold uppercase text-[9px] tracking-wider">CORREO</span>
+                        <a href={`mailto:${trabajador.email_corporativo}`} className="hover:text-primary hover:underline truncate font-medium">
                           {trabajador.email_corporativo}
                         </a>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CELULAR</span>
-                        <span>{trabajador.celular_personal}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="w-14 text-text-muted font-bold uppercase text-[9px] tracking-wider">CELULAR</span>
+                        <span className="font-medium">{trabajador.celular_personal}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                  <div className="flex justify-between items-center mt-5 pt-4 border-t border-border">
+                    <span className={`badge ${
                       trabajador.modalidad_trabajo === "Híbrido" 
-                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        ? "badge-blue" 
                         : trabajador.modalidad_trabajo === "Teletrabajo"
-                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                        : "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+                        ? "bg-purple-500/10 text-purple-400"
+                        : "badge-orange"
                     }`}>
                       {trabajador.modalidad_trabajo}
                     </span>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <button 
                         onClick={() => handleViewDetails(trabajador)}
                         title="Ver Ficha Completa"
-                        className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                        className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm"
                       >
-                        <Eye size={13} />
+                        <Eye size={14} />
                       </button>
                       <button 
                         onClick={() => handleEdit(trabajador.id_trabajador)}
                         title="Editar Trabajador"
-                        className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                        className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm"
                       >
-                        <Edit3 size={13} />
+                        <Edit3 size={14} />
                       </button>
                       <button 
                         onClick={() => handleDelete(trabajador.id_trabajador, `${trabajador.nombre_1} ${trabajador.apellido_paterno}`)}
                         title="Eliminar Ficha"
-                        className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                        className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-danger hover:bg-danger/10 hover:border-danger/20 transition-all shadow-sm"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
@@ -405,10 +405,10 @@ export default function TrabajadoresPage() {
             })}
 
             {filteredTrabajadores.length === 0 && (
-              <div className="col-span-2 p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
-                <Users className="mx-auto text-zinc-600" size={32} />
-                <h4 className="text-zinc-300 font-bold text-sm">No se encontraron fichas de trabajadores</h4>
-                <p className="text-xs text-zinc-500">Pruebe ajustando el buscador o los filtros de búsqueda.</p>
+              <div className="col-span-2 p-12 text-center border border-border border-dashed rounded-2xl space-y-3 bg-surface/50">
+                <Users className="mx-auto text-text-muted" size={40} />
+                <h4 className="text-text font-bold text-base">No se encontraron fichas de trabajadores</h4>
+                <p className="text-sm text-text-soft font-medium">Pruebe ajustando el buscador o los filtros de búsqueda.</p>
               </div>
             )}
           </div>
@@ -416,13 +416,13 @@ export default function TrabajadoresPage() {
 
         {/* Apartado de Datos Faltantes (Right Column) */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20 space-y-4">
-            <div className="flex justify-between items-center pb-2.5 border-b border-zinc-800">
+          <div className="card space-y-5">
+            <div className="flex justify-between items-center pb-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="text-amber-500" size={16} />
-                <h3 className="font-bold text-white text-sm">Fichas Incompletas</h3>
+                <AlertTriangle className="text-warning" size={18} />
+                <h3 className="font-bold text-text text-sm">Fichas Incompletas</h3>
               </div>
-              <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/20">
+              <span className="badge badge-orange">
                 {trabajadoresConDatosFaltantes.length}
               </span>
             </div>
@@ -433,30 +433,30 @@ export default function TrabajadoresPage() {
                 return (
                   <div 
                     key={t.id_trabajador} 
-                    className="p-3 rounded-lg bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700 transition-all space-y-2"
+                    className="p-3.5 rounded-xl bg-surface-2 border border-border hover:border-primary/30 transition-all space-y-2.5 shadow-sm"
                   >
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
                         <h4 
                           onClick={() => handleViewDetails(t)}
-                          className="text-xs font-bold text-white hover:text-blue-400 cursor-pointer transition-colors truncate"
+                          className="text-xs font-bold text-text hover:text-primary cursor-pointer transition-colors truncate"
                           title={`Ver detalles de ${t.nombre_1} ${t.apellido_paterno}`}
                         >
                           {t.nombre_1} {t.apellido_paterno}
                         </h4>
-                        <p className="text-[9px] text-zinc-500 truncate">{t.cargo || "Sin cargo"}</p>
+                        <p className="text-[10px] font-bold text-text-muted mt-0.5 truncate uppercase tracking-wider">{t.cargo || "Sin cargo"}</p>
                       </div>
                       
                       <button 
                         onClick={() => handleEdit(t.id_trabajador)}
-                        className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                        className="p-1.5 rounded-md hover:bg-surface border border-transparent hover:border-border text-text-soft hover:text-text transition-all"
                         title="Completar datos"
                       >
-                        <Edit3 size={11} />
+                        <Edit3 size={12} />
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {faltantes.map((f) => {
                         let badgeIcon = "❓";
                         if (f === "Domicilio") badgeIcon = "🏠";
@@ -468,7 +468,7 @@ export default function TrabajadoresPage() {
                         return (
                           <span 
                             key={f} 
-                            className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400 flex items-center gap-1"
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-bg-alt border border-border text-text-soft flex items-center gap-1 uppercase tracking-wider"
                             title={`Falta: ${f}`}
                           >
                             <span>{badgeIcon}</span>
@@ -482,10 +482,12 @@ export default function TrabajadoresPage() {
               })}
 
               {trabajadoresConDatosFaltantes.length === 0 && (
-                <div className="text-center py-8 text-zinc-500 space-y-2">
-                  <CheckCircle2 className="mx-auto text-emerald-500" size={24} />
-                  <p className="text-xs font-semibold text-zinc-300">¡Todo al día!</p>
-                  <p className="text-[10px] text-zinc-500 leading-relaxed px-2">Todas las fichas tienen sus datos esenciales completos.</p>
+                <div className="text-center py-8 text-text-soft space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <p className="text-sm font-bold text-text">¡Todo al día!</p>
+                  <p className="text-xs text-text-soft font-medium leading-relaxed px-2">Todas las fichas tienen sus datos esenciales completos.</p>
                 </div>
               )}
             </div>

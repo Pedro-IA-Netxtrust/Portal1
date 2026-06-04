@@ -4,11 +4,30 @@ import { supabase } from "@/lib/supabase";
 
 export type ResultadoExamen = "Aprobado" | "Aprobado con Observaciones" | "Rechazado" | "Pendiente";
 export type EstadoCurso = "Aprobado" | "Reprobado" | "Pendiente" | "No Asiste";
+export type EstadoDocumento = "Vigente" | "Retenido" | "Suspendido" | "Vencido";
+
+export interface CatalogoExamen {
+  id: string;
+  nombre: string;
+  categoria: string;
+}
+
+export interface CatalogoCurso {
+  id: string;
+  nombre: string;
+  categoria: string;
+}
+
+export interface CatalogoDocumento {
+  id: string;
+  nombre: string;
+  categoria: string;
+}
 
 export interface ControlExamen {
   id: string;
   id_trabajador: string;
-  tipo_examen: string;
+  id_examen_catalogo: string;
   fecha_realizacion: string;
   fecha_vencimiento: string | null;
   resultado: ResultadoExamen;
@@ -19,7 +38,7 @@ export interface ControlExamen {
 export interface ControlCurso {
   id: string;
   id_trabajador: string;
-  nombre_curso: string;
+  id_curso_catalogo: string;
   institucion: string | null;
   modalidad: string | null;
   fecha_realizacion: string;
@@ -29,12 +48,24 @@ export interface ControlCurso {
   certificado_url: string | null;
 }
 
+export interface ControlDocumento {
+  id: string;
+  id_trabajador: string;
+  id_documento_catalogo: string;
+  numero_documento: string | null;
+  fecha_emision: string;
+  fecha_vencimiento: string | null;
+  estado: EstadoDocumento;
+  observaciones: string | null;
+  adjunto_url: string | null;
+}
+
 // Interfaz para componentes UI
 export type NivelAlerta = "vigente" | "alerta" | "critico" | "vencido" | "pendiente";
 
 export interface AlertaControl {
   id: string;
-  tipo: "Examen" | "Curso";
+  tipo: "Examen" | "Curso" | "Documento";
   nombre: string;
   fecha_vencimiento: string | null;
   nivel: NivelAlerta;
@@ -45,16 +76,28 @@ export interface AlertaControl {
 interface ControlState {
   examenes: ControlExamen[];
   cursos: ControlCurso[];
+  documentos: ControlDocumento[];
+  
+  catalogoExamenes: CatalogoExamen[];
+  catalogoCursos: CatalogoCurso[];
+  catalogoDocumentos: CatalogoDocumento[];
   
   fetchControlData: () => Promise<void>;
   
   addExamen: (e: Omit<ControlExamen, "id">) => Promise<void>;
+  addExamenMasivo: (trabajadoresIds: string[], e: Omit<ControlExamen, "id" | "id_trabajador">) => Promise<void>;
   updateExamen: (id: string, updates: Partial<ControlExamen>) => Promise<void>;
   deleteExamen: (id: string) => Promise<void>;
 
   addCurso: (c: Omit<ControlCurso, "id">) => Promise<void>;
+  addCursoMasivo: (trabajadoresIds: string[], c: Omit<ControlCurso, "id" | "id_trabajador">) => Promise<void>;
   updateCurso: (id: string, updates: Partial<ControlCurso>) => Promise<void>;
   deleteCurso: (id: string) => Promise<void>;
+
+  addDocumento: (d: Omit<ControlDocumento, "id">) => Promise<void>;
+  addDocumentoMasivo: (trabajadoresIds: string[], d: Omit<ControlDocumento, "id" | "id_trabajador">) => Promise<void>;
+  updateDocumento: (id: string, updates: Partial<ControlDocumento>) => Promise<void>;
+  deleteDocumento: (id: string) => Promise<void>;
   
   // Helpers
   getAlertasByTrabajador: (id_trabajador: string) => AlertaControl[];
@@ -62,11 +105,31 @@ interface ControlState {
 }
 
 // Datos Mock Iniciales para visualización
+const mockCatalogoExamenes: CatalogoExamen[] = [
+  { id: "cat-ex-1", nombre: "Altura Geográfica", categoria: "Salud Ocupacional" },
+  { id: "cat-ex-2", nombre: "Psicosensométrico", categoria: "Psicológico" },
+  { id: "cat-ex-3", nombre: "Preocupacional", categoria: "Salud Ocupacional" },
+  { id: "cat-ex-4", nombre: "Audiometría", categoria: "Físico" }
+];
+
+const mockCatalogoCursos: CatalogoCurso[] = [
+  { id: "cat-cu-1", nombre: "Inducción ODI", categoria: "Inducción Obligatoria" },
+  { id: "cat-cu-2", nombre: "Manejo a la Defensiva", categoria: "Seguridad y Salud" },
+  { id: "cat-cu-3", nombre: "Liderazgo Efectivo", categoria: "Desarrollo Profesional" },
+  { id: "cat-cu-4", nombre: "Operación de Grúas", categoria: "Certificación Técnica" }
+];
+
+const mockCatalogoDocumentos: CatalogoDocumento[] = [
+  { id: "cat-doc-1", nombre: "Pase de Ingreso Faena", categoria: "Pase" },
+  { id: "cat-doc-2", nombre: "Licencia Interna Conducir", categoria: "Licencia" },
+  { id: "cat-doc-3", nombre: "Acreditación SSOMA", categoria: "Acreditación" }
+];
+
 const mockExamenes: ControlExamen[] = [
   {
     id: "ex-1",
     id_trabajador: "t-1",
-    tipo_examen: "Altura Geográfica",
+    id_examen_catalogo: "cat-ex-1",
     fecha_realizacion: "2025-05-10",
     fecha_vencimiento: "2026-05-10", // Vencido hace poco
     resultado: "Aprobado",
@@ -76,7 +139,7 @@ const mockExamenes: ControlExamen[] = [
   {
     id: "ex-2",
     id_trabajador: "t-2",
-    tipo_examen: "Psicosensométrico",
+    id_examen_catalogo: "cat-ex-2",
     fecha_realizacion: "2026-01-15",
     fecha_vencimiento: "2027-01-15", // Vigente
     resultado: "Aprobado con Observaciones",
@@ -86,7 +149,7 @@ const mockExamenes: ControlExamen[] = [
   {
     id: "ex-3",
     id_trabajador: "t-3",
-    tipo_examen: "Preocupacional",
+    id_examen_catalogo: "cat-ex-3",
     fecha_realizacion: "2026-06-01",
     fecha_vencimiento: null,
     resultado: "Pendiente",
@@ -99,7 +162,7 @@ const mockCursos: ControlCurso[] = [
   {
     id: "cu-1",
     id_trabajador: "t-1",
-    nombre_curso: "Inducción ODI",
+    id_curso_catalogo: "cat-cu-1",
     institucion: "Mutual de Seguridad",
     modalidad: "E-learning",
     fecha_realizacion: "2025-06-20",
@@ -111,7 +174,7 @@ const mockCursos: ControlCurso[] = [
   {
     id: "cu-2",
     id_trabajador: "t-2",
-    nombre_curso: "Manejo a la Defensiva",
+    id_curso_catalogo: "cat-cu-2",
     institucion: "Automóvil Club",
     modalidad: "Presencial",
     fecha_realizacion: "2026-04-10",
@@ -122,10 +185,38 @@ const mockCursos: ControlCurso[] = [
   }
 ];
 
+const mockDocumentos: ControlDocumento[] = [
+  {
+    id: "doc-1",
+    id_trabajador: "t-1",
+    id_documento_catalogo: "cat-doc-1",
+    numero_documento: "PASE-12345",
+    fecha_emision: "2025-01-01",
+    fecha_vencimiento: "2026-01-01",
+    estado: "Vigente",
+    observaciones: null,
+    adjunto_url: null
+  },
+  {
+    id: "doc-2",
+    id_trabajador: "t-2",
+    id_documento_catalogo: "cat-doc-2",
+    numero_documento: "LIC-555",
+    fecha_emision: "2024-05-10",
+    fecha_vencimiento: "2025-05-10", // Vencido
+    estado: "Vencido",
+    observaciones: "Debe renovar antes de volver a conducir",
+    adjunto_url: null
+  }
+];
+
 // Helper para calcular nivel de alerta
 const calcularNivelAlerta = (fechaVencimiento: string | null, estadoActual: string): { nivel: NivelAlerta; dias: number | null } => {
   if (estadoActual === "Pendiente" || estadoActual === "No Asiste" || estadoActual === "Reprobado" || estadoActual === "Rechazado") {
     return { nivel: "pendiente", dias: null };
+  }
+  if (estadoActual === "Retenido" || estadoActual === "Suspendido" || estadoActual === "Vencido") {
+    return { nivel: "vencido", dias: null };
   }
 
   if (!fechaVencimiento) return { nivel: "vigente", dias: null };
@@ -148,6 +239,10 @@ export const useControlStore = create<ControlState>()(
     (set, get) => ({
       examenes: [],
       cursos: [],
+      documentos: [],
+      catalogoExamenes: mockCatalogoExamenes,
+      catalogoCursos: mockCatalogoCursos,
+      catalogoDocumentos: mockCatalogoDocumentos,
 
       fetchControlData: async () => {
         try {
@@ -178,11 +273,24 @@ export const useControlStore = create<ControlState>()(
             set({ cursos: cuData });
           }
 
+          const { data: docData, error: docError } = await supabase
+            .from("control_documentos")
+            .select("*")
+            .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
+
+          if (docError) {
+            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_documentos, usando mock");
+            const { documentos } = get();
+            if (documentos.length === 0) set({ documentos: mockDocumentos });
+          } else if (docData) {
+            set({ documentos: docData });
+          }
+
         } catch (err) {
           if (process.env.NODE_ENV === "development") console.warn("Error red control-store", err);
-          const { examenes, cursos } = get();
-          if (examenes.length === 0 && cursos.length === 0) {
-            set({ examenes: mockExamenes, cursos: mockCursos });
+          const { examenes, cursos, documentos } = get();
+          if (examenes.length === 0 && cursos.length === 0 && documentos.length === 0) {
+            set({ examenes: mockExamenes, cursos: mockCursos, documentos: mockDocumentos });
           }
         }
       },
@@ -203,6 +311,25 @@ export const useControlStore = create<ControlState>()(
           }
         } catch (err) {
           console.warn("Error persistiendo examen", err);
+        }
+      },
+
+      addExamenMasivo: async (trabajadoresIds, e) => {
+        const nuevos: ControlExamen[] = trabajadoresIds.map((id_trabajador, idx) => ({
+          ...e,
+          id_trabajador,
+          id: `temp-ex-masivo-${Date.now()}-${idx}`
+        }));
+
+        set((state) => ({ examenes: [...state.examenes, ...nuevos] }));
+
+        try {
+          const registrosInsert = trabajadoresIds.map(id_trabajador => ({
+            ...e, id_trabajador
+          }));
+          await supabase.from("control_examenes").insert(registrosInsert);
+        } catch (err) {
+          console.warn("Error insert masivo", err);
         }
       },
 
@@ -242,6 +369,23 @@ export const useControlStore = create<ControlState>()(
         } catch (err) { console.warn(err); }
       },
 
+      addCursoMasivo: async (trabajadoresIds, c) => {
+        const nuevos: ControlCurso[] = trabajadoresIds.map((id_trabajador, idx) => ({
+          ...c,
+          id_trabajador,
+          id: `temp-cu-masivo-${Date.now()}-${idx}`
+        }));
+
+        set((state) => ({ cursos: [...state.cursos, ...nuevos] }));
+
+        try {
+          const registrosInsert = trabajadoresIds.map(id_trabajador => ({
+            ...c, id_trabajador
+          }));
+          await supabase.from("control_cursos").insert(registrosInsert);
+        } catch (err) { console.warn(err); }
+      },
+
       updateCurso: async (id, updates) => {
         set((state) => ({
           cursos: state.cursos.map((c) => c.id === id ? { ...c, ...updates } : c)
@@ -262,16 +406,71 @@ export const useControlStore = create<ControlState>()(
         } catch (err) { console.warn(err); }
       },
 
+      addDocumento: async (d) => {
+        const tempId = `temp-doc-${Date.now()}`;
+        const nuevo: ControlDocumento = { ...d, id: tempId };
+        set((state) => ({ documentos: [...state.documentos, nuevo] }));
+
+        try {
+          const { data, error } = await supabase.from("control_documentos").insert([d]).select();
+          if (error) throw error;
+          if (data && data[0]) {
+            set((state) => ({
+              documentos: state.documentos.map((item) => item.id === tempId ? data[0] : item)
+            }));
+          }
+        } catch (err) { console.warn(err); }
+      },
+
+      addDocumentoMasivo: async (trabajadoresIds, d) => {
+        const nuevos: ControlDocumento[] = trabajadoresIds.map((id_trabajador, idx) => ({
+          ...d,
+          id_trabajador,
+          id: `temp-doc-masivo-${Date.now()}-${idx}`
+        }));
+
+        set((state) => ({ documentos: [...state.documentos, ...nuevos] }));
+
+        try {
+          const registrosInsert = trabajadoresIds.map(id_trabajador => ({
+            ...d, id_trabajador
+          }));
+          await supabase.from("control_documentos").insert(registrosInsert);
+        } catch (err) { console.warn(err); }
+      },
+
+      updateDocumento: async (id, updates) => {
+        set((state) => ({
+          documentos: state.documentos.map((d) => d.id === id ? { ...d, ...updates } : d)
+        }));
+        try {
+          if (!id.startsWith('temp-')) {
+            await supabase.from("control_documentos").update(updates).eq("id", id);
+          }
+        } catch (err) { console.warn(err); }
+      },
+
+      deleteDocumento: async (id) => {
+        set((state) => ({ documentos: state.documentos.filter((d) => d.id !== id) }));
+        try {
+          if (!id.startsWith('temp-')) {
+            await supabase.from("control_documentos").delete().eq("id", id);
+          }
+        } catch (err) { console.warn(err); }
+      },
+
       getAlertasByTrabajador: (id_trabajador) => {
-        const { examenes, cursos } = get();
+        const { examenes, cursos, catalogoExamenes, catalogoCursos } = get();
         const alertas: AlertaControl[] = [];
 
         examenes.filter(e => e.id_trabajador === id_trabajador).forEach(ex => {
+          const cat = catalogoExamenes.find(c => c.id === ex.id_examen_catalogo);
+          const nombreEx = cat ? cat.nombre : "Examen Desconocido";
           const calc = calcularNivelAlerta(ex.fecha_vencimiento, ex.resultado);
           alertas.push({
             id: ex.id,
             tipo: "Examen",
-            nombre: ex.tipo_examen,
+            nombre: nombreEx,
             fecha_vencimiento: ex.fecha_vencimiento,
             nivel: calc.nivel,
             dias_restantes: calc.dias,
@@ -280,15 +479,33 @@ export const useControlStore = create<ControlState>()(
         });
 
         cursos.filter(c => c.id_trabajador === id_trabajador).forEach(cu => {
+          const cat = catalogoCursos.find(c => c.id === cu.id_curso_catalogo);
+          const nombreCu = cat ? cat.nombre : "Curso Desconocido";
           const calc = calcularNivelAlerta(cu.fecha_vencimiento, cu.estado);
           alertas.push({
             id: cu.id,
             tipo: "Curso",
-            nombre: cu.nombre_curso,
+            nombre: nombreCu,
             fecha_vencimiento: cu.fecha_vencimiento,
             nivel: calc.nivel,
             dias_restantes: calc.dias,
             estado_texto: cu.estado
+          });
+        });
+
+        const { documentos, catalogoDocumentos } = get();
+        documentos.filter(d => d.id_trabajador === id_trabajador).forEach(doc => {
+          const cat = catalogoDocumentos.find(c => c.id === doc.id_documento_catalogo);
+          const nombreDoc = cat ? cat.nombre : "Documento Desconocido";
+          const calc = calcularNivelAlerta(doc.fecha_vencimiento, doc.estado);
+          alertas.push({
+            id: doc.id,
+            tipo: "Documento",
+            nombre: nombreDoc,
+            fecha_vencimiento: doc.fecha_vencimiento,
+            nivel: calc.nivel,
+            dias_restantes: calc.dias,
+            estado_texto: doc.estado
           });
         });
 
@@ -307,10 +524,11 @@ export const useControlStore = create<ControlState>()(
       },
 
       getAllAlertas: () => {
-        const { examenes, cursos, getAlertasByTrabajador } = get();
+        const { examenes, cursos, documentos, getAlertasByTrabajador } = get();
         const allWorkers = Array.from(new Set([
           ...examenes.map(e => e.id_trabajador),
-          ...cursos.map(c => c.id_trabajador)
+          ...cursos.map(c => c.id_trabajador),
+          ...documentos.map(d => d.id_trabajador)
         ]));
 
         const allAlertas: { trabajador_id: string; alerta: AlertaControl }[] = [];

@@ -66,6 +66,15 @@ function nextMes(anio: number, mes: number) {
   return mes === 12 ? { anio: anio + 1, mes: 1 } : { anio, mes: mes + 1 };
 }
 
+function getLastWednesday(baseDate = new Date()): Date {
+  const d = new Date(baseDate);
+  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 3=Wed
+  const diff = day >= 3 ? day - 3 : day + 4;
+  d.setDate(d.getDate() - diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
 // Estado badge colours for non-bg uses (borders, text)
 const ESTADO_BADGE: Record<EstadoAsistencia, string> = {
   P:   "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
@@ -147,9 +156,14 @@ export default function AsistenciaPage() {
   const [selectedContratoId, setSelectedContratoId] = useState<string | null>(null);
   const [anio, setAnio] = useState(today.getFullYear());
   const [mes, setMes] = useState(today.getMonth() + 1);
+  const [fechaInicioSemana, setFechaInicioSemana] = useState<Date>(() => getLastWednesday());
   const [groupBy, setGroupBy] = useState<GroupBy>("unidad");
   const [filtroSexo, setFiltroSexo] = useState<"Todos" | "M" | "F">("Todos");
   const [filtroNivel, setFiltroNivel] = useState<string>("Todos");
+
+  const [modoFechas, setModoFechas] = useState<"semana" | "mes" | "rango">("semana");
+  const [fechaInicioRango, setFechaInicioRango] = useState<string>(todayStr);
+  const [fechaFinRango, setFechaFinRango] = useState<string>(todayStr);
 
   // ── Stores ──────────────────────────────────────────────────────────────────
   const { registros, auditoria, setEstado, getMetaFTE, calcularFTEReal, calcularDiasHabiles } =
@@ -234,6 +248,37 @@ export default function AsistenciaPage() {
 
   // ── Registro table data ─────────────────────────────────────────────────────
   const dias = useMemo(() => getDiasDelMes(anio, mes), [anio, mes]);
+  
+  const diasSemana = useMemo(() => {
+    const arr: Date[] = [];
+    if (modoFechas === "semana") {
+      for (let i = 0; i <= 7; i++) {
+        const d = new Date(fechaInicioSemana);
+        d.setDate(d.getDate() + i);
+        arr.push(d);
+      }
+    } else if (modoFechas === "mes") {
+      const totalDays = new Date(anio, mes, 0).getDate();
+      for (let i = 1; i <= totalDays; i++) {
+        arr.push(new Date(anio, mes - 1, i));
+      }
+    } else {
+      const start = new Date(fechaInicioRango + "T00:00:00");
+      const end = new Date(fechaFinRango + "T00:00:00");
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+        let current = new Date(start);
+        let count = 0;
+        while (current <= end && count < 45) { // max 45 days
+          arr.push(new Date(current));
+          current.setDate(current.getDate() + 1);
+          count++;
+        }
+      } else {
+        arr.push(today);
+      }
+    }
+    return arr;
+  }, [modoFechas, fechaInicioSemana, anio, mes, fechaInicioRango, fechaFinRango]);
 
   const trabajadoresContrato = useMemo(() => {
     if (!selectedContrato) return [];
@@ -319,15 +364,15 @@ export default function AsistenciaPage() {
   // ════════════════════════════════════════════════════════════════════════════
   if (view === "dashboard") {
     return (
-      <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+      <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn pt-4">
         {/* Header */}
-        <div className="flex justify-between items-center flex-wrap gap-4">
+        <div className="flex justify-between items-center flex-wrap gap-4 border-b border-border pb-5">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <CalendarDays className="text-blue-400" size={22} />
+            <h1 className="text-3xl font-bold tracking-tight text-text flex items-center gap-3">
+              <CalendarDays className="text-primary" size={32} />
               Control de Asistencia
             </h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-sm font-bold text-text-soft mt-2">
               Hoy: {DIAS_SEMANA_SHORT[today.getDay()]}{" "}
               {today.getDate()} de {MESES_ES[today.getMonth()]} {today.getFullYear()} •{" "}
               Período activo: {MESES_ES[mes - 1]} {anio}
@@ -335,29 +380,29 @@ export default function AsistenciaPage() {
           </div>
           <button
             onClick={() => setView("auditoria")}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+            className="btn btn-secondary py-1.5 text-xs flex items-center gap-2"
           >
-            <FileText size={13} /> Auditoría Global
+            <FileText size={14} /> Auditoría Global
           </button>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="stats-grid">
           {[
             {
-              icon: Users, color: "blue",
+              icon: Users, color: "primary",
               label: "DOTACIÓN ACTIVA",
               value: dashStats.totalDotacion,
               sub: `En ${activeContratos.length} contratos activos`,
             },
             {
-              icon: CheckCircle2, color: "emerald",
+              icon: CheckCircle2, color: "success",
               label: "PRESENTES HOY",
               value: dashStats.globalPresente,
               sub: `${Math.round((dashStats.globalPresente / Math.max(dashStats.totalDotacion,1)) * 100)}% de la dotación`,
             },
             {
-              icon: XCircle, color: "amber",
+              icon: XCircle, color: "warning",
               label: "AUSENTES HOY",
               value: dashStats.globalAusente,
               sub: `${dashStats.totalDotacion - dashStats.globalPresente - dashStats.globalAusente} sin registrar`,
@@ -369,36 +414,36 @@ export default function AsistenciaPage() {
               sub: `Meta total: ${dashStats.contratoCards.reduce((acc, c) => acc + c.meta, 0).toFixed(1)} FTE`,
             },
           ].map(({ icon: Icon, color, label, value, sub }) => (
-            <div key={label} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-              <div className={`p-2.5 rounded-lg bg-${color}-500/10 text-${color}-400 flex-shrink-0`}>
-                <Icon size={18} />
+            <div key={label} className="stat-box flex items-center gap-4">
+              <div className={`p-3 rounded-xl bg-${color === 'purple' ? 'purple-500/10' : color + '/10'} text-${color === 'purple' ? 'purple-500' : color} flex-shrink-0`}>
+                <Icon size={24} />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] text-zinc-500 font-bold block uppercase">{label}</span>
-                <span className="text-xl font-bold text-white">{value}</span>
-                <span className="text-[10px] text-zinc-500 block truncate">{sub}</span>
+                <span className="label">{label}</span>
+                <span className="value text-2xl">{value}</span>
+                <span className="text-[10px] font-medium text-text-muted block truncate">{sub}</span>
               </div>
             </div>
           ))}
         </div>
 
         {/* Global state distribution */}
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20 space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-              <BarChart2 size={14} className="text-blue-400" />
+        <div className="card space-y-4">
+          <div className="flex justify-between items-center border-b border-border pb-3">
+            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+              <BarChart2 size={16} className="text-primary" />
               Distribución de Estados — Hoy
             </h3>
-            <span className="text-[10px] text-zinc-500">{dashStats.globalTotal} registros</span>
+            <span className="text-[11px] font-bold text-text-muted">{dashStats.globalTotal} registros</span>
           </div>
           <StateBar counts={dashStats.globalCounts} total={dashStats.globalTotal} />
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-4 pt-2">
             {(Object.keys(ESTADO_CONFIG) as EstadoAsistencia[]).map((s) => (
-              <div key={s} className="flex items-center gap-1.5 text-xs text-zinc-400">
-                <span className={`w-2.5 h-2.5 rounded-sm ${ESTADO_CONFIG[s].bg}`} />
+              <div key={s} className="flex items-center gap-2 text-[11px] font-semibold text-text-soft">
+                <span className={`w-3 h-3 rounded-sm ${ESTADO_CONFIG[s].bg}`} />
                 {ESTADO_CONFIG[s].label}
                 {dashStats.globalCounts[s] ? (
-                  <span className="text-zinc-200 font-semibold">{dashStats.globalCounts[s]}</span>
+                  <span className="text-text font-bold ml-1">{dashStats.globalCounts[s]}</span>
                 ) : null}
               </div>
             ))}
@@ -406,40 +451,40 @@ export default function AsistenciaPage() {
         </div>
 
         {/* Contract cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {dashStats.contratoCards.map(({ contrato, activos, presente, ausente, sinRegistro, meta, fteReal, todayCounts }) => {
             const pct = meta > 0 ? Math.min(100, Math.round((fteReal / meta) * 100)) : 0;
-            const pctColor = pct >= 90 ? "text-emerald-400" : pct >= 70 ? "text-amber-400" : "text-red-400";
-            const barColor = pct >= 90 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-red-500";
+            const pctColor = pct >= 90 ? "text-success" : pct >= 70 ? "text-warning" : "text-danger";
+            const barColor = pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-danger";
 
             return (
               <div
                 key={contrato.id_contrato}
-                className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all space-y-4 flex flex-col"
+                className="card group hover:border-primary/40 transition-all space-y-5 flex flex-col p-6"
               >
                 {/* Contract header */}
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-white text-sm truncate">{contrato.nombre_contrato}</h3>
-                    <p className="text-[10px] text-zinc-500 font-mono">{contrato.codigo_contrato}</p>
+                    <h3 className="font-bold text-text text-base truncate group-hover:text-primary transition-colors">{contrato.nombre_contrato}</h3>
+                    <p className="text-[11px] text-text-muted font-bold font-mono mt-0.5">{contrato.codigo_contrato}</p>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold flex-shrink-0">
+                  <span className="badge bg-success/10 text-success border-success/20 flex-shrink-0">
                     {contrato.estado}
                   </span>
                 </div>
 
                 {/* FTE gauge + stats */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-5 bg-surface-2 p-4 rounded-xl border border-border">
                   <FTEGauge real={fteReal} meta={meta} size={76} />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-zinc-500">FTE Real</span>
-                      <span className={`font-bold ${pctColor}`}>{pct}%</span>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-text-soft">FTE Real</span>
+                      <span className={`${pctColor}`}>{pct}%</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="h-2 rounded-full bg-border overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="flex justify-between text-[10px] text-zinc-500">
+                    <div className="flex justify-between text-[10px] font-bold text-text-muted">
                       <span>Meta: {meta.toFixed(1)} FTE</span>
                       <span>Real: {fteReal.toFixed(2)}</span>
                     </div>
@@ -447,25 +492,25 @@ export default function AsistenciaPage() {
                 </div>
 
                 {/* Today breakdown */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-[10px] text-text-muted uppercase font-bold tracking-wider">
                     <span>Estado de hoy</span>
                     <span>{activos} personas</span>
                   </div>
                   <StateBar counts={todayCounts} total={activos} />
-                  <div className="flex gap-3 text-[10px]">
-                    <span className="text-emerald-400">✓ {presente} presentes</span>
-                    <span className="text-amber-400">✕ {ausente} ausentes</span>
-                    {sinRegistro > 0 && <span className="text-zinc-500">– {sinRegistro} sin reg.</span>}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] font-bold">
+                    <span className="text-success flex items-center gap-1"><CheckCircle2 size={12}/> {presente} presentes</span>
+                    <span className="text-warning flex items-center gap-1"><AlertTriangle size={12}/> {ausente} ausentes</span>
+                    {sinRegistro > 0 && <span className="text-text-muted">— {sinRegistro} sin reg.</span>}
                   </div>
                 </div>
 
                 {/* Action */}
                 <button
                   onClick={() => goToContrato(contrato.id_contrato)}
-                  className="w-full mt-auto py-2 rounded-lg bg-blue-600/10 border border-blue-500/20 text-blue-400 text-xs font-bold hover:bg-blue-600/20 hover:border-blue-500/40 transition-all flex items-center justify-center gap-1.5"
+                  className="btn btn-primary w-full mt-auto py-2 flex items-center justify-center gap-2"
                 >
-                  <CalendarDays size={13} />
+                  <CalendarDays size={14} />
                   Registrar Asistencia
                 </button>
               </div>
@@ -481,60 +526,62 @@ export default function AsistenciaPage() {
   // ════════════════════════════════════════════════════════════════════════════
   if (view === "auditoria") {
     return (
-      <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+      <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn pt-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => setView("dashboard")}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-800"
+            className="p-2.5 rounded-xl border border-border bg-surface text-text-muted hover:text-text hover:bg-surface-2 transition-all shadow-sm"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-white">Log de Auditoría</h1>
-            <p className="text-xs text-zinc-500">{auditoria.length} cambios registrados</p>
+            <h1 className="text-2xl font-bold text-text">Log de Auditoría</h1>
+            <p className="text-sm font-bold text-text-soft mt-1">{auditoria.length} cambios registrados</p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 overflow-hidden">
-          <table className="w-full text-xs">
-            <thead className="bg-zinc-900/60 border-b border-zinc-800">
-              <tr>
-                {["Fecha/Hora","Trabajador","Contrato","Fecha Asist.","Anterior","Nuevo","Usuario"].map((h) => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60">
-              {auditoria.slice(0, 100).map((a) => (
-                <tr key={a.id} className="hover:bg-zinc-900/30 transition-colors">
-                  <td className="px-3 py-2 text-zinc-400 whitespace-nowrap">
-                    {new Date(a.editado_at).toLocaleString("es-CL")}
-                  </td>
-                  <td className="px-3 py-2 text-zinc-200 font-medium">{a.nombre_trabajador}</td>
-                  <td className="px-3 py-2 text-zinc-400 font-mono text-[10px]">{a.id_contrato}</td>
-                  <td className="px-3 py-2 text-zinc-300">{a.fecha_asistencia}</td>
-                  <td className="px-3 py-2">
-                    {a.estado_anterior ? (
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${ESTADO_BADGE[a.estado_anterior]}`}>
-                        {a.estado_anterior}
-                      </span>
-                    ) : <span className="text-zinc-600">—</span>}
-                  </td>
-                  <td className="px-3 py-2">
-                    {a.estado_nuevo ? (
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${ESTADO_BADGE[a.estado_nuevo]}`}>
-                        {a.estado_nuevo}
-                      </span>
-                    ) : <span className="text-zinc-600 text-[10px]">Eliminado</span>}
-                  </td>
-                  <td className="px-3 py-2 text-zinc-500">{a.editado_por}</td>
+        <div className="table-shell">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-2 border-b border-border">
+                <tr>
+                  {["Fecha/Hora","Trabajador","Contrato","Fecha Asist.","Anterior","Nuevo","Usuario"].map((h) => (
+                    <th key={h} className="px-5 py-4 text-left text-[11px] font-bold text-text-muted uppercase tracking-wider">{h}</th>
+                  ))}
                 </tr>
-              ))}
-              {auditoria.length === 0 && (
-                <tr><td colSpan={7} className="px-3 py-10 text-center text-zinc-500 text-sm">No hay cambios registrados aún.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {auditoria.slice(0, 100).map((a) => (
+                  <tr key={a.id} className="hover:bg-surface-2 transition-colors">
+                    <td className="px-5 py-3 text-text-soft text-xs whitespace-nowrap font-medium">
+                      {new Date(a.editado_at).toLocaleString("es-CL")}
+                    </td>
+                    <td className="px-5 py-3 text-text font-bold">{a.nombre_trabajador}</td>
+                    <td className="px-5 py-3 text-text-muted font-bold font-mono text-[10px]">{a.id_contrato}</td>
+                    <td className="px-5 py-3 text-text-soft font-semibold">{a.fecha_asistencia}</td>
+                    <td className="px-5 py-3">
+                      {a.estado_anterior ? (
+                        <span className={`badge ${ESTADO_BADGE[a.estado_anterior]}`}>
+                          {a.estado_anterior}
+                        </span>
+                      ) : <span className="text-text-muted font-bold">—</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      {a.estado_nuevo ? (
+                        <span className={`badge ${ESTADO_BADGE[a.estado_nuevo]}`}>
+                          {a.estado_nuevo}
+                        </span>
+                      ) : <span className="text-text-muted text-xs font-bold">Eliminado</span>}
+                    </td>
+                    <td className="px-5 py-3 text-text-soft text-xs font-semibold">{a.editado_por}</td>
+                  </tr>
+                ))}
+                {auditoria.length === 0 && (
+                  <tr><td colSpan={7} className="px-5 py-12 text-center text-text-soft text-sm font-medium italic">No hay cambios registrados aún.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
@@ -555,38 +602,38 @@ export default function AsistenciaPage() {
   for (const r of mesRegistros) estadoCountsMes[r.estado] = (estadoCountsMes[r.estado] || 0) + 1;
 
   return (
-    <div className="max-w-full mx-auto space-y-5 animate-fadeIn">
+    <div className="max-w-full mx-auto space-y-6 animate-fadeIn pt-4">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setView("dashboard")}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-800"
+            className="p-2.5 rounded-xl border border-border bg-surface text-text-muted hover:text-text hover:bg-surface-2 transition-all shadow-sm"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={16} />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-white">{selectedContrato.nombre_contrato}</h1>
-            <p className="text-[10px] text-zinc-500 font-mono">{selectedContrato.codigo_contrato}</p>
+            <h1 className="text-2xl font-bold text-text flex items-center gap-2">{selectedContrato.nombre_contrato}</h1>
+            <p className="text-sm font-bold text-text-soft font-mono mt-1">{selectedContrato.codigo_contrato}</p>
           </div>
         </div>
 
         {/* Month navigator */}
-        <div className="flex items-center gap-2">
-          <button onClick={() => changeMes(-1)} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-800"><ChevronLeft size={14} /></button>
-          <span className="text-sm font-bold text-white min-w-[130px] text-center">{MESES_ES[mes - 1]} {anio}</span>
-          <button onClick={() => changeMes(1)} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-800"><ChevronRight size={14} /></button>
+        <div className="flex items-center gap-2 bg-surface-2 p-1.5 rounded-xl border border-border">
+          <button onClick={() => changeMes(-1)} className="p-2 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all"><ChevronLeft size={16} /></button>
+          <span className="text-sm font-bold text-text min-w-[140px] text-center">{MESES_ES[mes - 1]} {anio}</span>
+          <button onClick={() => changeMes(1)} className="p-2 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all"><ChevronRight size={16} /></button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-zinc-800 pb-0">
+      <div className="flex gap-1 border-b border-border pb-0 pt-2">
         {([["diario","Registro Diario"],["resumen","Resumen Mes"],["planificacion","Planificación 12M"]] as [RegistroTab,string][]).map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setRegistroTab(tab)}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all -mb-px ${
-              registroTab === tab ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
+            className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all -mb-px ${
+              registroTab === tab ? "border-primary text-primary" : "border-transparent text-text-muted hover:text-text"
             }`}
           >
             {label}
@@ -594,46 +641,46 @@ export default function AsistenciaPage() {
         ))}
         <button
           onClick={() => setView("auditoria")}
-          className="ml-auto px-3 py-2 text-[10px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors"
+          className="ml-auto px-4 py-3 text-xs font-bold text-text-muted hover:text-text flex items-center gap-1.5 transition-colors"
         >
-          <FileText size={11} /> Auditoría
+          <FileText size={14} /> Auditoría
         </button>
       </div>
 
       {/* ── TAB: RESUMEN ── */}
       {registroTab === "resumen" && (
-        <div className="space-y-5 animate-fadeIn">
+        <div className="space-y-6 animate-fadeIn">
           {/* FTE + state breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* FTE Card */}
-            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-5">
+            <div className="card flex items-center gap-6 p-6">
               <FTEGauge real={fteRealSeleccionado} meta={metaSeleccionada} size={88} />
-              <div className="space-y-1.5">
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">FTE Real {MESES_ES[mes-1]}</p>
-                <p className="text-2xl font-bold text-white">{fteRealSeleccionado.toFixed(2)}</p>
-                <p className="text-xs text-zinc-500">Meta: <span className="text-white font-bold">{metaSeleccionada.toFixed(1)}</span> FTE</p>
-                <p className="text-xs text-zinc-500">Días hábiles: <span className="text-white font-bold">{diasHabilesSeleccionados}</span></p>
+              <div className="space-y-2">
+                <p className="text-[11px] text-text-muted font-bold uppercase tracking-wider">FTE Real {MESES_ES[mes-1]}</p>
+                <p className="text-3xl font-bold text-text">{fteRealSeleccionado.toFixed(2)}</p>
+                <p className="text-xs font-bold text-text-soft">Meta: <span className="text-text">{metaSeleccionada.toFixed(1)}</span> FTE</p>
+                <p className="text-xs font-bold text-text-soft">Días hábiles: <span className="text-text">{diasHabilesSeleccionados}</span></p>
               </div>
             </div>
 
             {/* States breakdown */}
-            <div className="md:col-span-2 p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-3">
-              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Distribución de Estados — {MESES_ES[mes-1]} {anio}</h3>
-              <div className="space-y-2">
+            <div className="md:col-span-2 card space-y-4 p-6">
+              <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">Distribución de Estados — {MESES_ES[mes-1]} {anio}</h3>
+              <div className="space-y-2.5">
                 {(Object.keys(ESTADO_CONFIG) as EstadoAsistencia[]).map((s) => {
                   const count = estadoCountsMes[s] || 0;
                   const pct = mesRegistros.length > 0 ? Math.round((count / mesRegistros.length) * 100) : 0;
                   return (
-                    <div key={s} className="flex items-center gap-3">
-                      <span className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold text-white ${ESTADO_CONFIG[s].bg}`}>
+                    <div key={s} className="flex items-center gap-4">
+                      <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${ESTADO_CONFIG[s].bg}`}>
                         {ESTADO_CONFIG[s].shortLabel}
                       </span>
-                      <span className="text-xs text-zinc-400 w-24">{ESTADO_CONFIG[s].label}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                      <span className="text-xs font-bold text-text-soft w-28">{ESTADO_CONFIG[s].label}</span>
+                      <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
                         <div className={`h-full rounded-full ${ESTADO_CONFIG[s].bg}`} style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-xs text-zinc-300 font-bold w-8 text-right">{count}</span>
-                      <span className="text-[10px] text-zinc-600 w-8 text-right">{pct}%</span>
+                      <span className="text-xs text-text font-bold w-8 text-right">{count}</span>
+                      <span className="text-[11px] font-bold text-text-muted w-10 text-right">{pct}%</span>
                     </div>
                   );
                 })}
@@ -642,13 +689,13 @@ export default function AsistenciaPage() {
           </div>
 
           {/* Per-unit breakdown */}
-          <div className="rounded-xl border border-zinc-800 overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/40">
-              <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Building2 size={13} className="text-blue-400" /> Desglose por Unidad
+          <div className="table-shell">
+            <div className="px-5 py-4 border-b border-border bg-surface flex items-center justify-between">
+              <h3 className="text-xs font-bold text-text uppercase tracking-wider flex items-center gap-2">
+                <Building2 size={16} className="text-primary" /> Desglose por Unidad
               </h3>
             </div>
-            <div className="divide-y divide-zinc-800/60">
+            <div className="divide-y divide-border">
               {selectedContrato.unidades.filter((u) => u.activa).map((unidad) => {
                 const workersInUnit = selectedContrato.trabajadores_asignados.filter(
                   (a) => a.activo && a.id_unidad === unidad.id_unidad
@@ -664,15 +711,15 @@ export default function AsistenciaPage() {
                   : "—";
 
                 return (
-                  <div key={unidad.id_unidad} className="px-4 py-3 flex items-center gap-4 flex-wrap">
+                  <div key={unidad.id_unidad} className="px-5 py-4 flex items-center gap-5 flex-wrap hover:bg-surface-2 transition-colors">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-zinc-200">{unidad.nombre}</p>
-                      <p className="text-[10px] text-zinc-500">{workersInUnit.length} personas</p>
+                      <p className="text-sm font-bold text-text">{unidad.nombre}</p>
+                      <p className="text-[11px] font-medium text-text-soft mt-0.5">{workersInUnit.length} personas</p>
                     </div>
-                    <div className="w-40">
+                    <div className="w-48">
                       <StateBar counts={unitCounts} total={unitRecords.length} />
                     </div>
-                    <span className="text-xs text-zinc-400">FTE: <span className="text-white font-bold">{fteUnit}</span></span>
+                    <span className="text-xs font-bold text-text-soft">FTE: <span className="text-text">{fteUnit}</span></span>
                   </div>
                 );
               })}
@@ -684,23 +731,23 @@ export default function AsistenciaPage() {
       {/* ── TAB: PLANIFICACIÓN 12M ── */}
       {registroTab === "planificacion" && (
         <div className="space-y-4 animate-fadeIn">
-          <p className="text-xs text-zinc-500">Vista anual de asistencia — color dominante por mes. Click en un mes para ir al registro diario.</p>
-          <div className="rounded-xl border border-zinc-800 overflow-x-auto">
+          <p className="text-sm font-bold text-text-soft">Vista anual de asistencia — color dominante por mes. Click en un mes para ir al registro diario.</p>
+          <div className="table-shell overflow-x-auto">
             <table className="border-collapse w-full text-xs">
               <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-900/60">
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-zinc-500 uppercase sticky left-0 bg-zinc-900/80 z-10 min-w-[140px]">Trabajador</th>
+                <tr className="border-b border-border bg-surface-2">
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-text-muted uppercase sticky left-0 bg-surface-2 z-10 min-w-[150px] shadow-[1px_0_0_0_var(--color-border)]">Trabajador</th>
                   {MESES_ES.map((m, i) => (
-                    <th key={m} className="px-1 py-2.5 text-center text-[10px] font-bold text-zinc-500 uppercase min-w-[56px]">{m.slice(0,3)}</th>
+                    <th key={m} className="px-2 py-3 text-center text-[10px] font-bold text-text-muted uppercase min-w-[60px]">{m.slice(0,3)}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/40">
+              <tbody className="divide-y divide-border">
                 {selectedContrato.trabajadores_asignados.filter((a) => a.activo).map((w) => (
-                  <tr key={w.id_asignacion} className="hover:bg-zinc-900/30 transition-colors">
-                    <td className="px-3 py-2 sticky left-0 bg-zinc-950 z-10 border-r border-zinc-800">
-                      <p className="font-semibold text-zinc-200 text-[11px] truncate max-w-[130px]">{w.nombre}</p>
-                      <p className="text-[9px] text-zinc-600 truncate">{w.nombre_unidad}</p>
+                  <tr key={w.id_asignacion} className="hover:bg-surface-2 transition-colors">
+                    <td className="px-4 py-3 sticky left-0 bg-surface z-10 shadow-[1px_0_0_0_var(--color-border)] group-hover:bg-surface-2 transition-colors">
+                      <p className="font-bold text-text text-xs truncate max-w-[140px]">{w.nombre}</p>
+                      <p className="text-[10px] font-medium text-text-soft truncate mt-0.5">{w.nombre_unidad}</p>
                     </td>
                     {MESES_ES.map((_, mi) => {
                       const m2 = mi + 1;
@@ -711,15 +758,15 @@ export default function AsistenciaPage() {
                       const dominant = (Object.keys(counts) as EstadoAsistencia[]).sort((a, b) => counts[b] - counts[a])[0];
                       const isCurrentMes = m2 === mes;
                       return (
-                        <td key={mi} className="px-1 py-1.5 text-center">
+                        <td key={mi} className="px-2 py-2 text-center">
                           <button
                             onClick={() => { setMes(m2); setRegistroTab("diario"); }}
-                            className={`w-12 h-7 rounded text-[9px] font-bold transition-all ${
+                            className={`w-14 h-8 rounded-lg text-[10px] font-bold transition-all ${
                               dominant
-                                ? `${ESTADO_CONFIG[dominant as EstadoAsistencia].bg} text-white opacity-80 hover:opacity-100`
+                                ? `${ESTADO_CONFIG[dominant as EstadoAsistencia].bg} text-white shadow-sm hover:opacity-90`
                                 : isCurrentMes
-                                ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
-                                : "bg-zinc-800/40 text-zinc-600 hover:bg-zinc-800"
+                                ? "bg-primary/10 border border-primary/20 text-primary"
+                                : "bg-bg text-text-muted hover:bg-border"
                             }`}
                           >
                             {dominant ? ESTADO_CONFIG[dominant as EstadoAsistencia].shortLabel : monthRecs.length > 0 ? "·" : "—"}
@@ -737,37 +784,80 @@ export default function AsistenciaPage() {
 
       {/* ── TAB: DIARIO ── */}
       {registroTab === "diario" && (
-        <div className="space-y-4 animate-fadeIn">
+        <div className="space-y-5 animate-fadeIn">
           {/* Filters + FTE summary strip */}
-          <div className="flex flex-wrap gap-3 items-center justify-between p-3 rounded-xl border border-zinc-800 bg-zinc-900/20">
-            {/* FTE strip */}
-            <div className="flex items-center gap-4">
-              <FTEGauge real={fteRealSeleccionado} meta={metaSeleccionada} size={56} />
-              <div>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase">FTE {MESES_ES[mes-1]}</p>
-                <p className="text-sm font-bold text-white">{fteRealSeleccionado.toFixed(2)} <span className="text-zinc-500 text-xs">/ {metaSeleccionada.toFixed(1)}</span></p>
-                <p className="text-[10px] text-zinc-500">{diasHabilesSeleccionados} días hábiles</p>
+          <div className="flex flex-wrap gap-4 items-center justify-between p-4 rounded-2xl border border-border bg-surface">
+            {/* View Mode & Date Navigators */}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <select value={modoFechas} onChange={(e) => setModoFechas(e.target.value as any)} className="input py-1.5 px-3 min-h-0 text-xs w-auto border-dashed border-primary/50 text-text">
+                  <option value="semana">Semana (Mié - Mié)</option>
+                  <option value="mes">Mes Completo</option>
+                  <option value="rango">Rango Específico</option>
+                </select>
+
+                {modoFechas === "semana" && (
+                  <div className="flex items-center gap-1 bg-surface-2 p-1 rounded-xl border border-border">
+                    <button onClick={() => setFechaInicioSemana(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7))} className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all"><ChevronLeft size={16} /></button>
+                    <span className="text-xs font-bold text-text min-w-[170px] text-center">
+                      {fechaInicioSemana.getDate()} {MESES_ES[fechaInicioSemana.getMonth()].slice(0,3)} - {(() => {
+                        const end = new Date(fechaInicioSemana); end.setDate(end.getDate() + 7);
+                        return `${end.getDate()} ${MESES_ES[end.getMonth()].slice(0,3)}`;
+                      })()} {fechaInicioSemana.getFullYear()}
+                    </span>
+                    <button onClick={() => setFechaInicioSemana(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7))} className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all"><ChevronRight size={16} /></button>
+                  </div>
+                )}
+                
+                {modoFechas === "mes" && (
+                  <div className="flex items-center gap-1 bg-surface-2 p-1 rounded-xl border border-border">
+                    <button onClick={() => changeMes(-1)} className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all"><ChevronLeft size={16} /></button>
+                    <span className="text-xs font-bold text-text min-w-[130px] text-center">
+                      {MESES_ES[mes-1]} {anio}
+                    </span>
+                    <button onClick={() => changeMes(1)} className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all"><ChevronRight size={16} /></button>
+                  </div>
+                )}
+
+                {modoFechas === "rango" && (
+                  <div className="flex items-center gap-2 bg-surface-2 p-1 rounded-xl border border-border">
+                    <input type="date" className="input py-1 min-h-0 text-xs w-auto bg-surface" value={fechaInicioRango} onChange={e => setFechaInicioRango(e.target.value)} />
+                    <span className="text-text-muted text-[10px] uppercase font-bold">hasta</span>
+                    <input type="date" className="input py-1 min-h-0 text-xs w-auto bg-surface" value={fechaFinRango} onChange={e => setFechaFinRango(e.target.value)} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6">
+
+              <div className="flex items-center gap-3">
+                <FTEGauge real={fteRealSeleccionado} meta={metaSeleccionada} size={40} />
+                <div>
+                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">FTE {MESES_ES[mes-1]}</p>
+                  <p className="text-sm font-bold text-text leading-tight">{fteRealSeleccionado.toFixed(2)} <span className="text-text-soft text-xs">/ {metaSeleccionada.toFixed(1)}</span></p>
+                </div>
               </div>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <Filter size={13} className="text-zinc-500" />
+            <div className="flex flex-wrap gap-3 items-center">
+              <Filter size={16} className="text-primary" />
               <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-                className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1 px-2.5 focus:outline-none focus:border-blue-600">
+                className="input py-1.5 px-3 min-h-0 text-xs w-auto">
                 <option value="unidad">Agrupar por Unidad</option>
                 <option value="nivel">Agrupar por Nivel</option>
                 <option value="sexo">Agrupar por Sexo</option>
                 <option value="modalidad">Agrupar por Modalidad</option>
               </select>
               <select value={filtroSexo} onChange={(e) => setFiltroSexo(e.target.value as any)}
-                className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1 px-2.5 focus:outline-none focus:border-blue-600">
+                className="input py-1.5 px-3 min-h-0 text-xs w-auto">
                 <option value="Todos">Todos los Sexos</option>
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
               <select value={filtroNivel} onChange={(e) => setFiltroNivel(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1 px-2.5 focus:outline-none focus:border-blue-600">
+                className="input py-1.5 px-3 min-h-0 text-xs w-auto">
                 <option value="Todos">Todos los Niveles</option>
                 {["Operativo","Supervisión","Jefatura","Gerencia"].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -775,92 +865,92 @@ export default function AsistenciaPage() {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-2 items-center text-[10px] text-zinc-500">
-            <span className="font-bold text-zinc-400">Estados:</span>
+          <div className="flex flex-wrap gap-2.5 items-center text-[11px] font-bold text-text-muted">
+            <span className="text-text-soft uppercase tracking-wider mr-1">Leyenda:</span>
             {(Object.keys(ESTADO_CONFIG) as EstadoAsistencia[]).map((s) => (
-              <span key={s} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border ${ESTADO_BADGE[s]}`}>
-                <span className="font-bold">{ESTADO_CONFIG[s].shortLabel}</span> {ESTADO_CONFIG[s].label}
+              <span key={s} className={`badge px-2 py-1 ${ESTADO_BADGE[s]}`}>
+                <span className="font-extrabold mr-1">{ESTADO_CONFIG[s].shortLabel}</span> {ESTADO_CONFIG[s].label}
               </span>
             ))}
-            <span className="ml-2 text-zinc-600">↑ Click en celda para cambiar estado</span>
+            <span className="ml-auto text-primary flex items-center gap-1"><ArrowLeft size={12} className="rotate-90" /> Click en celda para cambiar estado</span>
           </div>
 
           {/* Attendance table */}
-          <div className="rounded-xl border border-zinc-800 overflow-x-auto">
+          <div className="table-shell overflow-x-auto">
             <table className="border-collapse text-[11px]" style={{ minWidth: "max-content" }}>
               <thead>
                 {/* Day numbers */}
-                <tr className="border-b border-zinc-800 bg-zinc-900/80">
-                  <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase sticky left-0 z-20 bg-zinc-900 min-w-[160px] border-r border-zinc-800">
+                <tr className="border-b border-border bg-surface-2">
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-text-muted uppercase sticky left-0 z-20 bg-surface-2 min-w-[180px] shadow-[1px_0_0_0_var(--color-border)]">
                     Trabajador
                   </th>
-                  {dias.map((d) => {
-                    const dow = getDayOfWeek(anio, mes, d);
+                  {diasSemana.map((dObj, i) => {
+                    const dow = dObj.getDay();
                     const isWE = dow === 0 || dow === 6;
-                    const isToday = dateStr(anio, mes, d) === todayStr;
+                    const dNum = dObj.getDate();
+                    const isToday = dateStr(dObj.getFullYear(), dObj.getMonth() + 1, dNum) === todayStr;
                     return (
                       <th
-                        key={d}
+                        key={i}
                         className={`w-8 py-2 text-center font-bold ${
-                          isToday ? "text-blue-400 bg-blue-500/10" : isWE ? "text-zinc-700" : "text-zinc-500"
+                          isToday ? "text-primary bg-primary/10" : isWE ? "text-text-muted/70" : "text-text-soft"
                         }`}
                       >
-                        {d}
+                        {dNum}
                       </th>
                     );
                   })}
-                  <th className="px-3 py-2 text-right text-[10px] font-bold text-zinc-500 sticky right-0 bg-zinc-900 border-l border-zinc-800">
+                  <th className="px-3 py-2 text-right text-[10px] font-bold text-text-muted sticky right-0 bg-surface-2 border-l border-border shadow-[-1px_0_0_0_var(--color-border)]">
                     Días ✓
                   </th>
                 </tr>
                 {/* Day of week */}
-                <tr className="border-b border-zinc-800 bg-zinc-950">
-                  <th className="sticky left-0 z-20 bg-zinc-950 border-r border-zinc-800" />
-                  {dias.map((d) => {
-                    const dow = getDayOfWeek(anio, mes, d);
+                <tr className="border-b border-border bg-surface">
+                  <th className="sticky left-0 z-20 bg-surface shadow-[1px_0_0_0_var(--color-border)]" />
+                  {diasSemana.map((dObj, i) => {
+                    const dow = dObj.getDay();
                     const isWE = dow === 0 || dow === 6;
                     return (
-                      <th key={d} className={`w-8 py-1 text-center text-[9px] ${isWE ? "text-zinc-800" : "text-zinc-600"}`}>
+                      <th key={i} className={`w-8 py-1.5 text-center text-[9px] font-bold ${isWE ? "text-text-muted/40" : "text-text-muted"}`}>
                         {DIAS_SEMANA_SHORT[dow]}
                       </th>
                     );
                   })}
-                  <th className="sticky right-0 bg-zinc-950 border-l border-zinc-800" />
+                  <th className="sticky right-0 bg-surface shadow-[-1px_0_0_0_var(--color-border)]" />
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-zinc-800/40">
+              <tbody className="divide-y divide-border">
                 {Object.entries(groupedWorkers).map(([groupName, workers]) => (
                   <React.Fragment key={groupName}>
                     {/* Group header */}
-                    <tr className="bg-zinc-900/60">
-                      <td colSpan={dias.length + 2} className="px-3 py-1.5 sticky left-0">
-                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Building2 size={10} /> {groupName}
-                          <span className="text-zinc-600 font-normal ml-1">({workers.length} personas)</span>
+                    <tr className="bg-surface-2">
+                      <td colSpan={dias.length + 2} className="px-4 py-2 sticky left-0 shadow-[1px_0_0_0_var(--color-border)]">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          <Building2 size={12} /> {groupName}
+                          <span className="text-text-muted font-bold ml-1">({workers.length} personas)</span>
                         </span>
                       </td>
                     </tr>
 
                     {/* Worker rows */}
                     {workers.map((w) => {
-                      const workedDays = dias.filter((d) => {
-                        const dow = getDayOfWeek(anio, mes, d);
-                        if (dow === 0 || dow === 6) return false;
-                        const st = registroMap.get(`${selectedContratoId}|${w.id_trabajador}|${dateStr(anio,mes,d)}`);
+                      const workedDays = diasSemana.filter((dObj) => {
+                        const st = registroMap.get(`${selectedContratoId}|${w.id_trabajador}|${dateStr(dObj.getFullYear(), dObj.getMonth() + 1, dObj.getDate())}`);
                         return st ? ESTADO_CONFIG[st].contabiliza : false;
                       }).length;
 
                       return (
-                        <tr key={w.id_asignacion} className="hover:bg-zinc-900/20 transition-colors group">
-                          <td className="px-3 py-1.5 sticky left-0 z-10 bg-zinc-950 group-hover:bg-zinc-900/30 border-r border-zinc-800 transition-colors">
-                            <p className="font-semibold text-zinc-200 truncate max-w-[145px]">{w.nombre}</p>
-                            <p className="text-[9px] text-zinc-600">{w.nombre_cargo}</p>
+                        <tr key={w.id_asignacion} className="hover:bg-surface-2 transition-colors group">
+                          <td className="px-4 py-2 sticky left-0 z-10 bg-surface group-hover:bg-surface-2 shadow-[1px_0_0_0_var(--color-border)] transition-colors">
+                            <p className="font-bold text-text truncate max-w-[160px]">{w.nombre}</p>
+                            <p className="text-[10px] font-medium text-text-soft">{w.nombre_cargo}</p>
                           </td>
 
-                          {dias.map((d) => {
-                            const fecha = dateStr(anio, mes, d);
-                            const dow = getDayOfWeek(anio, mes, d);
+                          {diasSemana.map((dObj, i) => {
+                            const dNum = dObj.getDate();
+                            const fecha = dateStr(dObj.getFullYear(), dObj.getMonth() + 1, dNum);
+                            const dow = dObj.getDay();
                             const isWE = dow === 0 || dow === 6;
                             const isToday = fecha === todayStr;
                             const estado = registroMap.get(`${selectedContratoId}|${w.id_trabajador}|${fecha}`) ?? null;
@@ -868,32 +958,30 @@ export default function AsistenciaPage() {
 
                             return (
                               <td
-                                key={d}
-                                onClick={() => !isWE && handleCellClick(w.id_trabajador, w.id_asignacion, w.nombre, fecha)}
+                                key={i}
+                                onClick={() => handleCellClick(w.id_trabajador, w.id_asignacion, w.nombre, fecha)}
                                 title={cfg ? cfg.label : isWE ? "Fin de semana" : "Sin registro"}
-                                className={`w-8 py-1 text-center transition-all ${
-                                  isWE
-                                    ? "bg-zinc-900/20 cursor-default"
-                                    : isToday
-                                    ? "ring-1 ring-inset ring-blue-500/30 bg-blue-500/5 cursor-pointer hover:ring-blue-400"
-                                    : "cursor-pointer hover:bg-zinc-800/40"
+                                className={`w-8 py-1.5 text-center transition-all ${
+                                  isToday
+                                    ? "ring-1 ring-inset ring-primary/30 bg-primary/5 cursor-pointer hover:ring-primary hover:bg-primary/10"
+                                    : "cursor-pointer hover:bg-surface-2"
                                 }`}
                               >
-                                {estado && !isWE && (
-                                  <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[9px] font-bold text-white ${cfg!.bg}`}>
+                                {estado && (
+                                  <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[10px] font-extrabold text-white shadow-sm ${cfg!.bg}`}>
                                     {cfg!.shortLabel}
                                   </span>
                                 )}
-                                {!estado && isWE && (
-                                  <span className="text-zinc-800 text-[9px]">·</span>
+                                {!estado && (
+                                  <span className="text-text-muted/30 text-[10px] font-bold">·</span>
                                 )}
                               </td>
                             );
                           })}
 
-                          <td className="px-3 py-1.5 text-right sticky right-0 bg-zinc-950 group-hover:bg-zinc-900/30 border-l border-zinc-800 transition-colors">
-                            <span className="font-bold text-zinc-200">{workedDays}</span>
-                            <span className="text-zinc-600 text-[9px]"> d</span>
+                          <td className="px-4 py-2 text-right sticky right-0 bg-surface group-hover:bg-surface-2 shadow-[-1px_0_0_0_var(--color-border)] transition-colors">
+                            <span className="font-bold text-text">{workedDays}</span>
+                            <span className="text-text-soft font-bold text-[10px]"> d</span>
                           </td>
                         </tr>
                       );
@@ -903,7 +991,7 @@ export default function AsistenciaPage() {
 
                 {trabajadoresContrato.length === 0 && (
                   <tr>
-                    <td colSpan={dias.length + 2} className="px-4 py-12 text-center text-zinc-500 text-sm">
+                    <td colSpan={dias.length + 2} className="px-5 py-12 text-center text-text-soft text-sm font-medium italic">
                       No hay trabajadores que coincidan con los filtros seleccionados.
                     </td>
                   </tr>

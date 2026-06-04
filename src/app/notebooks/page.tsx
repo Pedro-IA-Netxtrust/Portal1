@@ -81,80 +81,80 @@ export default function NotebooksPage() {
   const notebooksBaja = notebooks.filter(a => a.estado === "Baja").length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <Laptop className="text-blue-400" size={24} />
+          <h1 className="text-3xl font-bold tracking-tight text-text flex items-center gap-3">
+            <Laptop className="text-primary" size={32} />
             Inventario de Notebooks
           </h1>
-          <p className="text-xs text-zinc-500">
+          <p className="text-sm text-text-soft mt-2 font-medium">
             Administra los equipos portátiles y computadores corporativos asignados a tu personal de faena.
           </p>
         </div>
         <button
           onClick={handleCreate}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+          className="btn btn-primary"
         >
-          <Plus size={16} />
+          <Plus size={18} />
           Registrar Notebook
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
-            <Laptop size={18} />
+      <div className="stats-grid">
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <Laptop size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">TOTAL NOTEBOOKS</span>
-            <span className="text-lg font-bold text-white">{totalNotebooks}</span>
+            <span className="label">TOTAL NOTEBOOKS</span>
+            <span className="value text-2xl">{totalNotebooks}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400">
-            <UserCheck size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-success/10 text-success">
+            <UserCheck size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">ASIGNADOS</span>
-            <span className="text-lg font-bold text-white">{notebooksAsignados}</span>
+            <span className="label">ASIGNADOS</span>
+            <span className="value text-2xl">{notebooksAsignados}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <CheckCircle2 className="text-emerald-400" size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <CheckCircle2 className="text-primary" size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">DISPONIBLES</span>
-            <span className="text-lg font-bold text-white">{notebooksDisponibles}</span>
+            <span className="label">DISPONIBLES</span>
+            <span className="value text-2xl">{notebooksDisponibles}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-zinc-800 text-zinc-400">
-            <Layers size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-bg-alt text-text-muted">
+            <Layers size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">DE BAJA</span>
-            <span className="text-lg font-bold text-white">{notebooksBaja}</span>
+            <span className="label">DE BAJA</span>
+            <span className="value text-2xl">{notebooksBaja}</span>
           </div>
         </div>
       </div>
 
       {/* Filter and search */}
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
+      <div className="card mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
           <input
             type="text"
             placeholder="Buscar por Marca, Modelo, Nº Serie o Trabajador Asignado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-600 transition-colors"
+            className="input pl-10"
           />
         </div>
       </div>
@@ -164,25 +164,25 @@ export default function NotebooksPage() {
         {filteredNotebooks.map((activo) => (
           <div 
             key={activo.id_activo}
-            className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
+            className="card group hover:border-primary/40 flex flex-col justify-between p-5"
           >
             <div className="space-y-4">
               {/* Header */}
               <div className="flex justify-between items-start gap-4">
                 <div>
-                  <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">
+                  <span className="text-[10px] text-text-muted font-bold block uppercase tracking-wider">
                     {activo.marca}
                   </span>
-                  <h3 className="font-bold text-white text-base group-hover:text-blue-400 transition-colors mt-0.5">
+                  <h3 className="font-bold text-text text-base group-hover:text-primary transition-colors mt-0.5">
                     {activo.modelo}
                   </h3>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                <span className={`badge ${
                   activo.estado === "Disponible" 
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                    ? "bg-success/10 text-success border border-success/20" 
                     : activo.estado === "Asignado"
-                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                    ? "badge-blue"
+                    : "bg-danger/10 text-danger border border-danger/20"
                 }`}>
                   {activo.estado}
                 </span>
@@ -190,16 +190,16 @@ export default function NotebooksPage() {
 
               {/* Licencias Activas (Badges) */}
               {activo.detalles_adicionales.licencias && activo.detalles_adicionales.licencias.filter(l => l.activa).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
+                <div className="flex flex-wrap gap-1.5 mt-1">
                   {activo.detalles_adicionales.licencias.filter(l => l.activa).map(l => {
-                    let colorClass = "bg-zinc-800/80 text-zinc-400 border border-zinc-700/50";
-                    if (l.tipo === "Office") colorClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
-                    if (l.tipo === "Antivirus") colorClass = "bg-red-500/10 text-red-400 border border-red-500/20";
-                    if (l.tipo === "Sistema Operativo") colorClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                    let colorClass = "bg-bg-alt text-text-soft border border-border";
+                    if (l.tipo === "Office") colorClass = "badge-blue";
+                    if (l.tipo === "Antivirus") colorClass = "bg-danger/10 text-danger border border-danger/20";
+                    if (l.tipo === "Sistema Operativo") colorClass = "bg-success/10 text-success border border-success/20";
                     if (l.tipo === "Diseño") colorClass = "bg-purple-500/10 text-purple-400 border border-purple-500/20";
 
                     return (
-                      <span key={l.id} className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${colorClass}`} title={`${l.nombre} (${l.version || ''})`}>
+                      <span key={l.id} className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${colorClass}`} title={`${l.nombre} (${l.version || ''})`}>
                         {l.nombre}
                       </span>
                     );
@@ -208,20 +208,20 @@ export default function NotebooksPage() {
               )}
 
               {/* Hardware details card */}
-              <div className="p-3 bg-zinc-950/50 rounded-lg border border-zinc-900/60 text-xs text-zinc-400 space-y-2">
+              <div className="p-3 bg-surface-2 rounded-xl border border-border text-xs text-text-soft space-y-2">
                 <div className="flex justify-between py-0.5">
-                  <span>Número de Serie</span>
-                  <strong className="text-white font-mono">{activo.identificador_unico}</strong>
+                  <span className="font-medium">Número de Serie</span>
+                  <strong className="text-text font-mono tracking-wider">{activo.identificador_unico}</strong>
                 </div>
                 <div className="flex justify-between py-0.5">
-                  <span>Procesador</span>
-                  <strong className="text-white">
+                  <span className="font-medium">Procesador</span>
+                  <strong className="text-text">
                     {activo.detalles_adicionales.procesador || "—"}
                   </strong>
                 </div>
                 <div className="flex justify-between py-0.5">
-                  <span>RAM / SSD</span>
-                  <strong className="text-white">
+                  <span className="font-medium">RAM / SSD</span>
+                  <strong className="text-text">
                     {activo.detalles_adicionales.ram_gb} GB RAM / {activo.detalles_adicionales.almacenamiento_gb} GB SSD
                   </strong>
                 </div>
@@ -229,52 +229,52 @@ export default function NotebooksPage() {
 
               {/* Assignment details */}
               {activo.estado === "Asignado" && (
-                <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 flex items-center gap-2.5 text-xs">
-                  <User size={13} className="text-blue-400" />
-                  <span className="text-zinc-400">Poseído por: <strong className="text-blue-400">{getAssignedWorkerName(activo.id_trabajador_asignado)}</strong></span>
+                <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center gap-2.5 text-xs font-medium">
+                  <User size={14} className="text-primary" />
+                  <span className="text-text-soft">Poseído por: <strong className="text-primary">{getAssignedWorkerName(activo.id_trabajador_asignado)}</strong></span>
                 </div>
               )}
 
               {/* Toggle Detalle Adicional */}
               <button
                 onClick={() => toggleExpand(activo.id_activo)}
-                className="w-full flex items-center justify-between py-1.5 px-3 rounded-lg bg-zinc-900/60 border border-zinc-850 hover:bg-zinc-800 text-zinc-400 hover:text-white text-[10px] font-bold transition-all cursor-pointer select-none"
+                className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-surface border border-border hover:bg-surface-2 text-text-soft hover:text-text text-[11px] font-bold transition-all cursor-pointer select-none"
               >
-                <span className="flex items-center gap-1">
-                  <ShoppingCart size={10} />
+                <span className="flex items-center gap-1.5 uppercase tracking-wider">
+                  <ShoppingCart size={12} />
                   Detalles de Compra y Software
                 </span>
-                {expandedActivos[activo.id_activo] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {expandedActivos[activo.id_activo] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
 
               {/* Panel Colapsable de Detalles */}
               {expandedActivos[activo.id_activo] && (
-                <div className="p-3 bg-zinc-950/85 border border-zinc-850 rounded-lg space-y-4 animate-slideDown text-[11px] text-zinc-400">
+                <div className="p-3.5 bg-surface-2 border border-border rounded-xl space-y-4 animate-slideDown text-xs text-text-soft">
                   {/* Bloque Compra */}
-                  <div className="space-y-2">
-                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block border-b border-zinc-850 pb-1">
+                  <div className="space-y-3">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block border-b border-border pb-1.5">
                       Adquisición y Garantía
                     </span>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <span className="block text-[9px] text-zinc-500">Proveedor</span>
-                        <span className="text-zinc-200 font-semibold">{activo.detalles_adicionales.proveedor || "No registrado"}</span>
+                        <span className="block text-[10px] font-bold text-text-muted">Proveedor</span>
+                        <span className="text-text font-semibold">{activo.detalles_adicionales.proveedor || "No registrado"}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] text-zinc-500">Nº Factura / OC</span>
-                        <span className="text-zinc-200 font-semibold font-mono">{activo.detalles_adicionales.numero_factura_oc || "No registrado"}</span>
+                        <span className="block text-[10px] font-bold text-text-muted">Nº Factura / OC</span>
+                        <span className="text-text font-semibold font-mono">{activo.detalles_adicionales.numero_factura_oc || "No registrado"}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] text-zinc-500">Fecha de Compra</span>
-                        <span className="text-zinc-200 font-semibold">
+                        <span className="block text-[10px] font-bold text-text-muted">Fecha de Compra</span>
+                        <span className="text-text font-semibold">
                           {activo.detalles_adicionales.fecha_compra 
                             ? new Date(activo.detalles_adicionales.fecha_compra).toLocaleDateString("es-CL", { timeZone: "UTC" }) 
                             : "No registrada"}
                         </span>
                       </div>
                       <div>
-                        <span className="block text-[9px] text-zinc-500">Valor de Compra</span>
-                        <span className="text-zinc-200 font-semibold">
+                        <span className="block text-[10px] font-bold text-text-muted">Valor de Compra</span>
+                        <span className="text-text font-semibold">
                           {activo.detalles_adicionales.valor_compra 
                             ? `${activo.detalles_adicionales.moneda || "CLP"} ${Number(activo.detalles_adicionales.valor_compra).toLocaleString("es-CL")}` 
                             : "No registrado"}
@@ -282,12 +282,12 @@ export default function NotebooksPage() {
                       </div>
                     </div>
                     {activo.detalles_adicionales.fecha_vencimiento_garantia && (
-                      <div className="pt-1 flex items-center justify-between border-t border-zinc-850/50 mt-1">
-                        <span className="text-[9px] text-zinc-500">Vencimiento Garantía</span>
+                      <div className="pt-2 flex items-center justify-between border-t border-border mt-2">
+                        <span className="text-[10px] font-bold text-text-muted">Vencimiento Garantía</span>
                         <span className={`font-semibold ${
                           new Date(activo.detalles_adicionales.fecha_vencimiento_garantia) < new Date() 
-                            ? "text-red-400" 
-                            : "text-emerald-400"
+                            ? "text-danger" 
+                            : "text-success"
                         }`}>
                           {new Date(activo.detalles_adicionales.fecha_vencimiento_garantia).toLocaleDateString("es-CL", { timeZone: "UTC" })}
                           {new Date(activo.detalles_adicionales.fecha_vencimiento_garantia) < new Date() && " (Vencida)"}
@@ -297,41 +297,41 @@ export default function NotebooksPage() {
                   </div>
 
                   {/* Bloque Licencias */}
-                  <div className="space-y-2 pt-1">
-                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block border-b border-zinc-850 pb-1">
+                  <div className="space-y-3 pt-2">
+                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block border-b border-border pb-1.5">
                       Licencias de Software Asociadas
                     </span>
                     {!activo.detalles_adicionales.licencias || activo.detalles_adicionales.licencias.length === 0 ? (
-                      <span className="text-zinc-600 block text-center italic py-1">Sin licencias registradas</span>
+                      <span className="text-text-muted block text-center font-medium italic py-2">Sin licencias registradas</span>
                     ) : (
                       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                         {activo.detalles_adicionales.licencias.map((lic) => (
                           <div 
                             key={lic.id} 
-                            className={`p-2 rounded border text-[10px] space-y-1 ${
+                            className={`p-2.5 rounded-lg border text-[10px] space-y-1.5 ${
                               lic.activa 
-                                ? "bg-zinc-900/60 border-zinc-800" 
-                                : "bg-zinc-950/40 border-zinc-900 opacity-60"
+                                ? "bg-surface border-border" 
+                                : "bg-bg border-border opacity-60"
                             }`}
                           >
                             <div className="flex justify-between items-center">
-                              <span className="font-bold text-white">{lic.nombre}</span>
-                              <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${
+                              <span className="font-bold text-text text-xs">{lic.nombre}</span>
+                              <span className={`badge ${
                                 lic.activa 
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                                  : "bg-zinc-800 text-zinc-500"
+                                  ? "bg-success/10 text-success border-success/20" 
+                                  : "bg-bg-alt text-text-muted border-border"
                               }`}>
                                 {lic.activa ? "Activa" : "Inactiva"}
                               </span>
                             </div>
-                            <div className="flex justify-between text-[9px] text-zinc-500">
+                            <div className="flex justify-between text-[10px] font-medium text-text-soft">
                               <span>Tipo: {lic.tipo} {lic.version ? `(${lic.version})` : ""}</span>
                               {lic.fecha_vencimiento && (
                                 <span>Vence: {new Date(lic.fecha_vencimiento).toLocaleDateString("es-CL", { timeZone: "UTC" })}</span>
                               )}
                             </div>
                             {lic.clave_producto && (
-                              <div className="bg-zinc-950 border border-zinc-900 rounded px-1.5 py-0.5 font-mono text-[9px] text-zinc-400 flex items-center justify-between mt-1">
+                              <div className="bg-bg border border-border rounded px-2 py-1 font-mono text-[10px] text-text-soft flex items-center justify-between mt-1.5">
                                 <span className="truncate pr-1">Clave: {lic.clave_producto}</span>
                                 <button
                                   onClick={(e) => {
@@ -339,7 +339,7 @@ export default function NotebooksPage() {
                                     navigator.clipboard.writeText(lic.clave_producto || "");
                                     alert("Clave copiada al portapapeles!");
                                   }}
-                                  className="text-[8px] text-blue-400 hover:text-blue-300 font-sans cursor-pointer underline select-none flex-shrink-0"
+                                  className="text-[9px] text-primary hover:text-primary-hover font-sans cursor-pointer underline select-none flex-shrink-0 font-bold"
                                 >
                                   Copiar
                                 </button>
@@ -355,26 +355,26 @@ export default function NotebooksPage() {
             </div>
 
             {/* Actions footer */}
-            <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
+            <div className="flex justify-between items-center mt-5 pt-4 border-t border-border">
               {activo.estado === "Baja" ? (
-                <span className="text-[10px] text-zinc-600 font-bold uppercase">De baja</span>
+                <span className="badge badge-outline uppercase">De baja</span>
               ) : (
                 <button
                   onClick={() => handleOpenAssign(activo)}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded transition-colors flex items-center gap-1 border cursor-pointer ${
+                  className={`btn py-1.5 min-h-0 text-xs px-3 ${
                     activo.estado === "Asignado"
-                      ? "bg-amber-600/10 border-amber-500/20 text-amber-400 hover:bg-amber-600 hover:text-white"
-                      : "bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white"
+                      ? "bg-warning/10 text-warning hover:bg-warning hover:text-bg"
+                      : "btn-secondary"
                   }`}
                 >
                   {activo.estado === "Asignado" ? (
                     <>
-                      <RefreshCw size={10} />
+                      <RefreshCw size={12} />
                       Devolver Recurso
                     </>
                   ) : (
                     <>
-                      <UserCheck size={10} />
+                      <UserCheck size={12} />
                       Asignar Recurso
                     </>
                   )}
@@ -382,20 +382,20 @@ export default function NotebooksPage() {
               )}
 
               {/* CRUD triggers */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button 
                   onClick={() => handleEdit(activo.id_activo)}
                   title="Editar Ficha"
-                  className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm"
                 >
-                  <Edit3 size={13} />
+                  <Edit3 size={14} />
                 </button>
                 <button 
                   onClick={() => handleDelete(activo.id_activo, `${activo.marca} ${activo.modelo}`)}
                   title="Eliminar Registro"
-                  className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-danger hover:bg-danger/10 hover:border-danger/20 transition-all shadow-sm"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>
@@ -403,9 +403,9 @@ export default function NotebooksPage() {
         ))}
 
         {filteredNotebooks.length === 0 && (
-          <div className="col-span-2 p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
-            <Layers className="mx-auto text-zinc-700" size={32} />
-            <h4 className="text-zinc-300 font-bold text-sm">No se encontraron laptops registradas</h4>
+          <div className="col-span-2 p-12 text-center border border-border border-dashed rounded-2xl space-y-3 bg-surface/50">
+            <Layers className="mx-auto text-text-muted" size={40} />
+            <h4 className="text-text font-bold text-base">No se encontraron laptops registradas</h4>
           </div>
         )}
       </div>

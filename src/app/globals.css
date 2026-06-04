@@ -538,3 +538,39 @@ body {
     padding: 20px;
   }
 }
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body, .bg-bg, .bg-surface, .bg-surface-2 {
+    background-color: white !important;
+  }
+
+  .text-text, .text-text-soft, .text-text-muted {
+    color: black !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .table-shell {
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  th, td {
+    border: 1px solid #ddd !important;
+  }
+  
+  .max-w-7xl, .max-w-full {
+    max-w: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

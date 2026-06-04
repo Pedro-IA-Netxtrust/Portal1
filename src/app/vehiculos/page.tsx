@@ -90,80 +90,80 @@ export default function VehiculosPage() {
   const vehiculosMantencion = vehiculos.filter(a => a.estado === "En Mantención").length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <Car className="text-emerald-400" size={24} />
+          <h1 className="text-3xl font-bold tracking-tight text-text flex items-center gap-3">
+            <Car className="text-primary" size={32} />
             Flota de Vehículos de Faena
           </h1>
-          <p className="text-xs text-zinc-500">
+          <p className="text-sm text-text-soft mt-2 font-medium">
             Administra camionetas, furgones y vehículos operativos asignados a transporte o faenas mineras.
           </p>
         </div>
         <button
           onClick={handleCreate}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
+          className="btn btn-primary"
         >
-          <Plus size={16} />
+          <Plus size={18} />
           Registrar Vehículo
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <Car size={18} />
+      <div className="stats-grid">
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <Car size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">TOTAL VEHÍCULOS</span>
-            <span className="text-lg font-bold text-white">{totalVehiculos}</span>
+            <span className="label">TOTAL VEHÍCULOS</span>
+            <span className="value text-2xl">{totalVehiculos}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400">
-            <UserCheck size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-success/10 text-success">
+            <UserCheck size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">ASIGNADOS</span>
-            <span className="text-lg font-bold text-white">{vehiculosAsignados}</span>
+            <span className="label">ASIGNADOS</span>
+            <span className="value text-2xl">{vehiculosAsignados}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
-            <UserCheck className="text-blue-400" size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <UserCheck size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">DISPONIBLES</span>
-            <span className="text-lg font-bold text-white">{vehiculosDisponibles}</span>
+            <span className="label">DISPONIBLES</span>
+            <span className="value text-2xl">{vehiculosDisponibles}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className={`p-2.5 rounded-lg ${vehiculosMantencion > 0 ? "bg-amber-500/15 text-amber-400 animate-pulse" : "bg-zinc-800 text-zinc-400"}`}>
-            <Settings size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className={`p-3 rounded-xl ${vehiculosMantencion > 0 ? "bg-warning/15 text-warning animate-pulse" : "bg-bg-alt text-text-muted"}`}>
+            <Settings size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">EN TALLER / MANTENCIÓN</span>
-            <span className="text-lg font-bold text-white">{vehiculosMantencion}</span>
+            <span className="label">EN TALLER / MANTENCIÓN</span>
+            <span className="value text-2xl">{vehiculosMantencion}</span>
           </div>
         </div>
       </div>
 
       {/* Filter and search */}
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
+      <div className="card mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
           <input
             type="text"
             placeholder="Buscar por Marca, Modelo, Patente o Trabajador Asignado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-600 transition-colors"
+            className="input pl-10"
           />
         </div>
       </div>
@@ -176,47 +176,47 @@ export default function VehiculosPage() {
           return (
             <div 
               key={activo.id_activo}
-              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
+              className="card group hover:border-primary/40 flex flex-col justify-between p-5"
             >
               <div className="space-y-4">
                 {/* Header */}
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">
+                    <span className="text-[10px] text-text-muted font-bold block uppercase tracking-wider">
                       {activo.marca}
                     </span>
-                    <h3 className="font-bold text-white text-base group-hover:text-blue-400 transition-colors mt-0.5">
+                    <h3 className="font-bold text-text text-base group-hover:text-primary transition-colors mt-0.5">
                       {activo.modelo}
                     </h3>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                  <span className={`badge ${
                     activo.estado === "Disponible" 
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                      ? "bg-success/10 text-success border border-success/20" 
                       : activo.estado === "Asignado"
-                      ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                      ? "badge-blue"
                       : activo.estado === "En Mantención"
-                      ? "bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse"
-                      : "bg-red-500/10 text-red-400 border border-red-500/20"
+                      ? "bg-warning/10 text-warning border border-warning/20 animate-pulse"
+                      : "bg-danger/10 text-danger border border-danger/20"
                   }`}>
                     {activo.estado}
                   </span>
                 </div>
 
                 {/* Automotriz details card */}
-                <div className="p-3 bg-zinc-950/50 rounded-lg border border-zinc-900/60 text-xs text-zinc-400 space-y-2">
+                <div className="p-3 bg-surface-2 rounded-xl border border-border text-xs text-text-soft space-y-2">
                   <div className="flex justify-between py-0.5">
-                    <span>Patente (Patente Única Nacional)</span>
-                    <strong className="text-white font-mono">{activo.identificador_unico}</strong>
+                    <span className="font-medium">Patente</span>
+                    <strong className="text-text font-mono tracking-wider">{activo.identificador_unico}</strong>
                   </div>
                   <div className="flex justify-between py-0.5">
-                    <span>Kilometraje</span>
-                    <strong className="text-white">
+                    <span className="font-medium">Kilometraje</span>
+                    <strong className="text-text">
                       {activo.detalles_adicionales.kilometraje_actual?.toLocaleString("es-CL")} Km
                     </strong>
                   </div>
                   <div className="flex justify-between py-0.5">
-                    <span>Combustible / RT</span>
-                    <strong className="text-white">
+                    <span className="font-medium">Combustible / RT</span>
+                    <strong className="text-text">
                       {activo.detalles_adicionales.tipo_combustible} • RT: {activo.detalles_adicionales.vencimiento_revision_tecnica || "—"}
                     </strong>
                   </div>
@@ -232,58 +232,58 @@ export default function VehiculosPage() {
 
                 {/* Assignment details */}
                 {activo.estado === "Asignado" && (
-                  <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 flex items-center gap-2.5 text-xs">
-                    <User size={13} className="text-blue-400" />
-                    <span className="text-zinc-400">Asignado a: <strong className="text-blue-400">{getAssignedWorkerName(activo.id_trabajador_asignado)}</strong></span>
+                  <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center gap-2.5 text-xs font-medium">
+                    <User size={14} className="text-primary" />
+                    <span className="text-text-soft">Asignado a: <strong className="text-primary">{getAssignedWorkerName(activo.id_trabajador_asignado)}</strong></span>
                   </div>
                 )}
               </div>
 
               {/* Actions footer */}
-              <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
+              <div className="flex justify-between items-center mt-5 pt-4 border-t border-border">
                 {activo.estado === "Baja" ? (
-                  <span className="text-[10px] text-zinc-600 font-bold uppercase">De baja</span>
+                  <span className="badge badge-outline uppercase">De baja</span>
                 ) : (
                   <button
                     onClick={() => handleOpenAssign(activo)}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded transition-colors flex items-center gap-1 border cursor-pointer ${
+                    className={`btn py-1.5 min-h-0 text-xs px-3 ${
                       activo.estado === "Asignado"
-                        ? "bg-amber-600/10 border-amber-500/20 text-amber-400 hover:bg-amber-600 hover:text-white"
+                        ? "bg-warning/10 text-warning hover:bg-warning hover:text-bg"
                         : activo.estado === "Disponible"
-                        ? "bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white"
-                        : "bg-zinc-800/80 border-zinc-700 text-zinc-400 cursor-not-allowed"
+                        ? "btn-secondary"
+                        : "opacity-50 cursor-not-allowed bg-surface-2 text-text-muted"
                     }`}
                     disabled={activo.estado === "En Mantención"}
                   >
                     {activo.estado === "Asignado" ? (
                       <>
-                        <RefreshCw size={10} />
-                        Devolver Vehículo
+                        <RefreshCw size={12} />
+                        Devolver
                       </>
                     ) : (
                       <>
-                        <UserCheck size={10} />
-                        Asignar Vehículo
+                        <UserCheck size={12} />
+                        Asignar
                       </>
                     )}
                   </button>
                 )}
 
                 {/* CRUD triggers */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleEdit(activo.id_activo)}
                     title="Editar Ficha"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm"
                   >
-                    <Edit3 size={13} />
+                    <Edit3 size={14} />
                   </button>
                   <button 
                     onClick={() => handleDelete(activo.id_activo, `${activo.marca} ${activo.modelo}`)}
                     title="Eliminar Registro"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-danger hover:bg-danger/10 hover:border-danger/20 transition-all shadow-sm"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>

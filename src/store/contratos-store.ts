@@ -78,6 +78,7 @@ export interface Contrato {
   unidades: ContratoUnidad[];
   cargos: ContratoCargo[];
   trabajadores_asignados: ContratoTrabajador[];
+  proveedores_asignados: { id_proveedor: string; categoria: string }[];
   historial: MovimientoHistorial[];
 }
 
@@ -137,6 +138,10 @@ const mockContratos: Contrato[] = [
       { id_cargo: "cg-4", nombre: "Ingeniero Civil Operaciones", nivel: "Jefatura",   id_unidad: "u-2", activo: true },
       { id_cargo: "cg-5", nombre: "Analista de Datos",           nivel: "Operativo",  id_unidad: "u-2", activo: true },
       { id_cargo: "cg-6", nombre: "Prevencionista de Riesgos",   nivel: "Supervisión", id_unidad: "u-3", activo: true }
+    ],
+    proveedores_asignados: [
+      { id_proveedor: "prov-1", categoria: "Alimentación" },
+      { id_proveedor: "prov-3", categoria: "Tecnología" }
     ],
     trabajadores_asignados: [
       {
@@ -246,6 +251,10 @@ const mockContratos: Contrato[] = [
       { id_cargo: "cg-13", nombre: "Supervisor Forestal",    nivel: "Supervisión", id_unidad: "u-11", activo: true },
       { id_cargo: "cg-14", nombre: "Operador Maquinaria",    nivel: "Operativo",  id_unidad: "u-11", activo: true }
     ],
+    proveedores_asignados: [
+      { id_proveedor: "prov-2", categoria: "Alimentación" },
+      { id_proveedor: "prov-4", categoria: "Vehículos" }
+    ],
     trabajadores_asignados: [
       {
         id_asignacion: "as-10",
@@ -334,6 +343,9 @@ const mockContratos: Contrato[] = [
       { id_cargo: "cg-25", nombre: "Técnico Instrumentista",      nivel: "Operativo",   id_unidad: "u-22", activo: true },
       { id_cargo: "cg-26", nombre: "Ing. de Sistemas SCADA",      nivel: "Supervisión", id_unidad: "u-22", activo: true }
     ],
+    proveedores_asignados: [
+      { id_proveedor: "prov-1", categoria: "Alimentación" }
+    ],
     trabajadores_asignados: [
       { id_asignacion: "as-20", id_trabajador: "t-10", nombre: "Martín Contreras", rut: "14.123.456-7", id_unidad: "u-20", nombre_unidad: "Unidad de Monitoreo de Polvo",  id_cargo: "cg-20", nombre_cargo: "Director de Proyecto", nivel: "Gerencia",    fecha_ingreso: "2026-03-01", activo: true },
       { id_asignacion: "as-21", id_trabajador: "t-11", nombre: "Javiera Medina",  rut: "15.234.567-8", id_unidad: "u-20", nombre_unidad: "Unidad de Monitoreo de Polvo",  id_cargo: "cg-21", nombre_cargo: "Especialista en Polvo", nivel: "Jefatura",   fecha_ingreso: "2026-03-01", activo: true },
@@ -381,6 +393,7 @@ const mockContratos: Contrato[] = [
       { id_cargo: "cg-33", nombre: "Jefe TI",             nivel: "Jefatura",    id_unidad: "u-31", activo: true },
       { id_cargo: "cg-34", nombre: "Técnico TI Soporte",  nivel: "Operativo",   id_unidad: "u-31", activo: true }
     ],
+    proveedores_asignados: [],
     trabajadores_asignados: [],
     historial: [
       { id: "h-40", fecha: ds(2026,5,20), tipo: "Edición Contrato", detalle: "Contrato MON-2026-ADM creado en estado 'En Preparación'. Inicio operacional proyectado: julio 2026.", usuario_accion: "Operador General" },
@@ -408,6 +421,7 @@ const mockContratos: Contrato[] = [
       { id_cargo: "cg-40", nombre: "Jefe de Proyecto",    nivel: "Jefatura",  id_unidad: "u-40", activo: true },
       { id_cargo: "cg-41", nombre: "Técnico de Campo",    nivel: "Operativo", id_unidad: "u-40", activo: true }
     ],
+    proveedores_asignados: [],
     trabajadores_asignados: [
       { id_asignacion: "as-40", id_trabajador: "t-10", nombre: "Martín Contreras", rut: "14.123.456-7", id_unidad: "u-40", nombre_unidad: "Equipo de Monitoreo Continuo", id_cargo: "cg-40", nombre_cargo: "Jefe de Proyecto", nivel: "Jefatura", fecha_ingreso: "2024-01-01", fecha_salida: "2025-12-31", activo: false, motivo_baja: "Fin de contrato" },
       { id_asignacion: "as-41", id_trabajador: "t-12", nombre: "Pablo Cisterna",   rut: "16.345.678-9", id_unidad: "u-40", nombre_unidad: "Equipo de Monitoreo Continuo", id_cargo: "cg-41", nombre_cargo: "Técnico de Campo",  nivel: "Operativo", fecha_ingreso: "2024-01-01", fecha_salida: "2025-12-31", activo: false, motivo_baja: "Fin de contrato" }

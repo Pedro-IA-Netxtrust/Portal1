@@ -15,8 +15,11 @@ import {
   FileText,
   User,
   Shield,
-  CreditCard
+  CreditCard,
+  Edit
 } from "lucide-react";
+import TrabajadorForm from "./trabajador-form";
+import { useTrabajadoresStore } from "@/store/trabajadores-store";
 
 interface TrabajadorDetalleProps {
   trabajador: Trabajador;
@@ -24,7 +27,57 @@ interface TrabajadorDetalleProps {
 }
 
 export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDetalleProps) {
+  const { updateTrabajador } = useTrabajadoresStore();
   const [activeTab, setActiveTab] = useState<"resumen" | "completo" | "epp">("resumen");
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Estado para Edición in-situ de Formación y Talento
+  const [isEditingFormacion, setIsEditingFormacion] = useState(false);
+  const [formacionData, setFormacionData] = useState({
+    titulo_profesional: trabajador.titulo_profesional || "",
+    universidad_titulo: trabajador.universidad_titulo || "",
+    anos_experiencia: trabajador.anos_experiencia || 0,
+    idiomas: trabajador.idiomas || [],
+    certificaciones_especificas: trabajador.certificaciones_especificas || [],
+    otras_habilidades: trabajador.otras_habilidades || [],
+    cert_sap_lms: !!trabajador.cert_sap_lms,
+    cert_soma_lms: !!trabajador.cert_soma_lms,
+    cert_ti: !!trabajador.cert_ti
+  });
+  
+  const [tagInputs, setTagInputs] = useState({
+    idiomas: "",
+    certificaciones_especificas: "",
+    otras_habilidades: ""
+  });
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: keyof typeof tagInputs) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const value = tagInputs[field].trim();
+      if (value) {
+        setFormacionData(prev => ({
+          ...prev,
+          [field]: [...(prev[field as keyof typeof formacionData] as string[] || []), value]
+        }));
+        setTagInputs(prev => ({ ...prev, [field]: "" }));
+      }
+    }
+  };
+
+  const removeTag = (field: keyof typeof tagInputs, index: number) => {
+    setFormacionData(prev => {
+      const arr = [...(prev[field as keyof typeof formacionData] as string[] || [])];
+      arr.splice(index, 1);
+      return { ...prev, [field]: arr };
+    });
+  };
+
+  const handleFormacionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateTrabajador(trabajador.id_trabajador, formacionData);
+    setIsEditingFormacion(false);
+  };
 
   // Helper: Calcular semáforo de vencimiento
   const getSemaforo = (fechaStr?: string) => {
@@ -91,12 +144,22 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
               </div>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-700"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-700"
+              title="Editar Trabajador"
+            >
+              <Edit size={18} />
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-700"
+              title="Cerrar"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}
@@ -327,20 +390,76 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
                 </div>
               </div>
 
-              {/* Formación Profesional */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-800 pb-1.5 flex items-center gap-1.5">
-                  <FileText size={14} />
-                  Currículum y Formación Profesional
-                </h4>
-                <div className="p-4 rounded-xl bg-zinc-900/20 border border-zinc-800 space-y-3 text-sm">
-                  <div className="flex justify-between py-1">
-                    <span className="text-zinc-500">Título Universitario / Técnico</span>
-                    <span className="text-zinc-200 font-bold">{trabajador.titulo_profesional || "Sin registrar"}</span>
+              {/* Formación Profesional y Talento */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-1.5">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText size={14} />
+                    Talento y Formación
+                  </h4>
+                  <button 
+                    onClick={() => setIsEditingFormacion(true)}
+                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-[10px] uppercase font-bold"
+                  >
+                    <Edit size={12} /> Editar
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-surface-2 border border-border space-y-3 text-sm">
+                    <div className="flex justify-between py-1">
+                      <span className="text-text-soft">Título Profesional</span>
+                      <span className="text-text font-bold text-right ml-2">{trabajador.titulo_profesional || "Sin registrar"}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-text-soft">Universidad / Inst.</span>
+                      <span className="text-text font-bold text-right ml-2">{trabajador.universidad_titulo || "Sin registrar"}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-t border-border/50 pt-2">
+                      <span className="text-text-soft">Experiencia Relevante</span>
+                      <span className="text-text font-bold text-right ml-2">{trabajador.anos_experiencia ? `${trabajador.anos_experiencia} años` : "No especificada"}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-zinc-500">Universidad / Instituto</span>
-                    <span className="text-zinc-200 font-bold">{trabajador.universidad_titulo || "Sin registrar"}</span>
+
+                  <div className="p-4 rounded-xl bg-surface-2 border border-border space-y-4 text-sm">
+                    <div>
+                      <span className="text-xs text-text-muted font-bold block mb-2 uppercase tracking-wider">Idiomas</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {trabajador.idiomas?.length ? (
+                          trabajador.idiomas.map((tag, i) => <span key={i} className="badge badge-outline">{tag}</span>)
+                        ) : (
+                          <span className="text-text-muted text-xs italic">No especificado</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-text-muted font-bold block mb-2 uppercase tracking-wider">Certificaciones</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {trabajador.certificaciones_especificas?.length ? (
+                          trabajador.certificaciones_especificas.map((tag, i) => <span key={i} className="badge bg-primary/10 text-primary border border-primary/20">{tag}</span>)
+                        ) : (
+                          <span className="text-text-muted text-xs italic">No especificadas</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-text-muted font-bold block mb-2 uppercase tracking-wider">Habilidades Adicionales</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {trabajador.otras_habilidades?.length ? (
+                          trabajador.otras_habilidades.map((tag, i) => <span key={i} className="badge bg-bg text-text border border-border">{tag}</span>)
+                        ) : (
+                          <span className="text-text-muted text-xs italic">No especificadas</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs text-text-muted font-bold block mb-2 uppercase tracking-wider">Habilitantes LMS</span>
+                      <div className="flex gap-4 mt-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${trabajador.cert_sap_lms ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-800 text-zinc-500 border-zinc-700"}`}>SAP</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${trabajador.cert_soma_lms ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-800 text-zinc-500 border-zinc-700"}`}>SOMA</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${trabajador.cert_ti ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-800 text-zinc-500 border-zinc-700"}`}>TI</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -348,6 +467,111 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
           )}
         </div>
       </div>
+
+      {isEditing && (
+        <TrabajadorForm 
+          trabajadorId={trabajador.id_trabajador} 
+          onClose={() => setIsEditing(false)} 
+        />
+      )}
+
+      {isEditingFormacion && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-zinc-950 border border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2"><FileText className="text-primary" size={20}/> Editar Formación y Talento</h2>
+              <button onClick={() => setIsEditingFormacion(false)} className="text-zinc-500 hover:text-white transition-colors"><X size={20}/></button>
+            </div>
+            <form onSubmit={handleFormacionSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Título Profesional / Técnico</label>
+                  <input type="text" className="input bg-zinc-900 border-zinc-800" 
+                    value={formacionData.titulo_profesional} onChange={e => setFormacionData({...formacionData, titulo_profesional: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Universidad / Instituto</label>
+                  <input type="text" className="input bg-zinc-900 border-zinc-800" 
+                    value={formacionData.universidad_titulo} onChange={e => setFormacionData({...formacionData, universidad_titulo: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Años de Experiencia Relevante</label>
+                  <input type="number" className="input bg-zinc-900 border-zinc-800" 
+                    value={formacionData.anos_experiencia} onChange={e => setFormacionData({...formacionData, anos_experiencia: parseInt(e.target.value)||0})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Idiomas (Enter o coma)</label>
+                  <div className="input bg-zinc-900 border-zinc-800 p-1.5 flex flex-wrap gap-1.5 items-center min-h-[42px]">
+                    {formacionData.idiomas.map((tag, idx) => (
+                      <span key={idx} className="badge badge-outline text-[10px] flex items-center gap-1">{tag}
+                        <button type="button" onClick={() => removeTag("idiomas", idx)} className="hover:text-red-400"><X size={10} /></button>
+                      </span>
+                    ))}
+                    <input type="text" className="flex-1 min-w-[80px] bg-transparent outline-none text-sm text-white"
+                      value={tagInputs.idiomas} onChange={e => setTagInputs({...tagInputs, idiomas: e.target.value})} onKeyDown={e => handleTagKeyDown(e, "idiomas")} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Certificaciones Específicas</label>
+                  <div className="input bg-zinc-900 border-zinc-800 p-1.5 flex flex-wrap gap-1.5 items-center min-h-[42px]">
+                    {formacionData.certificaciones_especificas.map((tag, idx) => (
+                      <span key={idx} className="badge bg-primary/10 text-primary border border-primary/20 text-[10px] flex items-center gap-1">{tag}
+                        <button type="button" onClick={() => removeTag("certificaciones_especificas", idx)} className="hover:text-primary-hover"><X size={10} /></button>
+                      </span>
+                    ))}
+                    <input type="text" className="flex-1 min-w-[80px] bg-transparent outline-none text-sm text-white"
+                      value={tagInputs.certificaciones_especificas} onChange={e => setTagInputs({...tagInputs, certificaciones_especificas: e.target.value})} onKeyDown={e => handleTagKeyDown(e, "certificaciones_especificas")} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400 font-semibold">Otras Habilidades</label>
+                  <div className="input bg-zinc-900 border-zinc-800 p-1.5 flex flex-wrap gap-1.5 items-center min-h-[42px]">
+                    {formacionData.otras_habilidades.map((tag, idx) => (
+                      <span key={idx} className="badge bg-zinc-800 text-zinc-200 border border-zinc-700 text-[10px] flex items-center gap-1">{tag}
+                        <button type="button" onClick={() => removeTag("otras_habilidades", idx)} className="hover:text-red-400"><X size={10} /></button>
+                      </span>
+                    ))}
+                    <input type="text" className="flex-1 min-w-[80px] bg-transparent outline-none text-sm text-white"
+                      value={tagInputs.otras_habilidades} onChange={e => setTagInputs({...tagInputs, otras_habilidades: e.target.value})} onKeyDown={e => handleTagKeyDown(e, "otras_habilidades")} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Certificaciones Habilitantes Obligatorias */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-3">
+                <span className="text-xs text-zinc-400 font-bold block mb-1">Certificaciones Habilitantes Obligatorias (LMS)</span>
+                <div className="grid grid-cols-3 gap-4">
+                  <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                    <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      checked={formacionData.cert_sap_lms} onChange={e => setFormacionData({...formacionData, cert_sap_lms: e.target.checked})} />
+                    <span className="group-hover:text-primary transition-colors">SAP LMS</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                    <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      checked={formacionData.cert_soma_lms} onChange={e => setFormacionData({...formacionData, cert_soma_lms: e.target.checked})} />
+                    <span className="group-hover:text-primary transition-colors">SOMA LMS</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                    <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      checked={formacionData.cert_ti} onChange={e => setFormacionData({...formacionData, cert_ti: e.target.checked})} />
+                    <span className="group-hover:text-primary transition-colors">Aprobación TI</span>
+                  </label>
+                </div>
+              </div>
+            </form>
+            <div className="p-4 border-t border-zinc-800 flex justify-end gap-3 bg-zinc-900/40 rounded-b-2xl">
+              <button type="button" onClick={() => setIsEditingFormacion(false)} className="btn btn-secondary py-2 min-h-0 text-sm">Cancelar</button>
+              <button type="button" onClick={handleFormacionSubmit} className="btn py-2 min-h-0 text-sm bg-primary text-white hover:bg-primary-hover border-none">Guardar Formación</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

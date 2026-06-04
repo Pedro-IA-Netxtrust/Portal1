@@ -78,114 +78,114 @@ export default function TicketsPage() {
     : 100;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Mesa de Soporte & Tickets TI</h1>
-          <p className="text-xs text-zinc-500">
+          <h1 className="text-3xl font-bold tracking-tight text-text">Mesa de Soporte & Tickets TI</h1>
+          <p className="text-sm text-text-soft mt-1 font-medium">
             Fase 4.5: Registra incidencias y administra los acuerdos de SLA de respuesta y resolución en tiempo real.
           </p>
         </div>
         <button
           onClick={() => setFormOpen(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-blue-600/20 flex items-center gap-1.5"
+          className="btn btn-primary"
         >
-          <Plus size={16} />
+          <Plus size={18} />
           Abrir Ticket
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
-            <Inbox size={18} />
+      <div className="stats-grid">
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <Inbox size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">BANDEJA DE ENTRADA</span>
-            <span className="text-lg font-bold text-white">{openCount}</span>
+            <span className="label">BANDEJA DE ENTRADA</span>
+            <span className="value text-2xl">{openCount}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400">
-            <UserCheck size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-warning/10 text-warning">
+            <UserCheck size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">EN ATENCIÓN (MIS ASIG.)</span>
-            <span className="text-lg font-bold text-white">{inAttentionCount}</span>
+            <span className="label">EN ATENCIÓN (MIS ASIG.)</span>
+            <span className="value text-2xl">{inAttentionCount}</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <CheckCircle size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-success/10 text-success">
+            <CheckCircle size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">CUMPLIMIENTO SLA TI</span>
-            <span className="text-lg font-bold text-white">{complianceRate}%</span>
+            <span className="label">CUMPLIMIENTO SLA TI</span>
+            <span className="value text-2xl">{complianceRate}%</span>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-zinc-800 text-zinc-400">
-            <TicketIcon size={18} />
+        <div className="stat-box flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-bg-alt text-text-muted">
+            <TicketIcon size={24} />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">TICKETS RESUELTOS</span>
-            <span className="text-lg font-bold text-white">{closedCount}</span>
+            <span className="label">TICKETS RESUELTOS</span>
+            <span className="value text-2xl">{closedCount}</span>
           </div>
         </div>
       </div>
 
       {/* Queues Tabs Menu */}
-      <div className="flex border-b border-zinc-800 space-x-6 bg-zinc-950 px-2 flex-shrink-0">
+      <div className="flex border-b border-border space-x-6 px-2 flex-shrink-0">
         <button
           onClick={() => setActiveQueue("Abierto")}
           className={`py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
-            activeQueue === "Abierto" ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
+            activeQueue === "Abierto" ? "border-primary text-primary" : "border-transparent text-text-soft hover:text-text"
           }`}
         >
-          <Inbox size={15} />
+          <Inbox size={16} />
           Bandeja General ({openCount})
         </button>
         <button
           onClick={() => setActiveQueue("En Atencion")}
           className={`py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
-            activeQueue === "En Atencion" ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
+            activeQueue === "En Atencion" ? "border-primary text-primary" : "border-transparent text-text-soft hover:text-text"
           }`}
         >
-          <UserCheck size={15} />
+          <UserCheck size={16} />
           Mis Asignaciones ({inAttentionCount})
         </button>
         <button
           onClick={() => setActiveQueue("Cerrado")}
           className={`py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
-            activeQueue === "Cerrado" ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
+            activeQueue === "Cerrado" ? "border-primary text-primary" : "border-transparent text-text-soft hover:text-text"
           }`}
         >
-          <CheckCircle size={15} />
+          <CheckCircle size={16} />
           Historial / Cerrados ({closedCount})
         </button>
       </div>
 
       {/* Filters */}
-      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
+      <div className="card">
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
           <input
             type="text"
             placeholder="Buscar por Asunto, Código de Ticket, Solicitante o Categoría..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-600 transition-colors"
+            className="input pl-10"
           />
         </div>
       </div>
 
       {/* Tickets List */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {filteredTickets.map((t) => {
           const hoursLeft = getSlaHoursLeft(t.sla_resolucion_hasta, t.cumplio_sla_resolucion, t.fecha_cierre);
           const isOverdue = hoursLeft < 0;
@@ -193,43 +193,43 @@ export default function TicketsPage() {
           return (
             <div 
               key={t.id_ticket}
-              className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/30 hover:bg-zinc-900/60 hover:border-zinc-800 transition-all flex flex-col sm:flex-row justify-between sm:items-center gap-4 group"
+              className="card p-5 hover:border-primary/40 flex flex-col sm:flex-row justify-between sm:items-center gap-4 group"
             >
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-white font-mono">{t.codigo_ticket}</span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+              <div className="space-y-2 flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm font-bold text-text font-mono">{t.codigo_ticket}</span>
+                  <span className={`badge ${
                     t.prioridad === "Critica" 
-                      ? "bg-red-500/10 text-red-400 border border-red-500/20" 
+                      ? "bg-danger/10 text-danger border border-danger/20" 
                       : t.prioridad === "Alta"
-                      ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
-                      : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                      ? "badge-orange"
+                      : "badge-blue"
                   }`}>
                     {t.prioridad}
                   </span>
-                  <span className="text-[10px] text-zinc-500 font-semibold">{t.tipo} • {t.categoria}</span>
+                  <span className="text-xs text-text-soft font-bold tracking-wide uppercase">{t.tipo} • {t.categoria}</span>
                 </div>
 
-                <h3 className="text-sm font-bold text-zinc-200 group-hover:text-blue-400 transition-colors truncate">
+                <h3 className="text-base font-bold text-text group-hover:text-primary transition-colors truncate">
                   {t.asunto}
                 </h3>
 
-                <div className="text-[10px] text-zinc-500 flex gap-3 flex-wrap">
-                  <span>Solicitante: <strong className="text-zinc-300 font-medium">{getRequesterName(t.id_trabajador_solicitante)}</strong></span>
+                <div className="text-xs text-text-soft font-medium flex gap-3 flex-wrap">
+                  <span>Solicitante: <strong className="text-text font-bold">{getRequesterName(t.id_trabajador_solicitante)}</strong></span>
                   <span>•</span>
                   <span>Apertura: {new Date(t.fecha_creacion).toLocaleDateString()}</span>
                 </div>
               </div>
 
               {/* SLA indicators & Workspace triggers */}
-              <div className="flex items-center gap-4 flex-shrink-0 justify-between sm:justify-end">
+              <div className="flex items-center gap-5 flex-shrink-0 justify-between sm:justify-end">
                 {t.estado !== "Cerrado" ? (
-                  <span className={`text-[10px] px-2.5 py-1 rounded font-bold border ${
+                  <span className={`badge ${
                     isOverdue 
-                      ? "bg-red-500/10 border-red-500/20 text-red-400" 
+                      ? "bg-danger/10 border-danger/20 text-danger" 
                       : hoursLeft <= 8
-                      ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                      : "bg-zinc-900 border-zinc-800 text-zinc-400"
+                      ? "badge-orange"
+                      : "badge-outline"
                   }`}>
                     {isOverdue 
                       ? "SLA Vencido" 
@@ -237,10 +237,10 @@ export default function TicketsPage() {
                     }
                   </span>
                 ) : (
-                  <span className={`text-[10px] px-2.5 py-1 rounded font-bold border ${
+                  <span className={`badge ${
                     t.cumplio_sla_resolucion
-                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                      : "bg-red-500/10 border-red-500/20 text-red-400"
+                      ? "bg-success/10 border-success/20 text-success"
+                      : "bg-danger/10 border-danger/20 text-danger"
                   }`}>
                     {t.cumplio_sla_resolucion ? "SLA Cumplido" : "SLA Incumplido"}
                   </span>
@@ -248,9 +248,9 @@ export default function TicketsPage() {
 
                 <button 
                   onClick={() => handleOpenWorkspace(t)}
-                  className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+                  className="btn btn-secondary py-2 min-h-0 text-xs px-4"
                 >
-                  <Eye size={12} />
+                  <Eye size={14} />
                   Atender
                 </button>
               </div>
@@ -259,10 +259,10 @@ export default function TicketsPage() {
         })}
 
         {filteredTickets.length === 0 && (
-          <div className="p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
-            <Inbox className="mx-auto text-zinc-700" size={32} />
-            <h4 className="text-zinc-300 font-bold text-sm">No hay tickets en esta cola</h4>
-            <p className="text-xs text-zinc-500">Todo el trabajo está al día o no coincide con los filtros.</p>
+          <div className="p-12 text-center border border-border border-dashed rounded-2xl space-y-3 bg-surface/50">
+            <Inbox className="mx-auto text-text-muted" size={40} />
+            <h4 className="text-text font-bold text-base">No hay tickets en esta cola</h4>
+            <p className="text-sm text-text-soft font-medium">Todo el trabajo está al día o no coincide con los filtros.</p>
           </div>
         )}
       </div>

@@ -35,6 +35,12 @@ export interface Trabajador {
   numero_domicilio?: string;
   departamento_casa?: string;
 
+  // Nivel Educativo / Formación
+  nivel_educativo?: string;
+  profesion?: string;
+  institucion_educativa?: string;
+  fecha_titulacion?: string;
+
   // Previsión
   afp?: string;
   sistema_salud?: "Fonasa" | "Isapre";
@@ -65,14 +71,18 @@ export interface Trabajador {
   vencimiento_psicosensometrico?: string;
   vencimiento_licencia_conducir?: string;
 
-  // Formación
+  // Formación y Talento
   titulo_profesional?: string;
   mencion_titulo?: string;
   universidad_titulo?: string;
   postgrado_1?: string;
   mencion_postgrado_1?: string;
   universidad_postgrado_1?: string;
-  cursos_certificaciones?: string;
+  cursos_certificaciones?: string; // Mantenido por compatibilidad legacy
+  certificaciones_especificas?: string[]; // Array de píldoras/tags
+  idiomas?: string[]; // Array de píldoras/tags
+  anos_experiencia?: number;
+  otras_habilidades?: string[]; // Array de píldoras/tags
   cv_actualizado?: boolean;
   fecha_actualizacion_cv?: string;
   cert_sap_lms?: boolean;
@@ -110,6 +120,8 @@ const mockTrabajadores: Omit<Trabajador, "id_trabajador">[] = [
     calle: "Av. Pedro de Valdivia",
     numero_domicilio: "1234",
     departamento_casa: "Depto 502",
+    profesion: "Ingeniero Civil Industrial",
+    institucion_educativa: "Universidad de Chile",
     afp: "Habitat",
     sistema_salud: "Isapre",
     nombre_isapre: "Colmena",
@@ -157,6 +169,8 @@ const mockTrabajadores: Omit<Trabajador, "id_trabajador">[] = [
     calle: "Huérfanos",
     numero_domicilio: "980",
     departamento_casa: "Casa 4",
+    profesion: "Geóloga",
+    institucion_educativa: "Universidad Católica del Norte",
     afp: "ProVida",
     sistema_salud: "Fonasa",
     banco: "Banco Estado",

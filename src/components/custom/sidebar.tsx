@@ -21,7 +21,10 @@ import {
   ClipboardCheck,
   ClipboardPen,
   CalendarDays,
-  UserCog
+  UserCog,
+  Star,
+  Utensils,
+  Store
 } from "lucide-react";
 
 interface SidebarProps {
@@ -35,7 +38,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   const menuItems = [
     { name: "Dashboard", href: "/", icon: Activity, badge: null },
     { name: "Trabajadores", href: "/trabajadores", icon: Users, badge: "Activo" },
-    { name: "Asistencia", href: "/asistencia", icon: CalendarDays, badge: "Nuevo" },
+    { name: "Busca Talento", href: "/talentos", icon: Star, badge: "Nuevo" },
+    { name: "Asistencia", href: "/asistencia", icon: CalendarDays, badge: null },
+    { name: "Alimentación", href: "/alimentacion", icon: Utensils, badge: "Nuevo" },
+    { name: "Proveedores", href: "/proveedores", icon: Store, badge: "Nuevo" },
     { name: "Contratos", href: "/contratos", icon: FileText, badge: null },
     { name: "Vehículos", href: "/vehiculos", icon: Car, badge: null },
     { name: "Inspecciones ECF 4", href: "/vehiculos/inspecciones", icon: ClipboardCheck, badge: null },

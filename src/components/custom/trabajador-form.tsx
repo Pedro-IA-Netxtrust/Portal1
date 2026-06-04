@@ -14,7 +14,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
   const isEditing = !!trabajadorId;
 
   // Active Tab State
-  const [activeTab, setActiveTab] = useState<"personal" | "laboral" | "prevision" | "operativo">("personal");
+  const [activeTab, setActiveTab] = useState<"personal" | "laboral" | "prevision" | "operativo" | "talento">("personal");
 
   // Form State
   const [formData, setFormData] = useState<Omit<Trabajador, "id_trabajador">>({
@@ -71,12 +71,45 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
     mencion_postgrado_1: "",
     universidad_postgrado_1: "",
     cursos_certificaciones: "",
+    certificaciones_especificas: [],
+    idiomas: [],
+    anos_experiencia: 0,
+    otras_habilidades: [],
     cv_actualizado: false,
     fecha_actualizacion_cv: "",
     cert_sap_lms: false,
     cert_soma_lms: false,
     cert_ti: false
   });
+
+  // Tag Inputs State
+  const [tagInputs, setTagInputs] = useState({
+    certificaciones_especificas: "",
+    idiomas: "",
+    otras_habilidades: ""
+  });
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: keyof typeof tagInputs) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const value = tagInputs[field].trim();
+      if (value) {
+        setFormData(prev => ({
+          ...prev,
+          [field]: [...(prev[field as keyof typeof formData] as string[] || []), value]
+        }));
+        setTagInputs(prev => ({ ...prev, [field]: "" }));
+      }
+    }
+  };
+
+  const removeTag = (field: keyof typeof tagInputs, index: number) => {
+    setFormData(prev => {
+      const arr = [...(prev[field as keyof typeof formData] as string[] || [])];
+      arr.splice(index, 1);
+      return { ...prev, [field]: arr };
+    });
+  };
 
   // Validation States
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -87,7 +120,13 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
       const existing = trabajadores.find(t => t.id_trabajador === trabajadorId);
       if (existing) {
         const { id_trabajador, ...rest } = existing;
-        setFormData(rest);
+        setFormData({
+          ...rest,
+          certificaciones_especificas: rest.certificaciones_especificas || [],
+          idiomas: rest.idiomas || [],
+          otras_habilidades: rest.otras_habilidades || [],
+          anos_experiencia: rest.anos_experiencia || 0,
+        });
       }
     }
   }, [isEditing, trabajadorId, trabajadores]);
@@ -165,6 +204,8 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
       finalValue = formatearRut(value);
     } else if (name === "celular_personal" || name === "telefono_emergencia") {
       finalValue = formatearCelular(value);
+    } else if (name === "anos_experiencia" || name === "valor_plan_uf") {
+      finalValue = parseFloat(value) || 0;
     }
 
     setFormData((prev) => ({
@@ -252,27 +293,27 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-end animate-fadeIn">
-      <div className="w-full max-w-3xl h-full bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl">
+      <div className="w-full max-w-3xl h-full bg-surface border-l border-border flex flex-col shadow-2xl">
         {/* Form Header */}
-        <div className="h-16 px-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+        <div className="h-16 px-6 border-b border-border flex items-center justify-between bg-surface-2">
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-bold text-text">
               {isEditing ? "Editar Ficha de Trabajador" : "Registrar Nuevo Trabajador"}
             </h2>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs font-medium text-text-soft">
               Complete todos los datos personales, previsionales y operativos
             </p>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-700"
+            className="p-1.5 rounded-lg hover:bg-bg text-text-muted hover:text-text transition-colors border border-transparent hover:border-border"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Form Category Tabs */}
-        <div className="flex px-6 border-b border-zinc-800 bg-zinc-950 space-x-4">
+        <div className="flex px-6 border-b border-border bg-surface overflow-x-auto custom-scrollbar space-x-4">
           {[
             { id: "personal", label: "1. Identidad y Domicilio" },
             { id: "laboral", label: "2. Contacto y Laboral" },
@@ -281,11 +322,12 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
           ].map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id as any)}
-              className={`py-3 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all ${
+              className={`py-3 text-[11px] whitespace-nowrap font-bold tracking-wider uppercase border-b-2 transition-all ${
                 activeTab === tab.id 
-                  ? "border-blue-500 text-blue-400" 
-                  : "border-transparent text-zinc-500 hover:text-zinc-300"
+                  ? "border-primary text-primary" 
+                  : "border-transparent text-text-muted hover:text-text"
               }`}
             >
               {tab.label}
@@ -857,71 +899,10 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
                 </div>
               </div>
 
-              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2 mt-6">
-                Formación & Certificaciones LMS
-              </h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold">Título Profesional / Técnico</label>
-                  <input
-                    type="text"
-                    name="titulo_profesional"
-                    value={formData.titulo_profesional || ""}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold">Universidad / Instituto</label>
-                  <input
-                    type="text"
-                    name="universidad_titulo"
-                    value={formData.universidad_titulo || ""}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Certifications (LMS checkboxes) */}
-              <div className="p-4 rounded-lg bg-zinc-900/40 border border-zinc-800 space-y-3">
-                <span className="text-xs text-zinc-400 font-bold block mb-1">Certificaciones Habilitantes</span>
-                <div className="grid grid-cols-3 gap-4">
-                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 font-semibold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="cert_sap_lms"
-                      checked={!!formData.cert_sap_lms}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 rounded focus:ring-blue-500 focus:ring-2 focus:ring-offset-zinc-900"
-                    />
-                    Certificado SAP LMS
-                  </label>
-                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 font-semibold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="cert_soma_lms"
-                      checked={!!formData.cert_soma_lms}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 rounded focus:ring-blue-500 focus:ring-2 focus:ring-offset-zinc-900"
-                    />
-                    Certificado SOMA LMS
-                  </label>
-                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 font-semibold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="cert_ti"
-                      checked={!!formData.cert_ti}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 bg-zinc-900 border-zinc-700 rounded focus:ring-blue-500 focus:ring-2 focus:ring-offset-zinc-900"
-                    />
-                    Aprobación TI
-                  </label>
-                </div>
-              </div>
             </div>
           )}
+
+
         </form>
 
         {/* Form Footer */}

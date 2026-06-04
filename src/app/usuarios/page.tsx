@@ -92,54 +92,54 @@ export default function UsuariosPage() {
     const isSuperAdmin = userConfig.rol_global === "Super Admin";
 
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+      <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
         {/* Encabezado */}
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setSelectedUserId(null)}
-            className="p-2 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-lg border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-colors"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <UserCog className="text-blue-500" /> 
+            <h1 className="text-2xl font-bold text-text flex items-center gap-2">
+              <UserCog className="text-primary" /> 
               Configuración de Permisos
             </h1>
-            <p className="text-xs text-zinc-500">
+            <p className="text-sm text-text-soft">
               Administrando accesos para {selectedUser.nombre_1} {selectedUser.apellido_paterno}
             </p>
           </div>
         </div>
 
         {/* Tarjeta del Usuario */}
-        <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-wrap gap-6 items-center">
-          <div className="w-16 h-16 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-xl border border-blue-500/30">
+        <div className="card flex flex-wrap gap-6 items-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl border border-primary/20">
             {selectedUser.nombre_1[0]}{selectedUser.apellido_paterno[0]}
           </div>
           <div className="flex-1 min-w-[200px]">
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-text">
               {selectedUser.nombre_1} {selectedUser.apellido_paterno} {selectedUser.apellido_materno}
             </h2>
-            <p className="text-sm text-zinc-400 font-mono">{selectedUser.numero_identificacion}</p>
-            <div className="flex flex-wrap gap-4 mt-2 text-xs text-zinc-500">
+            <p className="text-sm text-text-soft font-mono font-bold mt-1">{selectedUser.numero_identificacion}</p>
+            <div className="flex flex-wrap gap-4 mt-3 text-xs text-text-muted font-semibold">
               {selectedUser.email_corporativo && (
-                <span className="flex items-center gap-1.5"><Mail size={12}/> {selectedUser.email_corporativo}</span>
+                <span className="flex items-center gap-1.5"><Mail size={14}/> {selectedUser.email_corporativo}</span>
               )}
               {selectedUser.cargo && (
-                <span className="flex items-center gap-1.5"><Building2 size={12}/> {selectedUser.cargo} ({selectedUser.area_departamento || 'Sin Unidad'})</span>
+                <span className="flex items-center gap-1.5"><Building2 size={14}/> {selectedUser.cargo} ({selectedUser.area_departamento || 'Sin Unidad'})</span>
               )}
             </div>
           </div>
 
           {/* Switch Super Admin */}
-          <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center gap-4">
+          <div className="p-4 rounded-xl bg-surface-2 border border-border flex items-center gap-4">
             <div>
-              <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                <ShieldCheck size={16} className={isSuperAdmin ? "text-amber-400" : "text-zinc-600"}/> 
+              <p className="text-sm font-bold text-text flex items-center gap-1.5">
+                <ShieldCheck size={18} className={isSuperAdmin ? "text-warning" : "text-text-soft"}/> 
                 Super Admin
               </p>
-              <p className="text-[10px] text-zinc-500 max-w-[150px]">
+              <p className="text-xs text-text-soft mt-1 max-w-[150px]">
                 Acceso total a todos los módulos sin restricciones.
               </p>
             </div>
@@ -150,23 +150,23 @@ export default function UsuariosPage() {
                 checked={isSuperAdmin}
                 onChange={handleToggleSuperAdmin}
               />
-              <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              <div className="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-warning"></div>
             </label>
           </div>
         </div>
 
         {/* Grilla de Módulos */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings size={18} className="text-zinc-400" />
+        <div className="space-y-6">
+          <h3 className="text-lg font-bold text-text flex items-center gap-2">
+            <Settings size={20} className="text-text-soft" />
             Permisos por Módulo
           </h3>
 
           {isSuperAdmin ? (
-            <div className="p-8 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center space-y-2">
-              <ShieldCheck size={40} className="mx-auto text-amber-500" />
-              <h4 className="text-amber-400 font-bold text-lg">Usuario Super Administrador</h4>
-              <p className="text-zinc-400 text-sm max-w-lg mx-auto">
+            <div className="p-8 rounded-2xl border border-warning/20 bg-warning/5 text-center space-y-3">
+              <ShieldCheck size={48} className="mx-auto text-warning" />
+              <h4 className="text-warning font-bold text-xl">Usuario Super Administrador</h4>
+              <p className="text-text-soft text-sm max-w-lg mx-auto font-medium">
                 Este usuario tiene acceso irrestricto a todos los módulos del sistema. 
                 Los permisos individuales por módulo son ignorados.
               </p>
@@ -176,29 +176,29 @@ export default function UsuariosPage() {
               {MODULOS_SISTEMA.map((mod) => {
                 const currentVal = userConfig.permisos[mod.id];
                 return (
-                  <div key={mod.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 transition-colors">
-                    <h4 className="font-bold text-zinc-200 mb-3">{mod.nombre}</h4>
+                  <div key={mod.id} className="p-5 rounded-2xl border border-border bg-surface hover:border-primary/40 transition-colors">
+                    <h4 className="font-bold text-text mb-4">{mod.nombre}</h4>
                     
                     {/* Segmented Control */}
-                    <div className="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+                    <div className="flex bg-bg-alt p-1 rounded-xl border border-border">
                       {(["No Ver", "Ver y Operar", "Administrar"] as NivelAcceso[]).map((nivel) => {
                         const isSelected = currentVal === nivel;
                         return (
                           <button
                             key={nivel}
                             onClick={() => handlePermisoChange(mod.id, nivel)}
-                            className={`flex-1 text-[11px] font-semibold py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1 ${
+                            className={`flex-1 text-xs font-bold py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                               isSelected 
-                                ? nivel === "No Ver" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
-                                  nivel === "Administrar" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" :
-                                  "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                                : "text-zinc-500 hover:text-zinc-300 border border-transparent"
+                                ? nivel === "No Ver" ? "bg-danger/10 text-danger shadow-sm border border-danger/20" :
+                                  nivel === "Administrar" ? "bg-primary text-text-inverse shadow-sm" :
+                                  "bg-primary/10 text-primary shadow-sm border border-primary/20"
+                                : "text-text-soft hover:text-text hover:bg-surface border border-transparent"
                             }`}
                           >
-                            {nivel === "No Ver" && <EyeOff size={12}/>}
-                            {nivel === "Ver y Operar" && <Eye size={12}/>}
-                            {nivel === "Administrar" && <Settings size={12}/>}
-                            {nivel}
+                            {nivel === "No Ver" && <EyeOff size={14}/>}
+                            {nivel === "Ver y Operar" && <Eye size={14}/>}
+                            {nivel === "Administrar" && <Settings size={14}/>}
+                            <span className="hidden sm:inline">{nivel}</span>
                           </button>
                         );
                       })}
@@ -215,78 +215,78 @@ export default function UsuariosPage() {
 
   // VISTA PRINCIPAL (Lista)
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Header & Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Shield className="text-blue-400" size={24} />
+          <h1 className="text-3xl font-bold tracking-tight text-text flex items-center gap-3">
+            <Shield className="text-primary" size={32} />
             Administración de Usuarios
           </h1>
-          <p className="text-xs text-zinc-500 mt-1">Configura roles globales y permisos de acceso a módulos para todo el personal.</p>
+          <p className="text-sm text-text-soft mt-2 font-medium">Configura roles globales y permisos de acceso a módulos para todo el personal.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-blue-500/10 text-blue-400">
-            <UserCog size={20} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="stat-box flex items-center gap-5">
+          <div className="p-4 rounded-xl bg-primary/10 text-primary">
+            <UserCog size={28} />
           </div>
           <div>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Total Usuarios</p>
-            <p className="text-2xl font-bold text-white">{stats.total}</p>
+            <p className="label">Total Usuarios</p>
+            <p className="value">{stats.total}</p>
           </div>
         </div>
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
-            <ShieldCheck size={20} />
+        <div className="stat-box flex items-center gap-5">
+          <div className="p-4 rounded-xl bg-warning/10 text-warning">
+            <ShieldCheck size={28} />
           </div>
           <div>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Super Admins</p>
-            <p className="text-2xl font-bold text-white">{stats.superAdmins}</p>
+            <p className="label">Super Admins</p>
+            <p className="value">{stats.superAdmins}</p>
           </div>
         </div>
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <Eye size={20} />
+        <div className="stat-box flex items-center gap-5">
+          <div className="p-4 rounded-xl bg-success/10 text-success">
+            <Eye size={28} />
           </div>
           <div>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Con Accesos (Normales)</p>
-            <p className="text-2xl font-bold text-white">{stats.conAccesos}</p>
+            <p className="label">Con Accesos (Normales)</p>
+            <p className="value">{stats.conAccesos}</p>
           </div>
         </div>
       </div>
 
       {/* Lista */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/20 overflow-hidden flex flex-col h-[600px]">
+      <div className="table-shell flex flex-col h-[600px]">
         {/* Toolbar */}
-        <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 flex flex-wrap gap-4 items-center justify-between">
+        <div className="p-5 border-b border-border bg-surface/50 flex flex-wrap gap-4 items-center justify-between">
           <div className="relative flex-1 min-w-[250px] max-w-sm">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
             <input 
               type="text" 
               placeholder="Buscar por nombre, RUT o email..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+              className="input pl-10"
             />
           </div>
-          <span className="text-xs text-zinc-500">{filteredUsers.length} encontrados</span>
+          <span className="badge badge-outline">{filteredUsers.length} encontrados</span>
         </div>
 
         {/* Tabla */}
         <div className="flex-1 overflow-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-[10px] text-zinc-500 uppercase bg-zinc-900/80 sticky top-0 z-10 border-b border-zinc-800">
+            <thead className="text-[11px] text-text-soft uppercase bg-surface sticky top-0 z-10 border-b border-border">
               <tr>
-                <th className="px-4 py-3 font-bold tracking-wider">Usuario / Trabajador</th>
-                <th className="px-4 py-3 font-bold tracking-wider">Cargo / Unidad</th>
-                <th className="px-4 py-3 font-bold tracking-wider text-center">Rol Global</th>
-                <th className="px-4 py-3 font-bold tracking-wider text-center">Permisos (Módulos)</th>
-                <th className="px-4 py-3 font-bold tracking-wider text-right">Acción</th>
+                <th className="px-6 py-4 font-bold tracking-wider">Usuario / Trabajador</th>
+                <th className="px-6 py-4 font-bold tracking-wider">Cargo / Unidad</th>
+                <th className="px-6 py-4 font-bold tracking-wider text-center">Rol Global</th>
+                <th className="px-6 py-4 font-bold tracking-wider text-center">Permisos (Módulos)</th>
+                <th className="px-6 py-4 font-bold tracking-wider text-right">Acción</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/40">
+            <tbody className="divide-y divide-border/50">
               {filteredUsers.map((t) => {
                 const conf = getUsuarioConfig(t.id_trabajador);
                 const isSuper = conf.rol_global === "Super Admin";
@@ -301,45 +301,45 @@ export default function UsuariosPage() {
                 }
 
                 return (
-                  <tr key={t.id_trabajador} className="hover:bg-zinc-800/20 transition-colors group">
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-zinc-200">{t.nombre_1} {t.apellido_paterno} {t.apellido_materno}</p>
-                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{t.numero_identificacion} • {t.email_corporativo || 'Sin email'}</p>
+                  <tr key={t.id_trabajador} className="hover:bg-bg-alt/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-text">{t.nombre_1} {t.apellido_paterno} {t.apellido_materno}</p>
+                      <p className="text-xs text-text-soft font-mono mt-1 font-semibold">{t.numero_identificacion} • {t.email_corporativo || 'Sin email'}</p>
                     </td>
-                    <td className="px-4 py-3">
-                      <p className="text-xs text-zinc-300">{t.cargo || '—'}</p>
-                      <p className="text-[10px] text-zinc-500">{t.area_departamento || '—'}</p>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-bold text-text">{t.cargo || '—'}</p>
+                      <p className="text-xs text-text-soft mt-0.5 font-medium">{t.area_departamento || '—'}</p>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold border ${
+                    <td className="px-6 py-4 text-center">
+                      <span className={`badge ${
                         isSuper 
-                          ? "bg-amber-500/10 text-amber-400 border-amber-500/20" 
-                          : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                          ? "badge-orange" 
+                          : "badge-outline"
                       }`}>
-                        {isSuper && <ShieldCheck size={12}/>}
+                        {isSuper && <ShieldCheck size={14}/>}
                         {conf.rol_global}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center text-xs">
+                    <td className="px-6 py-4 text-center text-xs">
                       {isSuper ? (
-                        <span className="text-amber-500/80 text-[10px] font-bold">Acceso Total</span>
+                        <span className="badge badge-orange">Acceso Total</span>
                       ) : (
                         <div className="flex justify-center gap-2">
                           {(modulosActivos > 0 || modulosAdmin > 0) ? (
                             <>
-                              {modulosActivos > 0 && <span className="text-blue-400 font-semibold text-[10px]">{modulosActivos} lectura</span>}
-                              {modulosAdmin > 0 && <span className="text-purple-400 font-semibold text-[10px]">{modulosAdmin} admin</span>}
+                              {modulosActivos > 0 && <span className="badge badge-blue">{modulosActivos} lectura</span>}
+                              {modulosAdmin > 0 && <span className="badge bg-primary/20 text-primary">{modulosAdmin} admin</span>}
                             </>
                           ) : (
-                            <span className="text-zinc-600 text-[10px]">Sin accesos</span>
+                            <span className="text-text-muted font-bold text-xs">Sin accesos</span>
                           )}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => setSelectedUserId(t.id_trabajador)}
-                        className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded transition-all"
+                        className="opacity-0 group-hover:opacity-100 btn btn-secondary py-2 min-h-0 text-xs px-4"
                       >
                         Configurar
                       </button>

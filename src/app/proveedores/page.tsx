@@ -1,0 +1,239 @@
+"use client";
+
+import React, { useState } from "react";
+import { useProveedoresStore, Proveedor, CategoriaProveedor } from "@/store/proveedores-store";
+import { Store, Plus, Search, Filter, Edit, Trash2, Mail, Phone, CheckCircle2, XCircle } from "lucide-react";
+
+export default function ProveedoresPage() {
+  const { proveedores, addProveedor, updateProveedor, deleteProveedor } = useProveedoresStore();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategoria, setFilterCategoria] = useState<CategoriaProveedor | "Todas">("Todas");
+
+  // Edit / Add modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState<Partial<Proveedor>>({
+    nombre: "",
+    rut: "",
+    categoria: "Alimentación",
+    estado: "Activo",
+    contacto_nombre: "",
+    contacto_email: "",
+    contacto_telefono: ""
+  });
+
+  const filteredProveedores = proveedores.filter(p => {
+    const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || p.rut.includes(searchTerm);
+    const matchesCat = filterCategoria === "Todas" || p.categoria === filterCategoria;
+    return matchesSearch && matchesCat;
+  });
+
+  const handleOpenModal = (prov?: Proveedor) => {
+    if (prov) {
+      setEditingId(prov.id_proveedor);
+      setFormData(prov);
+    } else {
+      setEditingId(null);
+      setFormData({
+        nombre: "",
+        rut: "",
+        categoria: "Alimentación",
+        estado: "Activo",
+        contacto_nombre: "",
+        contacto_email: "",
+        contacto_telefono: ""
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.nombre || !formData.rut) return;
+
+    if (editingId) {
+      updateProveedor(editingId, formData);
+    } else {
+      addProveedor(formData as Omit<Proveedor, "id_proveedor" | "fecha_creacion">);
+    }
+    setIsModalOpen(false);
+  };
+
+  const getCategoryColor = (cat: string) => {
+    switch (cat) {
+      case "Alimentación": return "text-orange-500 bg-orange-500/10 border-orange-500/20";
+      case "Tecnología": return "text-blue-500 bg-blue-500/10 border-blue-500/20";
+      case "Vehículos": return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+      default: return "text-zinc-400 bg-zinc-800 border-zinc-700";
+    }
+  };
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-text flex items-center gap-3">
+            <Store className="text-primary" size={32} />
+            Proveedores
+          </h1>
+          <p className="text-sm font-medium text-text-soft mt-1">
+            Gestión de proveedores de servicios y contratistas.
+          </p>
+        </div>
+        <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+          <Plus size={18} /> Nuevo Proveedor
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="card p-4 flex flex-wrap gap-4 items-center">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+          <input
+            type="text"
+            placeholder="Buscar por Nombre o RUT..."
+            className="input pl-10"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter size={18} className="text-text-muted" />
+          <select 
+            className="input min-h-0 py-2.5 w-auto" 
+            value={filterCategoria} 
+            onChange={e => setFilterCategoria(e.target.value as any)}
+          >
+            <option value="Todas">Todas las Categorías</option>
+            <option value="Alimentación">Alimentación</option>
+            <option value="Tecnología">Tecnología</option>
+            <option value="Vehículos">Vehículos</option>
+            <option value="Transporte">Transporte</option>
+            <option value="Servicios Generales">Servicios Generales</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredProveedores.map(p => (
+          <div key={p.id_proveedor} className="card p-5 group hover:border-primary/50 transition-colors flex flex-col">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="font-bold text-text text-lg group-hover:text-primary transition-colors">{p.nombre}</h3>
+                <p className="text-xs text-text-soft font-mono mt-0.5">{p.rut}</p>
+              </div>
+              <span className={`badge px-2.5 py-1 text-[10px] uppercase tracking-wider ${getCategoryColor(p.categoria)}`}>
+                {p.categoria}
+              </span>
+            </div>
+
+            <div className="space-y-2 mt-4 flex-1">
+              {p.contacto_nombre && (
+                <div className="text-sm font-medium text-text flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-surface-2 flex items-center justify-center text-text-muted"><Store size={12}/></div>
+                  {p.contacto_nombre}
+                </div>
+              )}
+              {p.contacto_email && (
+                <div className="text-xs text-text-soft flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-surface-2 flex items-center justify-center text-text-muted"><Mail size={12}/></div>
+                  {p.contacto_email}
+                </div>
+              )}
+              {p.contacto_telefono && (
+                <div className="text-xs text-text-soft flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-surface-2 flex items-center justify-center text-text-muted"><Phone size={12}/></div>
+                  {p.contacto_telefono}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-border flex justify-between items-center">
+              <span className={`flex items-center gap-1.5 text-xs font-bold ${p.estado === 'Activo' ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                {p.estado === 'Activo' ? <CheckCircle2 size={14}/> : <XCircle size={14}/>} {p.estado}
+              </span>
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleOpenModal(p)} className="p-1.5 rounded bg-surface-2 text-text-muted hover:text-primary"><Edit size={14}/></button>
+                <button onClick={() => deleteProveedor(p.id_proveedor)} className="p-1.5 rounded bg-surface-2 text-text-muted hover:text-danger"><Trash2 size={14}/></button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {filteredProveedores.length === 0 && (
+        <div className="card p-12 text-center text-text-soft text-sm font-medium border-dashed">
+          No se encontraron proveedores.
+        </div>
+      )}
+
+      {/* Form Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-surface w-full max-w-md rounded-2xl shadow-2xl border border-border p-6 space-y-5">
+            <h2 className="text-xl font-bold text-text">{editingId ? "Editar Proveedor" : "Nuevo Proveedor"}</h2>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="label">Razón Social / Nombre</label>
+                  <input type="text" className="input" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">RUT</label>
+                  <input type="text" className="input" value={formData.rut} onChange={e => setFormData({...formData, rut: e.target.value})} />
+                </div>
+                <div>
+                  <label className="label">Categoría</label>
+                  <select className="input" value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value as any})}>
+                    <option value="Alimentación">Alimentación</option>
+                    <option value="Tecnología">Tecnología</option>
+                    <option value="Vehículos">Vehículos</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Servicios Generales">Servicios Generales</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-border">
+                <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Contacto Principal</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="label">Nombre Contacto</label>
+                    <input type="text" className="input" value={formData.contacto_nombre} onChange={e => setFormData({...formData, contacto_nombre: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Email</label>
+                      <input type="email" className="input" value={formData.contacto_email} onChange={e => setFormData({...formData, contacto_email: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="label">Teléfono</label>
+                      <input type="text" className="input" value={formData.contacto_telefono} onChange={e => setFormData({...formData, contacto_telefono: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <label className="label">Estado</label>
+                <select className="input" value={formData.estado} onChange={e => setFormData({...formData, estado: e.target.value as any})}>
+                  <option value="Activo">Activo</option>
+                  <option value="Inactivo">Inactivo</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+              <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSave}>Guardar Proveedor</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

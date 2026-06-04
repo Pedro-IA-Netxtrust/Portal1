@@ -52,13 +52,13 @@ function formatDate(iso: string) {
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-        <Icon size={20} />
+    <div className="stat-box flex items-center gap-4">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+        <Icon size={24} />
       </div>
       <div>
-        <p className="text-2xl font-bold text-white">{value}</p>
-        <p className="text-xs text-zinc-500">{label}</p>
+        <span className="label">{label}</span>
+        <span className="value text-2xl">{value}</span>
       </div>
     </div>
   );
@@ -72,50 +72,50 @@ function SolicitudCard({ solicitud }: { solicitud: Solicitud }) {
   return (
     <Link
       href={`/solicitudes/${solicitud.id_solicitud}`}
-      className="group bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-blue-500/40 hover:bg-zinc-900/80 transition-all duration-200 block"
+      className="card group hover:border-primary/40 block p-5"
     >
       <div className="flex items-start justify-between gap-3">
         {/* Left */}
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-xl flex-shrink-0 mt-0.5">
+        <div className="flex items-start gap-4 min-w-0">
+          <div className="w-12 h-12 rounded-xl bg-bg-alt border border-border flex items-center justify-center text-2xl flex-shrink-0 mt-0.5 shadow-sm">
             {emoji}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-zinc-500">{solicitud.codigo_solicitud}</span>
+              <span className="text-xs font-mono font-bold text-text-muted">{solicitud.codigo_solicitud}</span>
               {solicitud.prioridad === "Urgente" && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-semibold">
+                <span className="badge bg-danger/10 text-danger border border-danger/20">
                   URGENTE
                 </span>
               )}
             </div>
-            <p className="text-sm font-semibold text-zinc-200 group-hover:text-white truncate">{solicitud.asunto}</p>
-            <p className="text-xs text-zinc-500 mt-0.5">{solicitud.tipo}</p>
+            <p className="text-base font-bold text-text group-hover:text-primary transition-colors truncate">{solicitud.asunto}</p>
+            <p className="text-xs text-text-soft font-bold tracking-wide uppercase mt-1">{solicitud.tipo}</p>
           </div>
         </div>
 
         {/* Right */}
-        <div className="flex flex-col items-end gap-2 flex-shrink-0">
-          <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>
-            <Icon size={11} />
+        <div className="flex flex-col items-end gap-3 flex-shrink-0">
+          <span className={`badge ${cfg.color}`}>
+            <Icon size={14} />
             {cfg.label}
           </span>
-          <ChevronRight size={16} className="text-zinc-600 group-hover:text-blue-400 transition-colors" />
+          <ChevronRight size={18} className="text-text-muted group-hover:text-primary transition-colors" />
         </div>
       </div>
 
       {/* Footer */}
-      <div className="mt-3 pt-3 border-t border-zinc-800 flex items-center gap-4 text-xs text-zinc-500">
-        <span className="flex items-center gap-1">
-          <User size={11} />
+      <div className="mt-4 pt-3 border-t border-border flex items-center gap-5 text-xs text-text-soft font-medium">
+        <span className="flex items-center gap-1.5">
+          <User size={14} />
           {solicitud.nombre_solicitante}
         </span>
-        <span className="flex items-center gap-1">
-          <Briefcase size={11} />
+        <span className="flex items-center gap-1.5">
+          <Briefcase size={14} />
           {solicitud.area}
         </span>
-        <span className="flex items-center gap-1 ml-auto">
-          <Calendar size={11} />
+        <span className="flex items-center gap-1.5 ml-auto">
+          <Calendar size={14} />
           {formatDate(solicitud.fecha_creacion)}
         </span>
       </div>
@@ -156,108 +156,105 @@ export default function SolicitudesPage() {
   }, [solicitudes, filtroEstado, filtroTipo, busqueda]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn pt-4">
       {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <ClipboardList size={24} className="text-violet-400" />
-              Solicitudes Internas
-            </h1>
-            <p className="text-sm text-zinc-500 mt-1">
-              Gestión de vacaciones, permisos, cambios de equipo y más
-            </p>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-text flex items-center gap-3">
+            <ClipboardList size={32} className="text-primary" />
+            Solicitudes Internas
+          </h1>
+          <p className="text-sm text-text-soft mt-2 font-medium">
+            Gestión de vacaciones, permisos, cambios de equipo y más
+          </p>
+        </div>
+        <Link
+          href="/solicitudes/nueva"
+          className="btn btn-primary"
+        >
+          <PlusCircle size={18} />
+          Nueva Solicitud
+        </Link>
+      </div>
+
+      {/* Stats */}
+      <div className="stats-grid">
+        <StatCard label="PENDIENTES"   value={stats.pendientes} icon={Clock}       color="bg-warning/10 text-warning" />
+        <StatCard label="EN REVISIÓN"  value={stats.enRevision} icon={RefreshCw}   color="bg-primary/10 text-primary" />
+        <StatCard label="APROBADAS"    value={stats.aprobadas}  icon={CheckCircle2} color="bg-success/10 text-success" />
+        <StatCard label="RECHAZADAS"   value={stats.rechazadas} icon={XCircle}     color="bg-danger/10 text-danger" />
+      </div>
+
+      {/* Filters */}
+      <div className="card space-y-4">
+        <div className="flex items-center gap-2 text-sm text-text-soft font-bold uppercase tracking-wider">
+          <Filter size={16} />
+          Filtros
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {/* Búsqueda */}
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Buscar por código, asunto o solicitante..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              className="input pl-10"
+            />
           </div>
-          <Link
-            href="/solicitudes/nueva"
-            className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm rounded-lg transition-all shadow-lg shadow-violet-900/30 hover:shadow-violet-900/50"
+
+          {/* Estado */}
+          <select
+            value={filtroEstado}
+            onChange={e => setFiltroEstado(e.target.value as EstadoSolicitud | "Todos")}
+            className="select py-2 px-3 text-sm min-h-0"
           >
-            <PlusCircle size={16} />
-            Nueva Solicitud
-          </Link>
+            <option value="Todos">Todos los estados</option>
+            {(["Pendiente", "En Revisión", "Aprobada", "Rechazada", "Cancelada"] as EstadoSolicitud[]).map(e => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+          </select>
+
+          {/* Tipo */}
+          <select
+            value={filtroTipo}
+            onChange={e => setFiltroTipo(e.target.value as TipoSolicitud | "Todos")}
+            className="select py-2 px-3 text-sm min-h-0"
+          >
+            <option value="Todos">Todos los tipos</option>
+            {TIPOS.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Pendientes"   value={stats.pendientes} icon={Clock}       color="bg-amber-400/10 text-amber-400" />
-          <StatCard label="En Revisión"  value={stats.enRevision} icon={RefreshCw}   color="bg-blue-400/10 text-blue-400" />
-          <StatCard label="Aprobadas"    value={stats.aprobadas}  icon={CheckCircle2} color="bg-emerald-400/10 text-emerald-400" />
-          <StatCard label="Rechazadas"   value={stats.rechazadas} icon={XCircle}     color="bg-red-400/10 text-red-400" />
+      {/* List */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="badge badge-outline">
+            {filtered.length} solicitud{filtered.length !== 1 ? "es" : ""} encontrada{filtered.length !== 1 ? "s" : ""}
+          </span>
         </div>
 
-        {/* Filters */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-zinc-400 font-medium">
-            <Filter size={15} />
-            Filtros
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {/* Búsqueda */}
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Buscar por código, asunto o solicitante..."
-                value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
-              />
-            </div>
-
-            {/* Estado */}
-            <select
-              value={filtroEstado}
-              onChange={e => setFiltroEstado(e.target.value as EstadoSolicitud | "Todos")}
-              className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 transition-all"
+        {filtered.length === 0 ? (
+          <div className="p-12 text-center border border-border border-dashed rounded-2xl space-y-3 bg-surface/50">
+            <AlertCircle size={40} className="text-text-muted mx-auto" />
+            <h4 className="text-text font-bold text-base">No se encontraron solicitudes</h4>
+            <p className="text-sm text-text-soft font-medium">Intente con otros filtros de búsqueda.</p>
+            <button
+              onClick={() => { setFiltroEstado("Todos"); setFiltroTipo("Todos"); setBusqueda(""); }}
+              className="mt-4 btn btn-secondary py-2 min-h-0 text-sm px-4 inline-flex mx-auto"
             >
-              <option value="Todos">Todos los estados</option>
-              {(["Pendiente", "En Revisión", "Aprobada", "Rechazada", "Cancelada"] as EstadoSolicitud[]).map(e => (
-                <option key={e} value={e}>{e}</option>
-              ))}
-            </select>
-
-            {/* Tipo */}
-            <select
-              value={filtroTipo}
-              onChange={e => setFiltroTipo(e.target.value as TipoSolicitud | "Todos")}
-              className="bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 transition-all"
-            >
-              <option value="Todos">Todos los tipos</option>
-              {TIPOS.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+              Limpiar filtros
+            </button>
           </div>
-        </div>
-
-        {/* List */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-zinc-500">
-              {filtered.length} solicitud{filtered.length !== 1 ? "es" : ""}
-            </p>
+        ) : (
+          <div className="grid gap-4">
+            {filtered.map(s => <SolicitudCard key={s.id_solicitud} solicitud={s} />)}
           </div>
-
-          {filtered.length === 0 ? (
-            <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded-xl">
-              <AlertCircle size={40} className="text-zinc-700 mx-auto mb-3" />
-              <p className="text-zinc-500">No se encontraron solicitudes con los filtros aplicados</p>
-              <button
-                onClick={() => { setFiltroEstado("Todos"); setFiltroTipo("Todos"); setBusqueda(""); }}
-                className="mt-3 text-sm text-violet-400 hover:text-violet-300 underline"
-              >
-                Limpiar filtros
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {filtered.map(s => <SolicitudCard key={s.id_solicitud} solicitud={s} />)}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
