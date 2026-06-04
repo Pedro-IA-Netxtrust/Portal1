@@ -55,18 +55,18 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       {/* Logo Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         <Link href="/" className="flex items-center gap-2 font-bold tracking-wider">
-          <div className="w-8 h-8 rounded-lg bg-monitoring-blue flex items-center justify-center text-white font-black text-lg">
+          <div className="w-8 h-8 rounded-lg bg-brand-blue flex items-center justify-center text-white font-black text-lg">
             M
           </div>
           {!isCollapsed && (
-            <span className="text-monitoring-graphite text-lg font-bold">
+            <span className="text-text-primary text-lg font-bold">
               MONITORING
             </span>
           )}
         </Link>
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-md hover:bg-monitoring-light text-monitoring-gray hover:text-monitoring-blue transition-colors border border-transparent hover:border-border"
+          className="p-1.5 rounded-md hover:bg-bg-secondary text-text-secondary hover:text-brand-blue transition-colors border border-transparent hover:border-border"
         >
           {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
@@ -76,11 +76,11 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       {!isCollapsed && (
         <div className="px-4 py-4">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-monitoring-gray" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-secondary" />
             <input 
               type="text" 
               placeholder="Buscar trabajador o RUT..." 
-              className="w-full bg-monitoring-light border border-border text-monitoring-graphite rounded-md py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:border-monitoring-blue focus:ring-1 focus:ring-monitoring-blue transition-all"
+              className="w-full bg-bg-secondary border border-border text-text-primary rounded-md py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition-all"
             />
           </div>
         </div>
@@ -98,11 +98,11 @@ export default function Sidebar({ className = "" }: SidebarProps) {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all group relative ${
                 isActive 
-                  ? "bg-monitoring-blue/10 text-monitoring-blue border border-monitoring-blue/20" 
-                  : "text-monitoring-gray hover:text-monitoring-blue hover:bg-monitoring-light border border-transparent"
+                  ? "bg-brand-blue/10 text-brand-blue border border-brand-blue/20" 
+                  : "text-text-secondary hover:text-brand-blue hover:bg-bg-secondary border border-transparent"
               }`}
             >
-              <Icon size={18} className={`flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-monitoring-blue" : "text-monitoring-gray"}`} />
+              <Icon size={18} className={`flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-brand-blue" : "text-text-secondary"}`} />
               
               {!isCollapsed && (
                 <span className="flex-1 truncate">{item.name}</span>
@@ -112,8 +112,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
               {!isCollapsed && item.badge && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                   item.badge === "New" 
-                    ? "bg-monitoring-orange/10 text-monitoring-orange border border-monitoring-orange/20" 
-                    : "bg-monitoring-blue/10 text-monitoring-blue border border-monitoring-blue/20"
+                    ? "bg-warning/10 text-warning border border-warning/20" 
+                    : "bg-brand-blue/10 text-brand-blue border border-brand-blue/20"
                 }`}>
                   {item.badge}
                 </span>
@@ -121,7 +121,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
               {/* Tooltip for collapsed view */}
               {isCollapsed && (
-                <div className="absolute left-full ml-4 px-3 py-1.5 bg-monitoring-graphite border border-monitoring-gray text-white text-xs font-semibold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-level-2">
+                <div className="absolute left-full ml-4 px-3 py-1.5 bg-text-primary border border-text-secondary text-white text-xs font-semibold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-level-2">
                   {item.name}
                 </div>
               )}
@@ -131,15 +131,15 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       </nav>
 
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-border bg-monitoring-light/50 space-y-2">
+      <div className="p-4 border-t border-border bg-bg-secondary/50 space-y-2">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-monitoring-blue font-bold border border-border shadow-sm text-xs">
+          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-brand-blue font-bold border border-border shadow-sm text-xs">
             OP
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-monitoring-graphite truncate">Operador General</p>
-              <span className="text-[11px] text-monitoring-gray font-medium block truncate">soporte@monitoring.cl</span>
+              <p className="text-sm font-bold text-text-primary truncate">Operador General</p>
+              <span className="text-[11px] text-text-secondary font-medium block truncate">soporte@monitoring.cl</span>
             </div>
           )}
         </div>

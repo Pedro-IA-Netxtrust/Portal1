@@ -59,8 +59,8 @@ export default function Home() {
   if (!isClient) {
     return (
       <div className="max-w-7xl mx-auto p-8 text-center space-y-4">
-        <Activity className="mx-auto text-monitoring-blue animate-pulse" size={48} />
-        <p className="text-monitoring-gray text-sm font-semibold">Cargando Tablero Operativo Unificado...</p>
+        <Activity className="mx-auto text-brand-blue animate-pulse" size={48} />
+        <p className="text-text-secondary text-sm font-semibold">Cargando Tablero Operativo Unificado...</p>
       </div>
     );
   }
@@ -228,7 +228,7 @@ export default function Home() {
       value: String(totalTrabajadores), 
       icon: Users, 
       change: "Colaboradores registrados", 
-      color: "bg-monitoring-blue/10 text-monitoring-blue", 
+      color: "bg-brand-blue/10 text-brand-blue", 
       link: "/trabajadores" 
     },
     { 
@@ -236,7 +236,7 @@ export default function Home() {
       value: String(contratosActivos), 
       icon: FileText, 
       change: `${contratos.length - contratosActivos} cerrados o en prep.`, 
-      color: "bg-monitoring-cyan/10 text-monitoring-cyan", 
+      color: "bg-brand-blue/10 text-brand-blue", 
       link: "/contratos" 
     },
     { 
@@ -244,7 +244,7 @@ export default function Home() {
       value: String(alertas.length), 
       icon: AlertTriangle, 
       change: `${alertasCriticasCount} vencidos / ${alertasAdvertenciaCount} por vencer`, 
-      color: alertas.length > 0 ? "bg-monitoring-orange/10 text-monitoring-orange animate-pulse" : "bg-monitoring-gray/10 text-monitoring-gray", 
+      color: alertas.length > 0 ? "bg-warning/10 text-warning animate-pulse" : "bg-text-secondary/10 text-text-secondary", 
       link: "/control" 
     },
     { 
@@ -252,7 +252,7 @@ export default function Home() {
       value: String(ticketsAbiertos), 
       icon: Ticket, 
       change: "Soporte activo pendiente", 
-      color: "bg-monitoring-blue/10 text-monitoring-blue", 
+      color: "bg-brand-blue/10 text-brand-blue", 
       link: "/tickets" 
     },
   ];
@@ -271,21 +271,21 @@ export default function Home() {
       <section className="relative overflow-hidden rounded-[20px] border border-border bg-card p-8 shadow-level-2">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-monitoring-light text-monitoring-blue border border-border">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-bg-secondary text-brand-blue border border-border">
               <Sparkles size={14} />
               <span>Control Operativo Inteligente</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-monitoring-graphite md:text-4xl">
+            <h1 className="text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
               Portal Monitoring SPA
             </h1>
-            <p className="text-sm text-monitoring-gray max-w-xl font-medium">
+            <p className="text-sm text-text-secondary max-w-xl font-medium">
               Bienvenido al centro de mando operativo unificado. Aquí tienes visibilidad en tiempo real de todos tus trabajadores, contratos, tickets TI y vigencias próximas a vencer.
             </p>
           </div>
           <div className="flex gap-3">
             <Link 
               href="/control"
-              className="px-5 py-2.5 bg-monitoring-blue hover:bg-monitoring-blue/90 text-white rounded-lg text-sm font-bold transition-all shadow-level-1 flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-lg text-sm font-bold transition-all shadow-level-1 flex items-center gap-2 cursor-pointer"
             >
               Registrar Habilitación
               <ArrowUpRight size={16} />
@@ -305,7 +305,7 @@ export default function Home() {
               className="block group rounded-xl border border-border bg-card p-6 hover:shadow-level-2 transition-all duration-300"
             >
               <div className="flex justify-between items-start">
-                <span className="text-monitoring-gray text-xs font-bold tracking-wider uppercase truncate">
+                <span className="text-text-secondary text-xs font-bold tracking-wider uppercase truncate">
                   {metric.name}
                 </span>
                 <div className={`p-2 rounded-lg ${metric.color} transition-transform group-hover:scale-110`}>
@@ -313,8 +313,8 @@ export default function Home() {
                 </div>
               </div>
               <div className="mt-4">
-                <span className="text-3xl font-bold text-monitoring-graphite tracking-tight">{metric.value}</span>
-                <span className="text-xs text-monitoring-gray block mt-1 font-medium">{metric.change}</span>
+                <span className="text-3xl font-bold text-text-primary tracking-tight">{metric.value}</span>
+                <span className="text-xs text-text-secondary block mt-1 font-medium">{metric.change}</span>
               </div>
             </Link>
           );
@@ -328,10 +328,10 @@ export default function Home() {
         <section className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-level-1">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <AlertTriangle className={alertas.length > 0 ? "text-monitoring-orange" : "text-monitoring-gray"} size={20} />
-              <h2 className="text-lg font-bold text-monitoring-graphite">Alertas y Vencimientos Críticos</h2>
+              <AlertTriangle className={alertas.length > 0 ? "text-warning" : "text-text-secondary"} size={20} />
+              <h2 className="text-lg font-bold text-text-primary">Alertas y Vencimientos Críticos</h2>
             </div>
-            <span className="text-xs text-monitoring-gray font-bold uppercase tracking-wider bg-monitoring-light px-2.5 py-1 rounded">Próximos 30 días</span>
+            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider bg-bg-secondary px-2.5 py-1 rounded">Próximos 30 días</span>
           </div>
 
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
@@ -341,26 +341,26 @@ export default function Home() {
                 className={`p-4 rounded-lg border transition-all flex justify-between items-center gap-4 ${
                   alerta.urgencia === "CRITICA"
                     ? "bg-destructive/5 border-destructive/20" 
-                    : "bg-monitoring-orange/5 border-monitoring-orange/20"
+                    : "bg-warning/5 border-warning/20"
                 }`}
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                      alerta.urgencia === "CRITICA" ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-monitoring-orange/10 text-monitoring-orange border border-monitoring-orange/20"
+                      alerta.urgencia === "CRITICA" ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-warning/10 text-warning border border-warning/20"
                     }`}>
                       {alerta.tipo}
                     </span>
-                    <h3 className="text-sm font-bold text-monitoring-graphite">{alerta.item}</h3>
+                    <h3 className="text-sm font-bold text-text-primary">{alerta.item}</h3>
                   </div>
-                  <p className="text-xs text-monitoring-gray font-medium">
-                    Responsable: <strong className="text-monitoring-graphite font-bold">{alerta.responsable}</strong>
+                  <p className="text-xs text-text-secondary font-medium">
+                    Responsable: <strong className="text-text-primary font-bold">{alerta.responsable}</strong>
                   </p>
                 </div>
 
                 <div className="text-right flex-shrink-0">
                   <span className={`text-sm font-bold block ${
-                    alerta.urgencia === "CRITICA" ? "text-destructive" : "text-monitoring-orange"
+                    alerta.urgencia === "CRITICA" ? "text-destructive" : "text-warning"
                   }`}>
                     {alerta.dias_restantes < 0 
                       ? `Vencido hace ${Math.abs(alerta.dias_restantes)} días` 
@@ -369,19 +369,19 @@ export default function Home() {
                       : `Expira en ${alerta.dias_restantes} días`
                     }
                   </span>
-                  <span className="text-[11px] text-monitoring-gray block mt-0.5 font-medium">{alerta.fecha_vencimiento}</span>
+                  <span className="text-[11px] text-text-secondary block mt-0.5 font-medium">{alerta.fecha_vencimiento}</span>
                 </div>
               </div>
             ))}
 
             {alertas.length === 0 && (
-              <div className="p-12 text-center border border-border border-dashed rounded-xl bg-monitoring-light/50">
-                <div className="w-14 h-14 rounded-full bg-monitoring-blue/10 text-monitoring-blue flex items-center justify-center mx-auto mb-4">
+              <div className="p-12 text-center border border-border border-dashed rounded-xl bg-bg-secondary/50">
+                <div className="w-14 h-14 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center mx-auto mb-4">
                   <ShieldCheck size={28} />
                 </div>
                 <div>
-                  <h4 className="text-monitoring-graphite font-bold text-base">Cumplimiento Operativo Óptimo</h4>
-                  <p className="text-sm text-monitoring-gray mt-1 max-w-sm mx-auto font-medium">
+                  <h4 className="text-text-primary font-bold text-base">Cumplimiento Operativo Óptimo</h4>
+                  <p className="text-sm text-text-secondary mt-1 max-w-sm mx-auto font-medium">
                     Todas las licencias, revisiones técnicas, cursos y exámenes se encuentran al día.
                   </p>
                 </div>
@@ -395,44 +395,44 @@ export default function Home() {
           
           {/* IT Assets Allocations */}
           <section className="rounded-xl border border-border bg-card p-6 shadow-level-1">
-            <h2 className="text-base font-bold text-monitoring-graphite flex items-center gap-2 mb-6">
-              <Cpu className="text-monitoring-blue" size={18} />
+            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 mb-6">
+              <Cpu className="text-brand-blue" size={18} />
               Distribución de Activos
             </h2>
             
             <div className="space-y-5 text-sm font-medium">
               {/* Vehicles */}
               <div className="space-y-2">
-                <div className="flex justify-between text-monitoring-gray">
+                <div className="flex justify-between text-text-secondary">
                   <span className="flex items-center gap-2">
                     <Car size={16} />
                     Flota de Vehículos
                   </span>
-                  <strong className="text-monitoring-graphite">{vehiculosAsignados} / {totalVehiculos} Asignados</strong>
+                  <strong className="text-text-primary">{vehiculosAsignados} / {totalVehiculos} Asignados</strong>
                 </div>
-                <div className="w-full bg-monitoring-light rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-monitoring-blue h-2 rounded-full" 
+                    className="bg-brand-blue h-2 rounded-full" 
                     style={{ width: `${totalVehiculos > 0 ? (vehiculosAsignados / totalVehiculos) * 100 : 0}%` }}
                   ></div>
                 </div>
                 {vehiculosMantencion > 0 && (
-                  <p className="text-[11px] text-monitoring-orange font-bold mt-1">⚠️ {vehiculosMantencion} vehículo(s) en mantenimiento.</p>
+                  <p className="text-[11px] text-warning font-bold mt-1">⚠️ {vehiculosMantencion} vehículo(s) en mantenimiento.</p>
                 )}
               </div>
 
               {/* Laptops */}
               <div className="space-y-2">
-                <div className="flex justify-between text-monitoring-gray">
+                <div className="flex justify-between text-text-secondary">
                   <span className="flex items-center gap-2">
                     <Laptop size={16} />
                     Notebooks
                   </span>
-                  <strong className="text-monitoring-graphite">{notebooksAsignados} / {totalNotebooks} Asignados</strong>
+                  <strong className="text-text-primary">{notebooksAsignados} / {totalNotebooks} Asignados</strong>
                 </div>
-                <div className="w-full bg-monitoring-light rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-monitoring-cyan h-2 rounded-full" 
+                    className="bg-brand-blue h-2 rounded-full" 
                     style={{ width: `${totalNotebooks > 0 ? (notebooksAsignados / totalNotebooks) * 100 : 0}%` }}
                   ></div>
                 </div>
@@ -443,23 +443,23 @@ export default function Home() {
           {/* Urgent Support Tickets */}
           <section className="rounded-xl border border-border bg-card p-6 shadow-level-1 flex flex-col justify-between">
             <div className="space-y-5">
-              <h2 className="text-base font-bold text-monitoring-graphite flex items-center gap-2">
-                <Ticket className="text-monitoring-cyan" size={18} />
+              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+                <Ticket className="text-brand-blue" size={18} />
                 Soporte TI Crítico
               </h2>
               
               <div className="space-y-3">
                 {tickets.filter(t => t.estado !== "Cerrado").slice(0, 3).map(tk => (
-                  <div key={tk.id_ticket} className="p-3 rounded-lg bg-monitoring-light border border-border flex justify-between items-start gap-3 text-sm">
+                  <div key={tk.id_ticket} className="p-3 rounded-lg bg-bg-secondary border border-border flex justify-between items-start gap-3 text-sm">
                     <div>
-                      <span className="text-[10px] text-monitoring-gray block uppercase font-bold tracking-wider">{tk.codigo_ticket}</span>
-                      <strong className="text-monitoring-graphite block truncate max-w-[140px] font-bold">{tk.asunto}</strong>
-                      <span className="text-[11px] text-monitoring-gray block mt-0.5 font-medium">Por: {getWorkerName(tk.id_trabajador_solicitante)}</span>
+                      <span className="text-[10px] text-text-secondary block uppercase font-bold tracking-wider">{tk.codigo_ticket}</span>
+                      <strong className="text-text-primary block truncate max-w-[140px] font-bold">{tk.asunto}</strong>
+                      <span className="text-[11px] text-text-secondary block mt-0.5 font-medium">Por: {getWorkerName(tk.id_trabajador_solicitante)}</span>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase ${
                       tk.prioridad === "Critica" || tk.prioridad === "Alta"
                         ? "bg-destructive/10 text-destructive border border-destructive/20"
-                        : "bg-monitoring-gray/10 text-monitoring-gray border border-monitoring-gray/20"
+                        : "bg-text-secondary/10 text-text-secondary border border-text-secondary/20"
                     }`}>
                       {tk.prioridad}
                     </span>
@@ -467,14 +467,14 @@ export default function Home() {
                 ))}
 
                 {tickets.filter(t => t.estado !== "Cerrado").length === 0 && (
-                  <p className="text-center py-5 text-xs text-monitoring-gray font-medium">No hay tickets de soporte abiertos.</p>
+                  <p className="text-center py-5 text-xs text-text-secondary font-medium">No hay tickets de soporte abiertos.</p>
                 )}
               </div>
             </div>
 
             <Link 
               href="/tickets" 
-              className="mt-6 pt-4 border-t border-border flex items-center justify-between text-sm text-monitoring-blue hover:text-monitoring-blue/80 font-bold group cursor-pointer"
+              className="mt-6 pt-4 border-t border-border flex items-center justify-between text-sm text-brand-blue hover:text-brand-blue/80 font-bold group cursor-pointer"
             >
               Ver panel de Soporte TI
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />

@@ -1,46 +1,55 @@
 @import "tailwindcss";
 
 :root {
-  /* Monitoring Corporate Tokens */
-  --monitoring-blue: #1A418C;
-  --monitoring-orange: #F29100;
-  --monitoring-gray: #808285;
-  --monitoring-graphite: #20242C;
-  --monitoring-white: #FFFFFF;
-  --monitoring-light: #F5F7FA;
-  --monitoring-cyan: #00B8D9;
+  /* Brand Tokens */
+  --brand-blue: #1A418C;
+  --brand-orange: #F29100;
+
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F7F9FC;
+  --bg-dark: #141922;
+
+  --text-primary: #101828;
+  --text-secondary: #667085;
+
+  --border: #EAECF0;
+
+  --success: #12B76A;
+  --warning: #F79009;
+  
+  --destructive: #ef4444;
 
   /* Theme Mapping */
-  --background: var(--monitoring-light);
-  --foreground: var(--monitoring-graphite);
-  --card: var(--monitoring-white);
-  --card-foreground: var(--monitoring-graphite);
-  --popover: var(--monitoring-white);
-  --popover-foreground: var(--monitoring-graphite);
-  --primary: var(--monitoring-blue);
-  --primary-foreground: var(--monitoring-white);
-  --secondary: var(--monitoring-white);
-  --secondary-foreground: var(--monitoring-blue);
-  --muted: #e4e4e7;
-  --muted-foreground: var(--monitoring-gray);
-  --accent: var(--monitoring-light);
-  --accent-foreground: var(--monitoring-blue);
-  --destructive: #ef4444;
-  --destructive-foreground: var(--monitoring-white);
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: var(--monitoring-blue);
+  --background: var(--bg-secondary);
+  --foreground: var(--text-primary);
+  --card: var(--bg-primary);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-primary);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand-blue);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--bg-primary);
+  --secondary-foreground: var(--brand-blue);
+  --muted: var(--bg-secondary);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--bg-secondary);
+  --accent-foreground: var(--brand-blue);
+  --destructive-foreground: #FFFFFF;
+  --input: var(--border);
+  --ring: var(--brand-blue);
   --radius: 0.5rem; /* Small: 8px */
 }
 
 @theme inline {
-  --color-monitoring-blue: var(--monitoring-blue);
-  --color-monitoring-orange: var(--monitoring-orange);
-  --color-monitoring-gray: var(--monitoring-gray);
-  --color-monitoring-graphite: var(--monitoring-graphite);
-  --color-monitoring-white: var(--monitoring-white);
-  --color-monitoring-light: var(--monitoring-light);
-  --color-monitoring-cyan: var(--monitoring-cyan);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-orange: var(--brand-orange);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-dark: var(--bg-dark);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
