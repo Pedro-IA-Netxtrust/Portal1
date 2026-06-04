@@ -16,8 +16,38 @@ import {
   Edit3, 
   Eye, 
   Mail, 
-  Phone 
+  Phone,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
+
+// Helper: Identificar datos faltantes esenciales
+const getDatosFaltantes = (t: Trabajador): string[] => {
+  const faltantes: string[] = [];
+  
+  // 1. Domicilio
+  if (!t.region || !t.comuna || !t.calle || !t.numero_domicilio) {
+    faltantes.push("Domicilio");
+  }
+  // 2. Contacto Emergencia
+  if (!t.nombre_contacto_emergencia || (!t.celular_personal && !t.telefono_emergencia)) {
+    faltantes.push("Contacto Emergencia");
+  }
+  // 3. Previsión y Salud
+  if (!t.afp || !t.sistema_salud) {
+    faltantes.push("Previsión/Salud");
+  }
+  // 4. Datos Bancarios
+  if (!t.banco || !t.tipo_cuenta || !t.numero_cuenta) {
+    faltantes.push("Datos Bancarios");
+  }
+  // 5. Tallas EPP
+  if (!t.talla_chaqueta || !t.talla_polera || !t.calzado_seguridad) {
+    faltantes.push("Tallas EPP");
+  }
+  
+  return faltantes;
+};
 
 export default function TrabajadoresPage() {
   const { trabajadores, deleteTrabajador, fetchTrabajadores } = useTrabajadoresStore();
@@ -30,6 +60,9 @@ export default function TrabajadoresPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedNationality, setSelectedNationality] = useState("Todas");
   const [selectedContract, setSelectedContract] = useState("Todos");
+  const [selectedWorkMode, setSelectedWorkMode] = useState("Todas");
+  const [selectedAlertStatus, setSelectedAlertStatus] = useState("Todos");
+  const [selectedDataStatus, setSelectedDataStatus] = useState("Todos");
 
   // Modal / Sidebar Trigger State
   const [formOpen, setFormOpen] = useState(false);
@@ -91,8 +124,21 @@ export default function TrabajadoresPage() {
 
     const nationalityMatch = selectedNationality === "Todas" || t.nacionalidad === selectedNationality;
     const contractMatch = selectedContract === "Todos" || t.tipo_contrato === selectedContract;
+    const workModeMatch = selectedWorkMode === "Todas" || t.modalidad_trabajo === selectedWorkMode;
 
-    return searchMatch && nationalityMatch && contractMatch;
+    const hasAlarms = checkSemaforoAlerta(t);
+    const alertMatch = 
+      selectedAlertStatus === "Todos" || 
+      (selectedAlertStatus === "Alerta" && hasAlarms) || 
+      (selectedAlertStatus === "Al Dia" && !hasAlarms);
+
+    const hasMissingData = getDatosFaltantes(t).length > 0;
+    const dataMatch = 
+      selectedDataStatus === "Todos" || 
+      (selectedDataStatus === "Incompletos" && hasMissingData) || 
+      (selectedDataStatus === "Completos" && !hasMissingData);
+
+    return searchMatch && nationalityMatch && contractMatch && workModeMatch && alertMatch && dataMatch;
   });
 
   // Calculate quick indicators
@@ -100,6 +146,7 @@ export default function TrabajadoresPage() {
   const activeAlarms = trabajadores.filter(t => checkSemaforoAlerta(t)).length;
   const uniqueNationalities = ["Todas", ...Array.from(new Set(trabajadores.map(t => t.nacionalidad)))];
   const uniqueContracts = ["Todos", "Indefinido", "Plazo Fijo", "Honorarios", "Práctica"];
+  const trabajadoresConDatosFaltantes = trabajadores.filter(t => getDatosFaltantes(t).length > 0);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
@@ -181,132 +228,269 @@ export default function TrabajadoresPage() {
           />
         </div>
 
-        {/* Nationality Filter */}
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-zinc-500" />
-          <select
-            value={selectedNationality}
-            onChange={(e) => setSelectedNationality(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
-          >
-            {uniqueNationalities.map(n => (
-              <option key={n} value={n}>{n === "Todas" ? "Todas las Nacionalidades" : n}</option>
-            ))}
-          </select>
-        </div>
+        {/* Filters Group */}
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Nationality Filter */}
+          <div className="flex items-center gap-2">
+            <Filter size={14} className="text-zinc-500" />
+            <select
+              value={selectedNationality}
+              onChange={(e) => setSelectedNationality(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+            >
+              {uniqueNationalities.map(n => (
+                <option key={n} value={n}>{n === "Todas" ? "Todas las Nacionalidades" : n}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Contract Type Filter */}
-        <div>
-          <select
-            value={selectedContract}
-            onChange={(e) => setSelectedContract(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
-          >
-            {uniqueContracts.map(c => (
-              <option key={c} value={c}>{c === "Todos" ? "Todos los Contratos" : c}</option>
-            ))}
-          </select>
+          {/* Contract Type Filter */}
+          <div>
+            <select
+              value={selectedContract}
+              onChange={(e) => setSelectedContract(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+            >
+              {uniqueContracts.map(c => (
+                <option key={c} value={c}>{c === "Todos" ? "Todos los Contratos" : c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Modalidad de Trabajo Filter (Teletrabajo) */}
+          <div>
+            <select
+              value={selectedWorkMode}
+              onChange={(e) => setSelectedWorkMode(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+            >
+              <option value="Todas">Todas las Modalidades</option>
+              <option value="Presencial">Presencial</option>
+              <option value="Teletrabajo">Teletrabajo</option>
+              <option value="Híbrido">Híbrido</option>
+            </select>
+          </div>
+
+          {/* Alertas / Vencimientos Filter */}
+          <div>
+            <select
+              value={selectedAlertStatus}
+              onChange={(e) => setSelectedAlertStatus(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+            >
+              <option value="Todos">Todas las Alertas</option>
+              <option value="Alerta">Con Vencimientos / Alertas</option>
+              <option value="Al Dia">Vigente / Sin Alertas</option>
+            </select>
+          </div>
+
+          {/* Completitud de Datos Filter */}
+          <div>
+            <select
+              value={selectedDataStatus}
+              onChange={(e) => setSelectedDataStatus(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-600 transition-colors"
+            >
+              <option value="Todos">Todos los Estados de Ficha</option>
+              <option value="Completos">Fichas Completas</option>
+              <option value="Incompletos">Fichas Incompletas (Datos Faltantes)</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Grid List View */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {filteredTrabajadores.map((trabajador) => {
-          const hasAlarms = checkSemaforoAlerta(trabajador);
-          return (
-            <div 
-              key={trabajador.id_trabajador}
-              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                {/* Identity header */}
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 font-bold text-sm">
-                      {trabajador.nombre_1[0]}{trabajador.apellido_paterno[0]}
+      {/* Grid Layout containing Listing and the Missing Data section */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        {/* Main List Column */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {filteredTrabajadores.map((trabajador) => {
+              const hasAlarms = checkSemaforoAlerta(trabajador);
+              const missingFields = getDatosFaltantes(trabajador);
+              const hasMissingData = missingFields.length > 0;
+              
+              return (
+                <div 
+                  key={trabajador.id_trabajador}
+                  className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    {/* Identity header */}
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 font-bold text-sm">
+                          {trabajador.nombre_1[0]}{trabajador.apellido_paterno[0]}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">
+                            {trabajador.nombre_1} {trabajador.apellido_paterno} {trabajador.apellido_materno}
+                          </h3>
+                          <p className="text-xs text-zinc-500 uppercase">{trabajador.tipo_identificacion}: {trabajador.numero_identificacion}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1.5">
+                        {hasAlarms && (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-bold animate-pulse">
+                            <ShieldAlert size={10} />
+                            Alerta Vencimiento
+                          </span>
+                        )}
+                        {hasMissingData && (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold" title={`Campos faltantes: ${missingFields.join(", ")}`}>
+                            <AlertTriangle size={10} />
+                            Datos Faltantes
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-white text-sm group-hover:text-blue-400 transition-colors">
-                        {trabajador.nombre_1} {trabajador.apellido_paterno} {trabajador.apellido_materno}
-                      </h3>
-                      <p className="text-xs text-zinc-500 uppercase">{trabajador.tipo_identificacion}: {trabajador.numero_identificacion}</p>
+
+                    {/* Info Rows */}
+                    <div className="space-y-1.5 text-xs text-zinc-400 pt-1 border-t border-zinc-800/40">
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CARGO</span>
+                        <span className="text-zinc-200 font-semibold">{trabajador.cargo || "No registrado"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CORREO</span>
+                        <a href={`mailto:${trabajador.email_corporativo}`} className="hover:text-white hover:underline truncate">
+                          {trabajador.email_corporativo}
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CELULAR</span>
+                        <span>{trabajador.celular_personal}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {hasAlarms && (
-                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-bold animate-pulse">
-                      <ShieldAlert size={10} />
-                      Alerta Vencimiento
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      trabajador.modalidad_trabajo === "Híbrido" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : trabajador.modalidad_trabajo === "Teletrabajo"
+                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                        : "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+                    }`}>
+                      {trabajador.modalidad_trabajo}
                     </span>
-                  )}
-                </div>
 
-                {/* Info Rows */}
-                <div className="space-y-1.5 text-xs text-zinc-400 pt-1 border-t border-zinc-800/40">
-                  <div className="flex items-center gap-2">
-                    <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CARGO</span>
-                    <span className="text-zinc-200 font-semibold">{trabajador.cargo || "No registrado"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CORREO</span>
-                    <a href={`mailto:${trabajador.email_corporativo}`} className="hover:text-white hover:underline truncate">
-                      {trabajador.email_corporativo}
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-12 text-zinc-600 font-bold uppercase text-[9px]">CELULAR</span>
-                    <span>{trabajador.celular_personal}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => handleViewDetails(trabajador)}
+                        title="Ver Ficha Completa"
+                        className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                      >
+                        <Eye size={13} />
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(trabajador.id_trabajador)}
+                        title="Editar Trabajador"
+                        className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(trabajador.id_trabajador, `${trabajador.nombre_1} ${trabajador.apellido_paterno}`)}
+                        title="Eliminar Ficha"
+                        className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+
+            {filteredTrabajadores.length === 0 && (
+              <div className="col-span-2 p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
+                <Users className="mx-auto text-zinc-600" size={32} />
+                <h4 className="text-zinc-300 font-bold text-sm">No se encontraron fichas de trabajadores</h4>
+                <p className="text-xs text-zinc-500">Pruebe ajustando el buscador o los filtros de búsqueda.</p>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  trabajador.modalidad_trabajo === "Híbrido" 
-                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                    : trabajador.modalidad_trabajo === "Teletrabajo"
-                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                    : "bg-orange-500/10 text-orange-400 border border-orange-500/20"
-                }`}>
-                  {trabajador.modalidad_trabajo}
-                </span>
-
-                <div className="flex items-center gap-1.5">
-                  <button 
-                    onClick={() => handleViewDetails(trabajador)}
-                    title="Ver Ficha Completa"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                  >
-                    <Eye size={13} />
-                  </button>
-                  <button 
-                    onClick={() => handleEdit(trabajador.id_trabajador)}
-                    title="Editar Trabajador"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                  >
-                    <Edit3 size={13} />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(trabajador.id_trabajador, `${trabajador.nombre_1} ${trabajador.apellido_paterno}`)}
-                    title="Eliminar Ficha"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {filteredTrabajadores.length === 0 && (
-          <div className="col-span-2 p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
-            <Users className="mx-auto text-zinc-600" size={32} />
-            <h4 className="text-zinc-300 font-bold text-sm">No se encontraron fichas de trabajadores</h4>
-            <p className="text-xs text-zinc-500">Pruebe ajustando el buscador o los filtros de búsqueda.</p>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Apartado de Datos Faltantes (Right Column) */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20 space-y-4">
+            <div className="flex justify-between items-center pb-2.5 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="text-amber-500" size={16} />
+                <h3 className="font-bold text-white text-sm">Fichas Incompletas</h3>
+              </div>
+              <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/20">
+                {trabajadoresConDatosFaltantes.length}
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1 scrollbar-thin">
+              {trabajadoresConDatosFaltantes.map((t) => {
+                const faltantes = getDatosFaltantes(t);
+                return (
+                  <div 
+                    key={t.id_trabajador} 
+                    className="p-3 rounded-lg bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700 transition-all space-y-2"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0">
+                        <h4 
+                          onClick={() => handleViewDetails(t)}
+                          className="text-xs font-bold text-white hover:text-blue-400 cursor-pointer transition-colors truncate"
+                          title={`Ver detalles de ${t.nombre_1} ${t.apellido_paterno}`}
+                        >
+                          {t.nombre_1} {t.apellido_paterno}
+                        </h4>
+                        <p className="text-[9px] text-zinc-500 truncate">{t.cargo || "Sin cargo"}</p>
+                      </div>
+                      
+                      <button 
+                        onClick={() => handleEdit(t.id_trabajador)}
+                        className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                        title="Completar datos"
+                      >
+                        <Edit3 size={11} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {faltantes.map((f) => {
+                        let badgeIcon = "❓";
+                        if (f === "Domicilio") badgeIcon = "🏠";
+                        if (f === "Contacto Emergencia") badgeIcon = "📞";
+                        if (f === "Previsión/Salud") badgeIcon = "🏥";
+                        if (f === "Datos Bancarios") badgeIcon = "💳";
+                        if (f === "Tallas EPP") badgeIcon = "👕";
+                        
+                        return (
+                          <span 
+                            key={f} 
+                            className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400 flex items-center gap-1"
+                            title={`Falta: ${f}`}
+                          >
+                            <span>{badgeIcon}</span>
+                            <span>{f}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {trabajadoresConDatosFaltantes.length === 0 && (
+                <div className="text-center py-8 text-zinc-500 space-y-2">
+                  <CheckCircle2 className="mx-auto text-emerald-500" size={24} />
+                  <p className="text-xs font-semibold text-zinc-300">¡Todo al día!</p>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed px-2">Todas las fichas tienen sus datos esenciales completos.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Modals */}
