@@ -1,589 +1,556 @@
 "use client";
 
-import React, { useState } from "react";
-import { useControlStore, ExamenMedico, CursoCapacitacion } from "@/store/control-store";
-import { useTrabajadoresStore } from "@/store/trabajadores-store";
-import { useMaestrosStore } from "@/store/maestros-store";
-import ControlForm from "@/components/custom/control-form";
+import React, { useState, useMemo } from "react";
 import { 
-  Plus, 
-  Search, 
-  HeartPulse, 
   GraduationCap, 
-  CheckCircle2, 
+  Activity, 
   AlertTriangle, 
-  XCircle, 
-  Trash2, 
-  Layers, 
-  Calendar,
+  ShieldAlert, 
+  Clock, 
+  CheckCircle2, 
+  XCircle,
+  Search,
+  FileText,
   User,
-  ShieldCheck,
-  Check,
-  Settings
+  Calendar,
+  Building2,
+  Stethoscope,
+  BookOpen
 } from "lucide-react";
+import { useTrabajadoresStore } from "@/store/trabajadores-store";
+import { useControlStore, AlertaControl, ControlExamen, ControlCurso } from "@/store/control-store";
 
 export default function ControlPage() {
-  const { examenes, cursos, deleteExamen, deleteCurso } = useControlStore();
-  const { trabajadores } = useTrabajadoresStore();
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
   const { 
-    examenesMaestros, 
-    cursosMaestros, 
-    addExamenMaestro, 
-    deleteExamenMaestro, 
-    addCursoMaestro, 
-    deleteCursoMaestro 
-  } = useMaestrosStore();
+    examenes, 
+    cursos, 
+    fetchControlData, 
+    getAllAlertas, 
+    getAlertasByTrabajador,
+    addExamen,
+    addCurso
+  } = useControlStore();
 
-  const [activeTab, setActiveTab] = useState<"examen" | "curso" | "maestros">("examen");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "trabajadores">("dashboard");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  // Master Forms State
-  const [newExamen, setNewExamen] = useState({
-    nombre_examen: "",
-    duracion_meses: 12,
-    descripcion: ""
-  });
+  // Nuevos formularios
+  const [showAddExamen, setShowAddExamen] = useState(false);
+  const [showAddCurso, setShowAddCurso] = useState(false);
+  const [formData, setFormData] = useState<any>({});
 
-  const [newCurso, setNewCurso] = useState({
-    nombre_curso: "",
-    duracion_meses: 12,
-    descripcion: ""
-  });
+  React.useEffect(() => {
+    fetchTrabajadores();
+    fetchControlData();
+  }, [fetchTrabajadores, fetchControlData]);
 
-  const handleAddExamenMaestro = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newExamen.nombre_examen) return;
-    addExamenMaestro({
-      nombre_examen: newExamen.nombre_examen,
-      duracion_meses: newExamen.duracion_meses,
-      descripcion: newExamen.descripcion || undefined
-    });
-    setNewExamen({ nombre_examen: "", duracion_meses: 12, descripcion: "" });
-  };
-
-  const handleAddCursoMaestro = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCurso.nombre_curso) return;
-    addCursoMaestro({
-      nombre_curso: newCurso.nombre_curso,
-      duracion_meses: newCurso.duracion_meses,
-      descripcion: newCurso.descripcion || undefined
-    });
-    setNewCurso({ nombre_curso: "", duracion_meses: 12, descripcion: "" });
-  };
-
-  // Helper: Get worker full name
-  const getWorkerName = (idWorker: string) => {
-    const worker = trabajadores.find(t => t.id_trabajador === idWorker);
-    return worker ? `${worker.nombre_1} ${worker.apellido_paterno}` : "Cargando...";
-  };
-
-  // Helper: Get worker RUT/ID
-  const getWorkerIdCard = (idWorker: string) => {
-    const worker = trabajadores.find(t => t.id_trabajador === idWorker);
-    return worker ? `${worker.tipo_identificacion}: ${worker.numero_identificacion}` : "";
-  };
-
-  // Helper: Expiration Semaphore
-  const checkVencimientoAlerta = (vencimiento?: string) => {
-    if (!vencimiento) return null;
-    const hoy = new Date();
-    const limit = new Date(vencimiento);
-    hoy.setHours(0,0,0,0);
-    limit.setHours(0,0,0,0);
-
-    const diff = limit.getTime() - hoy.getTime();
-    const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return { text: `Vencido hace ${Math.abs(diffDays)} días`, color: "text-red-400 bg-red-500/10 border-red-500/20" };
-    if (diffDays <= 30) return { text: `Expira en ${diffDays} días`, color: "text-amber-400 bg-amber-500/10 border-amber-500/20" };
-    return { text: "Vigente", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
-  };
-
-  // Filters
-  const filteredExamenes = examenes.filter((e) => {
-    const searchString = `${e.tipo_examen} ${e.resultado} ${e.entidad_evaluadora} ${getWorkerName(e.id_trabajador)}`.toLowerCase();
-    return searchString.includes(searchTerm.toLowerCase());
-  });
-
-  const filteredCursos = cursos.filter((c) => {
-    const searchString = `${c.nombre_curso} ${c.estado} ${getWorkerName(c.id_trabajador)}`.toLowerCase();
-    return searchString.includes(searchTerm.toLowerCase());
-  });
-
-  // Stats
-  const totalExams = examenes.length;
-  const totalCursos = cursos.length;
+  // Dashboard Stats
+  const todasLasAlertas = useMemo(() => getAllAlertas(), [examenes, cursos, getAllAlertas]);
   
-  // Calculate overdue alerts for occupancy
-  const overdueExams = examenes.filter(e => {
-    const status = checkVencimientoAlerta(e.fecha_vencimiento);
-    return status?.text.startsWith("Vencido");
-  }).length;
+  const stats = useMemo(() => {
+    const vencidos = todasLasAlertas.filter(a => a.alerta.nivel === "vencido").length;
+    const criticos = todasLasAlertas.filter(a => a.alerta.nivel === "critico").length; // <= 30 dias
+    const alertas = todasLasAlertas.filter(a => a.alerta.nivel === "alerta").length; // <= 60 dias
+    const pendientes = todasLasAlertas.filter(a => a.alerta.nivel === "pendiente").length;
+    return { vencidos, criticos, alertas, pendientes };
+  }, [todasLasAlertas]);
 
-  const compliedCursosRate = totalCursos > 0
-    ? Math.round((cursos.filter(c => c.estado === "Completado").length / totalCursos) * 100)
-    : 100;
+  // Trabajadores Filtrados
+  const filteredUsers = useMemo(() => {
+    if (!search.trim()) return trabajadores;
+    const lower = search.toLowerCase();
+    return trabajadores.filter(t => 
+      `${t.nombre_1} ${t.apellido_paterno}`.toLowerCase().includes(lower) ||
+      t.numero_identificacion.includes(lower)
+    );
+  }, [trabajadores, search]);
 
+  const selectedUser = useMemo(() => {
+    if (!selectedUserId) return null;
+    return trabajadores.find(t => t.id_trabajador === selectedUserId) || null;
+  }, [selectedUserId, trabajadores]);
+
+  // Handlers para formularios
+  const handleAddExamenSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId) return;
+    
+    await addExamen({
+      id_trabajador: selectedUserId,
+      tipo_examen: formData.tipo_examen,
+      fecha_realizacion: formData.fecha_realizacion,
+      fecha_vencimiento: formData.fecha_vencimiento || null,
+      resultado: formData.resultado || "Pendiente",
+      observaciones: formData.observaciones || null,
+      adjunto_url: null
+    });
+    setShowAddExamen(false);
+    setFormData({});
+  };
+
+  const handleAddCursoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId) return;
+    
+    await addCurso({
+      id_trabajador: selectedUserId,
+      nombre_curso: formData.nombre_curso,
+      institucion: formData.institucion || null,
+      modalidad: formData.modalidad || null,
+      fecha_realizacion: formData.fecha_realizacion,
+      fecha_vencimiento: formData.fecha_vencimiento || null,
+      estado: formData.estado || "Pendiente",
+      observaciones: formData.observaciones || null,
+      certificado_url: null
+    });
+    setShowAddCurso(false);
+    setFormData({});
+  };
+
+  const getBadgeStyle = (nivel: string) => {
+    switch(nivel) {
+      case "vencido": return "bg-red-500/20 text-red-400 border-red-500/30";
+      case "critico": return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+      case "alerta": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      case "pendiente": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      default: return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+    }
+  };
+
+  // VISTA: DETALLE DE TRABAJADOR
+  if (selectedUserId && selectedUser) {
+    const userExams = examenes.filter(e => e.id_trabajador === selectedUserId);
+    const userCursos = cursos.filter(c => c.id_trabajador === selectedUserId);
+    const userAlertas = getAlertasByTrabajador(selectedUserId);
+
+    return (
+      <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn">
+        {/* Encabezado */}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setSelectedUserId(null)}
+            className="p-2 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          >
+            <ArrowLeftIcon />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <User className="text-blue-500" /> 
+              Perfil de Salud y Formación
+            </h1>
+            <p className="text-sm text-zinc-400">
+              {selectedUser.nombre_1} {selectedUser.apellido_paterno} • {selectedUser.numero_identificacion}
+            </p>
+          </div>
+        </div>
+
+        {/* Alertas del Trabajador */}
+        {userAlertas.filter(a => a.nivel !== "vigente").length > 0 && (
+          <div className="p-4 rounded-xl border border-orange-500/30 bg-orange-500/5">
+            <h3 className="font-bold text-orange-400 mb-3 flex items-center gap-2">
+              <AlertTriangle size={18} /> Alertas Activas
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {userAlertas.filter(a => a.nivel !== "vigente").map(a => (
+                <div key={a.id} className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-2 ${getBadgeStyle(a.nivel)}`}>
+                  {a.tipo === "Examen" ? <Stethoscope size={14}/> : <BookOpen size={14}/>}
+                  {a.nombre}: {a.nivel === "vencido" ? "VENCIDO" : a.nivel === "pendiente" ? "PENDIENTE" : `Vence en ${a.dias_restantes} días`}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* PANEL EXAMENES */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Stethoscope className="text-blue-400" size={20}/> Exámenes Médicos
+              </h3>
+              <button 
+                onClick={() => { setShowAddExamen(true); setShowAddCurso(false); }}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+              >
+                + Registrar Examen
+              </button>
+            </div>
+
+            {/* Formulario Add Examen */}
+            {showAddExamen && (
+              <form onSubmit={handleAddExamenSubmit} className="p-4 bg-zinc-900 border border-blue-500/30 rounded-xl space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="text-xs text-zinc-400 mb-1 block">Tipo de Examen *</label>
+                    <input required type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, tipo_examen: e.target.value})} placeholder="Ej: Altura Geográfica"/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Fecha Realización *</label>
+                    <input required type="date" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, fecha_realizacion: e.target.value})}/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Fecha Vencimiento</label>
+                    <input type="date" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, fecha_vencimiento: e.target.value})}/>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-zinc-400 mb-1 block">Resultado *</label>
+                    <select required className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white"
+                      onChange={e => setFormData({...formData, resultado: e.target.value})}>
+                      <option value="">Seleccionar...</option>
+                      <option value="Aprobado">Aprobado</option>
+                      <option value="Aprobado con Observaciones">Aprobado con Observaciones</option>
+                      <option value="Rechazado">Rechazado</option>
+                      <option value="Pendiente">Pendiente</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowAddExamen(false)} className="px-3 py-1.5 text-xs font-bold text-zinc-400 hover:text-white">Cancelar</button>
+                  <button type="submit" className="px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded">Guardar</button>
+                </div>
+              </form>
+            )}
+
+            <div className="space-y-2">
+              {userExams.length === 0 ? (
+                <p className="text-sm text-zinc-500 italic p-4 text-center border border-dashed border-zinc-800 rounded-xl">No hay exámenes registrados.</p>
+              ) : (
+                userExams.map(ex => (
+                  <div key={ex.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-white text-sm">{ex.tipo_examen}</p>
+                      <p className="text-xs text-zinc-500 mt-1">Realizado: {ex.fecha_realizacion} {ex.fecha_vencimiento && `• Vence: ${ex.fecha_vencimiento}`}</p>
+                      {ex.observaciones && <p className="text-xs text-amber-500/80 mt-2">Obs: {ex.observaciones}</p>}
+                    </div>
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                      ex.resultado === "Aprobado" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                      ex.resultado.includes("Observaciones") ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" :
+                      ex.resultado === "Pendiente" ? "bg-zinc-800 text-zinc-400 border-zinc-700" :
+                      "bg-red-500/10 text-red-400 border-red-500/20"
+                    }`}>
+                      {ex.resultado}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* PANEL CURSOS */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <BookOpen className="text-purple-400" size={20}/> Cursos y Formación
+              </h3>
+              <button 
+                onClick={() => { setShowAddCurso(true); setShowAddExamen(false); }}
+                className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition-colors"
+              >
+                + Registrar Curso
+              </button>
+            </div>
+
+             {/* Formulario Add Curso */}
+             {showAddCurso && (
+              <form onSubmit={handleAddCursoSubmit} className="p-4 bg-zinc-900 border border-purple-500/30 rounded-xl space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="text-xs text-zinc-400 mb-1 block">Nombre del Curso *</label>
+                    <input required type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, nombre_curso: e.target.value})} placeholder="Ej: Inducción ODI"/>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-zinc-400 mb-1 block">Institución</label>
+                    <input type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, institucion: e.target.value})}/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Fecha Realización *</label>
+                    <input required type="date" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, fecha_realizacion: e.target.value})}/>
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-400 mb-1 block">Fecha Vencimiento</label>
+                    <input type="date" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white" 
+                      onChange={e => setFormData({...formData, fecha_vencimiento: e.target.value})}/>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-zinc-400 mb-1 block">Estado *</label>
+                    <select required className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white"
+                      onChange={e => setFormData({...formData, estado: e.target.value})}>
+                      <option value="">Seleccionar...</option>
+                      <option value="Aprobado">Aprobado</option>
+                      <option value="Reprobado">Reprobado</option>
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="No Asiste">No Asiste</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowAddCurso(false)} className="px-3 py-1.5 text-xs font-bold text-zinc-400 hover:text-white">Cancelar</button>
+                  <button type="submit" className="px-3 py-1.5 text-xs font-bold bg-purple-600 text-white rounded">Guardar</button>
+                </div>
+              </form>
+            )}
+
+            <div className="space-y-2">
+              {userCursos.length === 0 ? (
+                <p className="text-sm text-zinc-500 italic p-4 text-center border border-dashed border-zinc-800 rounded-xl">No hay cursos registrados.</p>
+              ) : (
+                userCursos.map(cu => (
+                  <div key={cu.id} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-white text-sm">{cu.nombre_curso}</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">{cu.institucion || "Sin institución"} • {cu.modalidad || "N/A"}</p>
+                      <p className="text-[10px] text-zinc-500 mt-2">Realizado: {cu.fecha_realizacion} {cu.fecha_vencimiento && `• Vence: ${cu.fecha_vencimiento}`}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                      cu.estado === "Aprobado" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                      cu.estado === "Pendiente" ? "bg-zinc-800 text-zinc-400 border-zinc-700" :
+                      "bg-red-500/10 text-red-400 border-red-500/20"
+                    }`}>
+                      {cu.estado}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // VISTA PRINCIPAL (Dashboard / Matriz)
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
+      {/* Header & Tabs */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-zinc-800 pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Cumplimiento Operativo y Formación</h1>
-          <p className="text-xs text-zinc-500">
-            Fase 3: Administra las vigencias de exámenes médicos ocupacionales y cursos de capacitación obligatorios (LMS).
-          </p>
-        </div>
-        <button
-          onClick={() => setFormOpen(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg hover:shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
-        >
-          <Plus size={16} />
-          Registrar Habilitación
-        </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
-            <HeartPulse size={18} />
-          </div>
-          <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">EXÁMENES MEDICOS</span>
-            <span className="text-lg font-bold text-white">{totalExams}</span>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <GraduationCap className="text-blue-400" size={24} />
+            Control: Cursos y Exámenes
+          </h1>
+          <p className="text-sm text-zinc-500 mt-1">Monitoreo de salud ocupacional y capacitaciones.</p>
         </div>
 
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-            <GraduationCap size={18} />
-          </div>
-          <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">CURSOS TOTALES</span>
-            <span className="text-lg font-bold text-white">{totalCursos}</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-400">
-            <ShieldCheck size={18} />
-          </div>
-          <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">CUMPLIMIENTO CURSOS</span>
-            <span className="text-lg font-bold text-white">{compliedCursosRate}%</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 flex items-center gap-3">
-          <div className={`p-2.5 rounded-lg ${overdueExams > 0 ? "bg-red-500/15 text-red-400 animate-pulse" : "bg-zinc-800 text-zinc-400"}`}>
-            <AlertTriangle size={18} />
-          </div>
-          <div>
-            <span className="text-[10px] text-zinc-500 font-bold block uppercase">EXÁMENES VENCIDOS</span>
-            <span className="text-lg font-bold text-white">{overdueExams}</span>
-          </div>
+        <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors ${
+              activeTab === "dashboard" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Activity size={16}/> Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("trabajadores")}
+            className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors ${
+              activeTab === "trabajadores" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <User size={16}/> Trabajadores
+          </button>
         </div>
       </div>
 
-      {/* Tabs Menu */}
-      <div className="flex border-b border-zinc-800 space-x-6 bg-zinc-950 px-2 flex-shrink-0">
-        <button
-          onClick={() => setActiveTab("examen")}
-          className={`py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === "examen" ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
-          }`}
-        >
-          <HeartPulse size={16} />
-          Exámenes Médicos ({totalExams})
-        </button>
-        <button
-          onClick={() => setActiveTab("curso")}
-          className={`py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === "curso" ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
-          }`}
-        >
-          <GraduationCap size={16} />
-          Cursos y Capacitación ({totalCursos})
-        </button>
-        <button
-          onClick={() => setActiveTab("maestros")}
-          className={`py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === "maestros" ? "border-blue-500 text-blue-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
-          }`}
-        >
-          <Settings size={16} />
-          ⚙️ Catálogos Maestros
-        </button>
-      </div>
-
-      {/* Search Filter (only for exams and courses tabs) */}
-      {activeTab !== "maestros" && (
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-            <input
-              type="text"
-              placeholder={activeTab === "examen" ? "Buscar por Tipo de Examen, Entidad, Resultado o Trabajador..." : "Buscar por Nombre del Curso, Estado o Trabajador..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-600 transition-colors"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Exámenes Médicos Grid */}
-      {activeTab === "examen" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn">
-          {filteredExamenes.map((e) => {
-            const sem = checkVencimientoAlerta(e.fecha_vencimiento);
-            return (
-              <div 
-                key={e.id_examen}
-                className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start gap-4">
-                    <div>
-                      <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">
-                        {getWorkerName(e.id_trabajador)}
-                      </span>
-                      <h3 className="font-bold text-white text-base group-hover:text-blue-400 transition-colors mt-0.5">
-                        {e.tipo_examen}
-                      </h3>
-                      <p className="text-[10px] text-zinc-500">{getWorkerIdCard(e.id_trabajador)}</p>
-                    </div>
-
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      e.resultado === "Aprobado" 
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                        : e.resultado === "Pendiente"
-                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                        : "bg-red-500/10 text-red-400 border border-red-500/20"
-                    }`}>
-                      {e.resultado}
-                    </span>
-                  </div>
-
-                  {/* Date specs card */}
-                  <div className="p-3 bg-zinc-950/50 rounded-lg border border-zinc-900/60 text-xs text-zinc-400 space-y-2">
-                    <div className="flex justify-between py-0.5">
-                      <span>Evaluado en</span>
-                      <strong className="text-white">{e.fecha_evaluacion}</strong>
-                    </div>
-                    <div className="flex justify-between py-0.5">
-                      <span>Entidad Evaluadora</span>
-                      <strong className="text-white">{e.entidad_evaluadora}</strong>
-                    </div>
-                    <div className="flex justify-between py-0.5">
-                      <span>Fecha Vencimiento</span>
-                      <strong className="text-white">{e.fecha_vencimiento}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer and Semaphores */}
-                <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
-                  {sem && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${sem.color}`}>
-                      {sem.text}
-                    </span>
-                  )}
-
-                  <button
-                    onClick={() => deleteExamen(e.id_examen)}
-                    title="Eliminar Registro"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all ml-auto cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredExamenes.length === 0 && (
-            <div className="col-span-2 p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
-              <Layers className="mx-auto text-zinc-700" size={32} />
-              <h4 className="text-zinc-300 font-bold text-sm">No se encontraron exámenes registrados</h4>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Cursos y Capacitación Grid */}
-      {activeTab === "curso" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn">
-          {filteredCursos.map((c) => {
-            const sem = checkVencimientoAlerta(c.fecha_vencimiento);
-            return (
-              <div 
-                key={c.id_curso}
-                className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-all group flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start gap-4">
-                    <div>
-                      <span className="text-[10px] text-zinc-500 font-bold block uppercase tracking-wider">
-                        {getWorkerName(c.id_trabajador)}
-                      </span>
-                      <h3 className="font-bold text-white text-base group-hover:text-blue-400 transition-colors mt-0.5">
-                        {c.nombre_curso}
-                      </h3>
-                      <p className="text-[10px] text-zinc-500">{getWorkerIdCard(c.id_trabajador)}</p>
-                    </div>
-
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      c.estado === "Completado" 
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                        : c.estado === "En Curso"
-                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                        : "bg-red-500/10 text-red-400 border border-red-500/20"
-                    }`}>
-                      {c.estado}
-                    </span>
-                  </div>
-
-                  {/* Date specs card */}
-                  <div className="p-3 bg-zinc-950/50 rounded-lg border border-zinc-900/60 text-xs text-zinc-400 space-y-2">
-                    <div className="flex justify-between py-0.5">
-                      <span>Fecha Capacitación</span>
-                      <strong className="text-white">{c.fecha_capacitacion}</strong>
-                    </div>
-                    {c.fecha_vencimiento && (
-                      <div className="flex justify-between py-0.5">
-                        <span>Vencimiento</span>
-                        <strong className="text-white">{c.fecha_vencimiento}</strong>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer and Semaphores */}
-                <div className="flex justify-between items-center mt-5 pt-3 border-t border-zinc-800/40">
-                  {sem && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${sem.color}`}>
-                      {sem.text}
-                    </span>
-                  )}
-
-                  <button
-                    onClick={() => deleteCurso(c.id_curso)}
-                    title="Eliminar Registro"
-                    className="p-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all ml-auto cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredCursos.length === 0 && (
-            <div className="col-span-2 p-12 text-center border border-zinc-800 border-dashed rounded-xl space-y-2">
-              <Layers className="mx-auto text-zinc-700" size={32} />
-              <h4 className="text-zinc-300 font-bold text-sm">No se encontraron cursos registrados</h4>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Catálogos Maestros (Administrative UI Dashboard) */}
-      {activeTab === "maestros" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
-          {/* Exámenes Médicos Maestros */}
-          <div className="space-y-6">
-            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-4">
-              <div className="flex justify-between items-center">
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          {/* Stats KPI */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/5">
+              <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <HeartPulse className="text-red-400" size={18} />
-                    Catálogo Maestro de Exámenes
-                  </h2>
-                  <p className="text-[11px] text-zinc-500">
-                    Define la lista oficial de exámenes médicos y sus vigencias reglamentarias por defecto.
-                  </p>
+                  <p className="text-xs text-red-400/80 font-bold uppercase">Vencidos</p>
+                  <p className="text-3xl font-bold text-red-400 mt-1">{stats.vencidos}</p>
                 </div>
+                <XCircle className="text-red-500/50" size={24}/>
               </div>
-
-              {/* Add Examen Maestro Form */}
-              <form onSubmit={handleAddExamenMaestro} className="p-4 rounded-lg bg-zinc-950/60 border border-zinc-900/80 space-y-3">
-                <span className="text-xs font-bold text-zinc-300 block">➕ Crear Nuevo Examen Maestro</span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Nombre del Examen</label>
-                    <input
-                      type="text"
-                      placeholder="Ej: Altura Física > 1.8m"
-                      value={newExamen.nombre_examen}
-                      onChange={(e) => setNewExamen({ ...newExamen, nombre_examen: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Duración (Meses)</label>
-                    <input
-                      type="number"
-                      placeholder="Ej: 12"
-                      value={newExamen.duracion_meses || ""}
-                      onChange={(e) => setNewExamen({ ...newExamen, duracion_meses: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                      required
-                      min={1}
-                    />
-                  </div>
+            </div>
+            
+            <div className="p-4 rounded-xl border border-orange-500/30 bg-orange-500/5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs text-orange-400/80 font-bold uppercase">Crítico (≤ 30 días)</p>
+                  <p className="text-3xl font-bold text-orange-400 mt-1">{stats.criticos}</p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-bold uppercase">Descripción (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Detalles técnicos o notas sobre este examen..."
-                    value={newExamen.descripcion}
-                    onChange={(e) => setNewExamen({ ...newExamen, descripcion: e.target.value })}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors cursor-pointer"
-                >
-                  Agregar Examen
-                </button>
-              </form>
+                <ShieldAlert className="text-orange-500/50" size={24}/>
+              </div>
+            </div>
 
-              {/* Master Exams List */}
-              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                {examenesMaestros.map((em) => (
-                  <div 
-                    key={em.id_examen_maestro} 
-                    className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900/40 transition-colors flex justify-between items-start gap-4 group"
-                  >
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">{em.nombre_examen}</h3>
-                      {em.descripcion && <p className="text-[10px] text-zinc-500">{em.descripcion}</p>}
-                      <span className="text-[9px] font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800/80 px-2 py-0.5 rounded-full inline-block mt-1">
-                        ⏱️ Vigencia: {em.duracion_meses} meses
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => deleteExamenMaestro(em.id_examen_maestro)}
-                      className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Eliminar del catálogo"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-                {examenesMaestros.length === 0 && (
-                  <p className="text-center py-6 text-xs text-zinc-600">No hay exámenes registrados en el catálogo maestro.</p>
-                )}
+            <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs text-yellow-400/80 font-bold uppercase">Alerta (≤ 60 días)</p>
+                  <p className="text-3xl font-bold text-yellow-400 mt-1">{stats.alertas}</p>
+                </div>
+                <AlertTriangle className="text-yellow-500/50" size={24}/>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs text-blue-400/80 font-bold uppercase">Pendientes / Incompletos</p>
+                  <p className="text-3xl font-bold text-blue-400 mt-1">{stats.pendientes}</p>
+                </div>
+                <Clock className="text-blue-500/50" size={24}/>
               </div>
             </div>
           </div>
 
-          {/* Cursos Maestros */}
-          <div className="space-y-6">
-            <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30 space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <GraduationCap className="text-emerald-400" size={18} />
-                    Catálogo Maestro de Cursos
-                  </h2>
-                  <p className="text-[11px] text-zinc-500">
-                    Define las capacitaciones corporativas, inducciones y certificaciones obligatorias por defecto.
-                  </p>
-                </div>
-              </div>
-
-              {/* Add Curso Maestro Form */}
-              <form onSubmit={handleAddCursoMaestro} className="p-4 rounded-lg bg-zinc-950/60 border border-zinc-900/80 space-y-3">
-                <span className="text-xs font-bold text-zinc-300 block">➕ Crear Nuevo Curso Maestro</span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Nombre del Curso</label>
-                    <input
-                      type="text"
-                      placeholder="Ej: Inducción de Seguridad SOMA"
-                      value={newCurso.nombre_curso}
-                      onChange={(e) => setNewCurso({ ...newCurso, nombre_curso: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Duración (Meses)</label>
-                    <input
-                      type="number"
-                      placeholder="Ej: 12"
-                      value={newCurso.duracion_meses || ""}
-                      onChange={(e) => setNewCurso({ ...newCurso, duracion_meses: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                      required
-                      min={1}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-bold uppercase">Descripción (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Detalles sobre los contenidos o alcance de la capacitación..."
-                    value={newCurso.descripcion}
-                    onChange={(e) => setNewCurso({ ...newCurso, descripcion: e.target.value })}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors cursor-pointer"
-                >
-                  Agregar Curso
-                </button>
-              </form>
-
-              {/* Master Courses List */}
-              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                {cursosMaestros.map((cm) => (
-                  <div 
-                    key={cm.id_curso_maestro} 
-                    className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900/40 transition-colors flex justify-between items-start gap-4 group"
-                  >
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">{cm.nombre_curso}</h3>
-                      {cm.descripcion && <p className="text-[10px] text-zinc-500">{cm.descripcion}</p>}
-                      <span className="text-[9px] font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800/80 px-2 py-0.5 rounded-full inline-block mt-1">
-                        ⏱️ Vigencia: {cm.duracion_meses} meses
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => deleteCursoMaestro(cm.id_curso_maestro)}
-                      className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Eliminar del catálogo"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-                {cursosMaestros.length === 0 && (
-                  <p className="text-center py-6 text-xs text-zinc-600">No hay cursos registrados en el catálogo maestro.</p>
-                )}
-              </div>
+          {/* Tabla de Vencimientos Próximos */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden">
+            <div className="p-4 border-b border-zinc-800 bg-zinc-900/50">
+              <h3 className="font-bold text-white flex items-center gap-2"><Calendar size={18} className="text-zinc-400"/> Próximos Vencimientos y Alertas</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-[10px] text-zinc-500 uppercase bg-zinc-900/80 border-b border-zinc-800">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Nivel</th>
+                    <th className="px-4 py-3 font-bold">Tipo</th>
+                    <th className="px-4 py-3 font-bold">Trabajador</th>
+                    <th className="px-4 py-3 font-bold">Certificación / Examen</th>
+                    <th className="px-4 py-3 font-bold">Vencimiento</th>
+                    <th className="px-4 py-3 font-bold">Estado actual</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {todasLasAlertas.filter(a => a.alerta.nivel !== "vigente").slice(0, 15).map((item, i) => {
+                    const tr = trabajadores.find(t => t.id_trabajador === item.trabajador_id);
+                    const { alerta } = item;
+                    return (
+                      <tr key={i} className="hover:bg-zinc-800/20 transition-colors">
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-bold border ${getBadgeStyle(alerta.nivel)}`}>
+                            {alerta.nivel.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-400 text-xs">
+                          {alerta.tipo === "Examen" ? <span className="flex items-center gap-1"><Stethoscope size={12}/> Examen</span> : <span className="flex items-center gap-1"><BookOpen size={12}/> Curso</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-zinc-200">{tr ? `${tr.nombre_1} ${tr.apellido_paterno}` : "Desconocido"}</p>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-white">{alerta.nombre}</td>
+                        <td className="px-4 py-3 text-zinc-300">
+                          {alerta.fecha_vencimiento || "—"} 
+                          {alerta.dias_restantes !== null && (
+                            <span className="text-[10px] text-zinc-500 ml-2">({alerta.dias_restantes} d)</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-zinc-500">{alerta.estado_texto}</td>
+                      </tr>
+                    );
+                  })}
+                  {todasLasAlertas.filter(a => a.alerta.nivel !== "vigente").length === 0 && (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 italic">No hay alertas críticas en este momento.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
 
-      {/* Form Modal */}
-      {formOpen && (
-        <ControlForm 
-          onClose={() => setFormOpen(false)} 
-        />
+      {activeTab === "trabajadores" && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/20 overflow-hidden flex flex-col h-[600px]">
+          <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 flex gap-4 items-center">
+            <div className="relative flex-1 min-w-[250px] max-w-sm">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+              <input 
+                type="text" 
+                placeholder="Buscar trabajador..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-[10px] text-zinc-500 uppercase bg-zinc-900/80 sticky top-0 z-10 border-b border-zinc-800">
+                <tr>
+                  <th className="px-4 py-3 font-bold">Trabajador</th>
+                  <th className="px-4 py-3 font-bold">Cargo</th>
+                  <th className="px-4 py-3 font-bold">Estado General Exámenes</th>
+                  <th className="px-4 py-3 font-bold">Estado General Cursos</th>
+                  <th className="px-4 py-3 font-bold text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/40">
+                {filteredUsers.map((t) => {
+                  const alertas = getAlertasByTrabajador(t.id_trabajador);
+                  const alertasExamen = alertas.filter(a => a.tipo === "Examen");
+                  const alertasCurso = alertas.filter(a => a.tipo === "Curso");
+
+                  const highestExamen = alertasExamen.find(a => a.nivel === "vencido") || 
+                                        alertasExamen.find(a => a.nivel === "critico") || 
+                                        alertasExamen.find(a => a.nivel === "alerta") || 
+                                        alertasExamen.find(a => a.nivel === "pendiente");
+                  
+                  const highestCurso = alertasCurso.find(a => a.nivel === "vencido") || 
+                                       alertasCurso.find(a => a.nivel === "critico") || 
+                                       alertasCurso.find(a => a.nivel === "alerta") || 
+                                       alertasCurso.find(a => a.nivel === "pendiente");
+
+                  return (
+                    <tr key={t.id_trabajador} className="hover:bg-zinc-800/20 transition-colors group cursor-pointer" onClick={() => setSelectedUserId(t.id_trabajador)}>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-zinc-200">{t.nombre_1} {t.apellido_paterno}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{t.numero_identificacion}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs text-zinc-300">{t.cargo || '—'}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {highestExamen ? (
+                          <span className={`px-2 py-1 rounded border text-[10px] font-bold ${getBadgeStyle(highestExamen.nivel)}`}>
+                            {highestExamen.nivel.toUpperCase()}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-500 font-bold"><CheckCircle2 size={12} className="inline mr-1"/>AL DÍA</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {highestCurso ? (
+                          <span className={`px-2 py-1 rounded border text-[10px] font-bold ${getBadgeStyle(highestCurso.nivel)}`}>
+                            {highestCurso.nivel.toUpperCase()}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-500 font-bold"><CheckCircle2 size={12} className="inline mr-1"/>AL DÍA</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button className="opacity-0 group-hover:opacity-100 text-blue-400 text-xs font-bold hover:text-blue-300 transition-all">
+                          Ver Detalle →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
+  );
+}
+
+// Icono simple de flecha
+function ArrowLeftIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 19-7-7 7-7"/>
+      <path d="M19 12H5"/>
+    </svg>
   );
 }

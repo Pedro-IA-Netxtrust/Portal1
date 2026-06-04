@@ -72,7 +72,7 @@ export default function Home() {
   };
 
   // Helper: Calculate remaining days
-  const getDaysRemaining = (dateStr?: string) => {
+  const getDaysRemaining = (dateStr?: string | null) => {
     if (!dateStr) return 999;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -177,17 +177,19 @@ export default function Home() {
 
   // 3. Scan registered exams & courses in Control Store
   examenes.forEach(e => {
-    const days = getDaysRemaining(e.fecha_vencimiento);
-    if (days <= 30) {
-      addAlertUnique({
-        id: `e-ctrl-${e.id_examen}`,
-        tipo: "Examen",
-        item: e.tipo_examen,
-        responsable: getWorkerName(e.id_trabajador),
-        fecha_vencimiento: e.fecha_vencimiento,
-        dias_restantes: days,
-        urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-      });
+    if (e.fecha_vencimiento) {
+      const days = getDaysRemaining(e.fecha_vencimiento);
+      if (days <= 30) {
+        addAlertUnique({
+          id: `e-ctrl-${e.id}`,
+          tipo: "Examen",
+          item: e.tipo_examen,
+          responsable: getWorkerName(e.id_trabajador),
+          fecha_vencimiento: e.fecha_vencimiento,
+          dias_restantes: days,
+          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
+        });
+      }
     }
   });
 
@@ -196,7 +198,7 @@ export default function Home() {
       const days = getDaysRemaining(c.fecha_vencimiento);
       if (days <= 30) {
         addAlertUnique({
-          id: `c-ctrl-${c.id_curso}`,
+          id: `c-ctrl-${c.id}`,
           tipo: "Curso",
           item: c.nombre_curso,
           responsable: getWorkerName(c.id_trabajador),
