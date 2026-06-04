@@ -48,39 +48,39 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
   return (
     <aside 
-      className={`relative flex flex-col bg-card border-r border-border transition-all duration-300 ${
+      className={`relative flex flex-col bg-primary text-text-inverse transition-all duration-300 z-50 shadow-lg ${
         isCollapsed ? "w-20" : "w-64"
       } ${className}`}
     >
       {/* Logo Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-        <Link href="/" className="flex items-center gap-2 font-bold tracking-wider">
-          <div className="w-8 h-8 rounded-lg bg-brand-blue flex items-center justify-center text-white font-black text-lg">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
+        <Link href="/" className="flex items-center gap-3 font-bold tracking-wider">
+          <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-primary font-black text-xl shadow-sm">
             M
           </div>
           {!isCollapsed && (
-            <span className="text-text-primary text-lg font-bold">
+            <span className="text-text-inverse text-lg font-black tracking-widest">
               MONITORING
             </span>
           )}
         </Link>
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-md hover:bg-bg-secondary text-text-secondary hover:text-brand-blue transition-colors border border-transparent hover:border-border"
+          className="p-1.5 rounded-md hover:bg-white/10 text-white/70 hover:text-white transition-colors"
         >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
 
       {/* Quick Search */}
       {!isCollapsed && (
-        <div className="px-4 py-4">
+        <div className="px-4 py-5">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-secondary" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-white/50" />
             <input 
               type="text" 
               placeholder="Buscar trabajador o RUT..." 
-              className="w-full bg-bg-secondary border border-border text-text-primary rounded-md py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition-all"
+              className="w-full bg-white/10 border border-transparent text-white rounded-lg py-2 pl-9 pr-4 text-xs font-medium placeholder:text-white/50 focus:outline-none focus:bg-white/20 focus:ring-1 focus:ring-white/30 transition-all"
             />
           </div>
         </div>
@@ -96,13 +96,16 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all group relative ${
+              className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all group relative ${
                 isActive 
-                  ? "bg-brand-blue/10 text-brand-blue border border-brand-blue/20" 
-                  : "text-text-secondary hover:text-brand-blue hover:bg-bg-secondary border border-transparent"
+                  ? "bg-[#112f68] text-white font-bold shadow-inner" 
+                  : "text-white/75 font-semibold hover:text-white hover:bg-white/10"
               }`}
             >
-              <Icon size={18} className={`flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-brand-blue" : "text-text-secondary"}`} />
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-secondary rounded-r-md"></div>
+              )}
+              <Icon size={18} className={`flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-secondary" : "text-white/75"}`} />
               
               {!isCollapsed && (
                 <span className="flex-1 truncate">{item.name}</span>
@@ -110,10 +113,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
               {/* Badge */}
               {!isCollapsed && item.badge && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                  item.badge === "New" 
-                    ? "bg-warning/10 text-warning border border-warning/20" 
-                    : "bg-brand-blue/10 text-brand-blue border border-brand-blue/20"
+                <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  item.badge === "New" || item.badge === "Nuevo"
+                    ? "bg-secondary text-white" 
+                    : "bg-white/20 text-white"
                 }`}>
                   {item.badge}
                 </span>
@@ -121,7 +124,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
               {/* Tooltip for collapsed view */}
               {isCollapsed && (
-                <div className="absolute left-full ml-4 px-3 py-1.5 bg-text-primary border border-text-secondary text-white text-xs font-semibold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-level-2">
+                <div className="absolute left-full ml-4 px-3 py-1.5 bg-[#0b1f47] text-white text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg border border-white/10">
                   {item.name}
                 </div>
               )}
@@ -131,15 +134,15 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       </nav>
 
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-border bg-bg-secondary/50 space-y-2">
+      <div className="p-4 border-t border-white/10 bg-black/10 space-y-2">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-brand-blue font-bold border border-border shadow-sm text-xs">
+          <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white font-bold text-sm">
             OP
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-text-primary truncate">Operador General</p>
-              <span className="text-[11px] text-text-secondary font-medium block truncate">soporte@monitoring.cl</span>
+              <p className="text-sm font-bold text-white truncate">Operador General</p>
+              <span className="text-[11px] text-white/60 font-medium block truncate">soporte@monitoring.cl</span>
             </div>
           )}
         </div>

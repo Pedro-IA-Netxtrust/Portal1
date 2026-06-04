@@ -268,53 +268,53 @@ export default function Home() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Welcome Banner */}
-      <section className="relative overflow-hidden rounded-[20px] border border-border bg-card p-8 shadow-level-2">
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-bg-secondary text-brand-blue border border-border">
-              <Sparkles size={14} />
-              <span>Control Operativo Inteligente</span>
+      <section className="hero-shell">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          <div className="space-y-4">
+            <div className="hero-kicker">
+              <Sparkles size={16} />
+              <span>Control Operativo Avanzado</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
+            <h1 className="hero-title">
               Portal Monitoring SPA
             </h1>
-            <p className="text-sm text-text-secondary max-w-xl font-medium">
-              Bienvenido al centro de mando operativo unificado. Aquí tienes visibilidad en tiempo real de todos tus trabajadores, contratos, tickets TI y vigencias próximas a vencer.
+            <p className="hero-copy">
+              Bienvenido al centro de mando operativo unificado. Aquí tienes visibilidad en tiempo real de todos tus trabajadores, contratos, tickets de TI y la matriz de vigencias próxima a vencer.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <Link 
               href="/control"
-              className="px-5 py-2.5 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-lg text-sm font-bold transition-all shadow-level-1 flex items-center gap-2 cursor-pointer"
+              className="btn btn-accent text-sm"
             >
               Registrar Habilitación
-              <ArrowUpRight size={16} />
+              <ArrowUpRight size={18} />
             </Link>
           </div>
         </div>
       </section>
 
       {/* Real-time Metrics Grid */}
-      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="stats-grid">
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
             <Link 
               key={metric.name}
               href={metric.link}
-              className="block group rounded-xl border border-border bg-card p-6 hover:shadow-level-2 transition-all duration-300"
+              className="stat-box group block no-underline"
             >
-              <div className="flex justify-between items-start">
-                <span className="text-text-secondary text-xs font-bold tracking-wider uppercase truncate">
+              <div className="flex justify-between items-start mb-2">
+                <span className="label">
                   {metric.name}
                 </span>
-                <div className={`p-2 rounded-lg ${metric.color} transition-transform group-hover:scale-110`}>
-                  <Icon size={18} />
+                <div className="text-primary transition-transform group-hover:scale-110">
+                  <Icon size={24} strokeWidth={2.5} />
                 </div>
               </div>
-              <div className="mt-4">
-                <span className="text-3xl font-bold text-text-primary tracking-tight">{metric.value}</span>
-                <span className="text-xs text-text-secondary block mt-1 font-medium">{metric.change}</span>
+              <div className="value">{metric.value}</div>
+              <div className="meta flex items-center gap-1.5">
+                {metric.change}
               </div>
             </Link>
           );
@@ -325,42 +325,42 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Real-time Alerts: Próximos a Vencer (2/3 width) */}
-        <section className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-level-1">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className={alertas.length > 0 ? "text-warning" : "text-text-secondary"} size={20} />
-              <h2 className="text-lg font-bold text-text-primary">Alertas y Vencimientos Críticos</h2>
-            </div>
-            <span className="text-xs text-text-secondary font-bold uppercase tracking-wider bg-bg-secondary px-2.5 py-1 rounded">Próximos 30 días</span>
+        <section className="lg:col-span-2 card">
+          <div className="card-header items-center border-b border-border pb-4 mb-4">
+            <h2 className="card-title flex items-center gap-2">
+              <AlertTriangle className={alertas.length > 0 ? "text-warning" : "text-text-soft"} size={22} strokeWidth={2.5} />
+              Alertas y Vencimientos Críticos
+            </h2>
+            <span className="badge badge-orange">Próximos 30 días</span>
           </div>
 
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
             {alertas.map((alerta) => (
               <div 
                 key={alerta.id}
-                className={`p-4 rounded-lg border transition-all flex justify-between items-center gap-4 ${
+                className={`p-4 rounded-xl border transition-all flex justify-between items-center gap-4 ${
                   alerta.urgencia === "CRITICA"
-                    ? "bg-destructive/5 border-destructive/20" 
+                    ? "bg-danger/5 border-danger/20" 
                     : "bg-warning/5 border-warning/20"
                 }`}
               >
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                      alerta.urgencia === "CRITICA" ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-warning/10 text-warning border border-warning/20"
+                      alerta.urgencia === "CRITICA" ? "bg-danger/10 text-danger border border-danger/20" : "bg-warning/10 text-warning border border-warning/20"
                     }`}>
                       {alerta.tipo}
                     </span>
-                    <h3 className="text-sm font-bold text-text-primary">{alerta.item}</h3>
+                    <h3 className="text-sm font-bold text-text">{alerta.item}</h3>
                   </div>
-                  <p className="text-xs text-text-secondary font-medium">
-                    Responsable: <strong className="text-text-primary font-bold">{alerta.responsable}</strong>
+                  <p className="text-xs text-text-soft font-medium">
+                    Responsable: <strong className="text-text font-bold">{alerta.responsable}</strong>
                   </p>
                 </div>
 
                 <div className="text-right flex-shrink-0">
                   <span className={`text-sm font-bold block ${
-                    alerta.urgencia === "CRITICA" ? "text-destructive" : "text-warning"
+                    alerta.urgencia === "CRITICA" ? "text-danger" : "text-warning"
                   }`}>
                     {alerta.dias_restantes < 0 
                       ? `Vencido hace ${Math.abs(alerta.dias_restantes)} días` 
@@ -369,19 +369,19 @@ export default function Home() {
                       : `Expira en ${alerta.dias_restantes} días`
                     }
                   </span>
-                  <span className="text-[11px] text-text-secondary block mt-0.5 font-medium">{alerta.fecha_vencimiento}</span>
+                  <span className="text-[11px] text-text-muted block mt-0.5 font-medium">{alerta.fecha_vencimiento}</span>
                 </div>
               </div>
             ))}
 
             {alertas.length === 0 && (
-              <div className="p-12 text-center border border-border border-dashed rounded-xl bg-bg-secondary/50">
-                <div className="w-14 h-14 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center mx-auto mb-4">
+              <div className="p-12 text-center border border-border border-dashed rounded-2xl bg-bg-alt/50">
+                <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
                   <ShieldCheck size={28} />
                 </div>
                 <div>
-                  <h4 className="text-text-primary font-bold text-base">Cumplimiento Operativo Óptimo</h4>
-                  <p className="text-sm text-text-secondary mt-1 max-w-sm mx-auto font-medium">
+                  <h4 className="text-text font-bold text-base">Cumplimiento Operativo Óptimo</h4>
+                  <p className="text-sm text-text-soft mt-1 max-w-sm mx-auto font-medium">
                     Todas las licencias, revisiones técnicas, cursos y exámenes se encuentran al día.
                   </p>
                 </div>
@@ -391,28 +391,30 @@ export default function Home() {
         </section>
 
         {/* Operational breakdown & urgent IT support (1/3 width) */}
-        <div className="space-y-8">
+        <div className="space-y-6">
           
           {/* IT Assets Allocations */}
-          <section className="rounded-xl border border-border bg-card p-6 shadow-level-1">
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 mb-6">
-              <Cpu className="text-brand-blue" size={18} />
-              Distribución de Activos
-            </h2>
+          <section className="card card-accent-top">
+            <div className="card-header border-b border-border pb-4 mb-4">
+              <h2 className="card-title flex items-center gap-2">
+                <Cpu size={20} strokeWidth={2.5} />
+                Distribución de Activos
+              </h2>
+            </div>
             
             <div className="space-y-5 text-sm font-medium">
               {/* Vehicles */}
               <div className="space-y-2">
-                <div className="flex justify-between text-text-secondary">
+                <div className="flex justify-between text-text-soft">
                   <span className="flex items-center gap-2">
-                    <Car size={16} />
+                    <Car size={18} />
                     Flota de Vehículos
                   </span>
-                  <strong className="text-text-primary">{vehiculosAsignados} / {totalVehiculos} Asignados</strong>
+                  <strong className="text-text">{vehiculosAsignados} / {totalVehiculos} Asignados</strong>
                 </div>
-                <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-border rounded-full h-2.5 overflow-hidden">
                   <div 
-                    className="bg-brand-blue h-2 rounded-full" 
+                    className="bg-primary h-2.5 rounded-full" 
                     style={{ width: `${totalVehiculos > 0 ? (vehiculosAsignados / totalVehiculos) * 100 : 0}%` }}
                   ></div>
                 </div>
@@ -423,16 +425,16 @@ export default function Home() {
 
               {/* Laptops */}
               <div className="space-y-2">
-                <div className="flex justify-between text-text-secondary">
+                <div className="flex justify-between text-text-soft">
                   <span className="flex items-center gap-2">
-                    <Laptop size={16} />
+                    <Laptop size={18} />
                     Notebooks
                   </span>
-                  <strong className="text-text-primary">{notebooksAsignados} / {totalNotebooks} Asignados</strong>
+                  <strong className="text-text">{notebooksAsignados} / {totalNotebooks} Asignados</strong>
                 </div>
-                <div className="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-border rounded-full h-2.5 overflow-hidden">
                   <div 
-                    className="bg-brand-blue h-2 rounded-full" 
+                    className="bg-primary h-2.5 rounded-full" 
                     style={{ width: `${totalNotebooks > 0 ? (notebooksAsignados / totalNotebooks) * 100 : 0}%` }}
                   ></div>
                 </div>
@@ -441,25 +443,27 @@ export default function Home() {
           </section>
 
           {/* Urgent Support Tickets */}
-          <section className="rounded-xl border border-border bg-card p-6 shadow-level-1 flex flex-col justify-between">
+          <section className="card flex flex-col justify-between">
             <div className="space-y-5">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <Ticket className="text-brand-blue" size={18} />
-                Soporte TI Crítico
-              </h2>
+              <div className="card-header border-b border-border pb-4 mb-4">
+                <h2 className="card-title flex items-center gap-2">
+                  <Ticket size={20} strokeWidth={2.5} />
+                  Soporte TI Crítico
+                </h2>
+              </div>
               
               <div className="space-y-3">
                 {tickets.filter(t => t.estado !== "Cerrado").slice(0, 3).map(tk => (
-                  <div key={tk.id_ticket} className="p-3 rounded-lg bg-bg-secondary border border-border flex justify-between items-start gap-3 text-sm">
+                  <div key={tk.id_ticket} className="p-3.5 rounded-xl bg-bg-alt border border-border flex justify-between items-start gap-3 text-sm">
                     <div>
-                      <span className="text-[10px] text-text-secondary block uppercase font-bold tracking-wider">{tk.codigo_ticket}</span>
-                      <strong className="text-text-primary block truncate max-w-[140px] font-bold">{tk.asunto}</strong>
-                      <span className="text-[11px] text-text-secondary block mt-0.5 font-medium">Por: {getWorkerName(tk.id_trabajador_solicitante)}</span>
+                      <span className="text-[10px] text-text-soft block uppercase font-bold tracking-wider">{tk.codigo_ticket}</span>
+                      <strong className="text-text block truncate max-w-[140px] font-bold">{tk.asunto}</strong>
+                      <span className="text-[11px] text-text-soft block mt-0.5 font-medium">Por: {getWorkerName(tk.id_trabajador_solicitante)}</span>
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase ${
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded tracking-wider uppercase ${
                       tk.prioridad === "Critica" || tk.prioridad === "Alta"
-                        ? "bg-destructive/10 text-destructive border border-destructive/20"
-                        : "bg-text-secondary/10 text-text-secondary border border-text-secondary/20"
+                        ? "bg-danger/10 text-danger border border-danger/20"
+                        : "bg-text-soft/10 text-text-soft border border-text-soft/20"
                     }`}>
                       {tk.prioridad}
                     </span>
@@ -467,18 +471,20 @@ export default function Home() {
                 ))}
 
                 {tickets.filter(t => t.estado !== "Cerrado").length === 0 && (
-                  <p className="text-center py-5 text-xs text-text-secondary font-medium">No hay tickets de soporte abiertos.</p>
+                  <p className="text-center py-5 text-xs text-text-soft font-medium">No hay tickets de soporte abiertos.</p>
                 )}
               </div>
             </div>
 
-            <Link 
-              href="/tickets" 
-              className="mt-6 pt-4 border-t border-border flex items-center justify-between text-sm text-brand-blue hover:text-brand-blue/80 font-bold group cursor-pointer"
-            >
-              Ver panel de Soporte TI
-              <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-            </Link>
+            <div className="card-footer pb-0 mb-0 mt-4">
+              <Link 
+                href="/tickets" 
+                className="w-full flex items-center justify-between text-sm text-primary hover:text-primary-hover font-bold group cursor-pointer"
+              >
+                Ver panel de Soporte TI
+                <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
           </section>
 
         </div>
