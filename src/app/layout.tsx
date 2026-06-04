@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/custom/sidebar";
 import { Bell, CloudLightning, ShieldAlert } from "lucide-react";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,47 +23,47 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${montserrat.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex bg-zinc-950 text-zinc-100 font-sans">
+      <body className="min-h-full flex bg-background text-foreground font-sans">
         {/* Main Panel */}
         <div className="flex w-full min-h-screen">
           {/* Sidebar */}
           <Sidebar />
 
           {/* App Area */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
             {/* Header / Topbar */}
-            <header className="h-16 border-b border-zinc-800 bg-zinc-950/70 backdrop-blur-md flex items-center justify-between px-6 z-10">
+            <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 z-10 shadow-level-1">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-xs font-semibold text-zinc-400 tracking-wider uppercase">
+                <span className="h-2 w-2 rounded-full bg-monitoring-cyan animate-pulse"></span>
+                <span className="text-xs font-bold text-monitoring-graphite tracking-wider uppercase">
                   Base Central Operativa
                 </span>
               </div>
               
               <div className="flex items-center gap-4">
                 {/* System Status Indicators */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-md text-xs font-medium">
-                  <CloudLightning size={12} />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-monitoring-light border border-border text-monitoring-blue rounded-md text-xs font-semibold">
+                  <CloudLightning size={14} />
                   <span>Conexión Estable</span>
                 </div>
 
                 {/* Notifications Button */}
-                <button className="relative p-1.5 rounded-lg hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-800">
-                  <Bell size={16} />
-                  <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                <button className="relative p-2 rounded-lg hover:bg-monitoring-light text-monitoring-gray hover:text-monitoring-blue transition-colors border border-transparent hover:border-border">
+                  <Bell size={18} />
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-monitoring-orange border-2 border-white"></span>
                 </button>
 
                 {/* System Alerts */}
-                <button className="p-1.5 rounded-lg hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-zinc-800">
-                  <ShieldAlert size={16} />
+                <button className="p-2 rounded-lg hover:bg-monitoring-light text-monitoring-gray hover:text-monitoring-blue transition-colors border border-transparent hover:border-border">
+                  <ShieldAlert size={18} />
                 </button>
               </div>
             </header>
 
             {/* Scrollable Content Container */}
-            <main className="flex-1 overflow-y-auto bg-zinc-950/20 p-6">
+            <main className="flex-1 overflow-y-auto p-6 lg:p-8">
               {children}
             </main>
           </div>

@@ -48,25 +48,25 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
   return (
     <aside 
-      className={`relative flex flex-col bg-zinc-950 border-r border-zinc-800 transition-all duration-300 ${
+      className={`relative flex flex-col bg-card border-r border-border transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       } ${className}`}
     >
       {/* Logo Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-800">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         <Link href="/" className="flex items-center gap-2 font-bold tracking-wider">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-lg glow-primary">
+          <div className="w-8 h-8 rounded-lg bg-monitoring-blue flex items-center justify-center text-white font-black text-lg">
             M
           </div>
           {!isCollapsed && (
-            <span className="text-white text-lg bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+            <span className="text-monitoring-graphite text-lg font-bold">
               MONITORING
             </span>
           )}
         </Link>
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+          className="p-1.5 rounded-md hover:bg-monitoring-light text-monitoring-gray hover:text-monitoring-blue transition-colors border border-transparent hover:border-border"
         >
           {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
@@ -74,20 +74,20 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
       {/* Quick Search */}
       {!isCollapsed && (
-        <div className="px-4 py-3">
+        <div className="px-4 py-4">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-monitoring-gray" />
             <input 
               type="text" 
               placeholder="Buscar trabajador o RUT..." 
-              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-md py-1.5 pl-9 pr-4 text-xs focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all"
+              className="w-full bg-monitoring-light border border-border text-monitoring-graphite rounded-md py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:border-monitoring-blue focus:ring-1 focus:ring-monitoring-blue transition-all"
             />
           </div>
         </div>
       )}
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
@@ -96,13 +96,13 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all group relative ${
                 isActive 
-                  ? "bg-blue-600/10 text-blue-500 border border-blue-500/20" 
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent"
+                  ? "bg-monitoring-blue/10 text-monitoring-blue border border-monitoring-blue/20" 
+                  : "text-monitoring-gray hover:text-monitoring-blue hover:bg-monitoring-light border border-transparent"
               }`}
             >
-              <Icon size={18} className={`flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-blue-500" : "text-zinc-400"}`} />
+              <Icon size={18} className={`flex-shrink-0 transition-transform group-hover:scale-110 ${isActive ? "text-monitoring-blue" : "text-monitoring-gray"}`} />
               
               {!isCollapsed && (
                 <span className="flex-1 truncate">{item.name}</span>
@@ -110,10 +110,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
               {/* Badge */}
               {!isCollapsed && item.badge && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                   item.badge === "New" 
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                    : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    ? "bg-monitoring-orange/10 text-monitoring-orange border border-monitoring-orange/20" 
+                    : "bg-monitoring-blue/10 text-monitoring-blue border border-monitoring-blue/20"
                 }`}>
                   {item.badge}
                 </span>
@@ -121,7 +121,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
               {/* Tooltip for collapsed view */}
               {isCollapsed && (
-                <div className="absolute left-full ml-4 px-2 py-1 bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <div className="absolute left-full ml-4 px-3 py-1.5 bg-monitoring-graphite border border-monitoring-gray text-white text-xs font-semibold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-level-2">
                   {item.name}
                 </div>
               )}
@@ -131,15 +131,15 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       </nav>
 
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-zinc-800 bg-zinc-950/50 space-y-2">
+      <div className="p-4 border-t border-border bg-monitoring-light/50 space-y-2">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 font-bold border border-zinc-700 text-xs">
+          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-monitoring-blue font-bold border border-border shadow-sm text-xs">
             OP
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-zinc-200 truncate">Operador General</p>
-              <span className="text-[10px] text-zinc-500 block truncate">soporte@monitoring.cl</span>
+              <p className="text-sm font-bold text-monitoring-graphite truncate">Operador General</p>
+              <span className="text-[11px] text-monitoring-gray font-medium block truncate">soporte@monitoring.cl</span>
             </div>
           )}
         </div>
