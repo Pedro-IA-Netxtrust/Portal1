@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { supabase } from "@/lib/supabase";
+import { useAuditoriaStore } from "@/store/auditoria-store";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -201,6 +203,9 @@ interface AsistenciaState {
   auditoria: AuditoriaEntry[];
   metas: MetaFTE[];
 
+  fetchAsistencia: () => Promise<void>;
+  fetchMetasFTE: () => Promise<void>;
+
   /** Upsert / remove a daily attendance record and add an audit entry */
   setEstado: (params: {
     id_contrato: string;
@@ -210,11 +215,11 @@ interface AsistenciaState {
     fecha: string;
     estado: EstadoAsistencia | null;
     observacion?: string;
-  }) => void;
+  }) => Promise<void>;
 
   getEstado: (id_contrato: string, id_trabajador: string, fecha: string) => EstadoAsistencia | null;
   getMetaFTE: (id_contrato: string) => number;
-  setMetaFTE: (id_contrato: string, meta: number) => void;
+  setMetaFTE: (id_contrato: string, meta: number) => Promise<void>;
 
   /** Total working days (Mon–Fri) in a given month */
   calcularDiasHabiles: (anio: number, mes: number) => number;
@@ -230,7 +235,106 @@ export const useAsistenciaStore = create<AsistenciaState>()(
       auditoria: [],
       metas: INITIAL_METAS,
 
-      setEstado: ({ id_contrato, id_trabajador, id_asignacion, nombre_trabajador, fecha, estado, observacion }) => {
+      fetchAsistencia: async () => {
+        try {
+          const { data, error } = await supabase
+            .from("registros_asistencia")
+            .select("*");
+
+          if (error) throw new Error(error.message);
+
+          if (data && data.length > 0) {
+            const mapped = data.map((r) => ({
+              id: r.id,
+              id_contrato: r.id_contrato,
+              id_trabajador: r.id_trabajador,
+              id_asignacion: r.id_asignacion,
+              fecha: r.fecha,
+              estado: r.estado as EstadoAsistencia,
+              observacion: r.observacion ?? undefined,
+              editado_por: r.editado_por,
+              editado_at: r.editado_at,
+            }));
+            set({ registros: mapped });
+          } else if (process.env.NODE_ENV !== "production") {
+            const mockData = generateMockRegistros();
+            const seedData = mockData.map((r) => ({
+              id_contrato: r.id_contrato,
+              id_trabajador: r.id_trabajador,
+              id_asignacion: r.id_asignacion,
+              fecha: r.fecha,
+              estado: r.estado,
+              observacion: r.observacion ?? null,
+              editado_por: r.editado_por,
+              editado_at: r.editado_at,
+            }));
+
+            const { data: seeded, error: seedError } = await supabase
+              .from("registros_asistencia")
+              .insert(seedData)
+              .select();
+
+            if (seedError) throw new Error(seedError.message);
+            if (seeded) {
+              const mapped = seeded.map((r) => ({
+                id: r.id,
+                id_contrato: r.id_contrato,
+                id_trabajador: r.id_trabajador,
+                id_asignacion: r.id_asignacion,
+                fecha: r.fecha,
+                estado: r.estado as EstadoAsistencia,
+                observacion: r.observacion ?? undefined,
+                editado_por: r.editado_por,
+                editado_at: r.editado_at,
+              }));
+              set({ registros: mapped });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load assistance from Supabase:", err instanceof Error ? err.message : err);
+        }
+      },
+
+      fetchMetasFTE: async () => {
+        try {
+          const { data, error } = await supabase
+            .from("metas_fte")
+            .select("*");
+
+          if (error) throw new Error(error.message);
+
+          if (data && data.length > 0) {
+            const mapped = data.map((m) => ({
+              id_contrato: m.id_contrato,
+              meta_fte: Number(m.meta_fte),
+            }));
+            set({ metas: mapped });
+          } else if (process.env.NODE_ENV !== "production") {
+            const seedData = INITIAL_METAS.map((m) => ({
+              id_contrato: m.id_contrato,
+              meta_fte: m.meta_fte,
+            }));
+
+            const { data: seeded, error: seedError } = await supabase
+              .from("metas_fte")
+              .insert(seedData)
+              .select();
+
+            if (seedError) throw new Error(seedError.message);
+            if (seeded) {
+              const mapped = seeded.map((m) => ({
+                id_contrato: m.id_contrato,
+                meta_fte: Number(m.meta_fte),
+              }));
+              set({ metas: mapped });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load metas_fte from Supabase:", err instanceof Error ? err.message : err);
+        }
+      },
+
+      setEstado: async ({ id_contrato, id_trabajador, id_asignacion, nombre_trabajador, fecha, estado, observacion }) => {
         const existing = get().registros.find(
           (r) => r.id_contrato === id_contrato && r.id_trabajador === id_trabajador && r.fecha === fecha
         );
@@ -248,6 +352,7 @@ export const useAsistenciaStore = create<AsistenciaState>()(
           editado_at: now,
         };
 
+        // Optimistic update
         set((state) => {
           let newRegistros: RegistroAsistencia[];
           if (estado === null) {
@@ -271,6 +376,85 @@ export const useAsistenciaStore = create<AsistenciaState>()(
             auditoria: [audEntry, ...state.auditoria].slice(0, 500),
           };
         });
+
+        try {
+          if (estado === null) {
+            const { error } = await supabase
+              .from("registros_asistencia")
+              .delete()
+              .eq("id_contrato", id_contrato)
+              .eq("id_trabajador", id_trabajador)
+              .eq("fecha", fecha);
+
+            if (error) throw error;
+          } else {
+            const { data, error } = await supabase
+              .from("registros_asistencia")
+              .upsert(
+                {
+                  id_contrato,
+                  id_trabajador,
+                  id_asignacion,
+                  fecha,
+                  estado,
+                  observacion: observacion || null,
+                  editado_por: "Operador General",
+                  editado_at: now,
+                },
+                { onConflict: "id_contrato,id_trabajador,fecha" }
+              )
+              .select();
+
+            if (error) throw error;
+
+            if (data && data[0]) {
+              set((state) => ({
+                registros: state.registros.map((r) =>
+                  r.id_contrato === id_contrato && r.id_trabajador === id_trabajador && r.fecha === fecha
+                    ? { ...r, id: data[0].id }
+                    : r
+                ),
+              }));
+            }
+          }
+
+          // Global Auditoria
+          await useAuditoriaStore.getState().registrar({
+            modulo: "Asistencia",
+            accion: estado === null ? "Baja" : estadoAnterior ? "Modificacion" : "Alta",
+            id_entidad: `${id_contrato}|${id_trabajador}|${fecha}`,
+            nombre_entidad: nombre_trabajador,
+            detalle: estado === null
+              ? `Registro de asistencia eliminado para el ${fecha}.`
+              : `Asistencia del ${fecha} marcada como ${ESTADO_CONFIG[estado].label}.${observacion ? ` Obs: ${observacion}` : ""}`,
+            meta: {
+              estado_anterior: estadoAnterior,
+              estado_nuevo: estado,
+              fecha_asistencia: fecha,
+            },
+          });
+        } catch (err) {
+          console.error("Failed to persist attendance update on Supabase:", err);
+          // Rollback local state
+          set((state) => {
+            let restoredRegistros = [...state.registros];
+            if (estadoAnterior === null) {
+              restoredRegistros = restoredRegistros.filter(
+                (r) => !(r.id_contrato === id_contrato && r.id_trabajador === id_trabajador && r.fecha === fecha)
+              );
+            } else {
+              restoredRegistros = restoredRegistros.map((r) =>
+                r.id_contrato === id_contrato && r.id_trabajador === id_trabajador && r.fecha === fecha
+                  ? { ...r, estado: estadoAnterior, observacion: existing?.observacion }
+                  : r
+              );
+            }
+            return {
+              registros: restoredRegistros,
+              auditoria: state.auditoria.filter((a) => a.id !== audEntry.id),
+            };
+          });
+        }
       },
 
       getEstado: (id_contrato, id_trabajador, fecha) =>
@@ -281,12 +465,36 @@ export const useAsistenciaStore = create<AsistenciaState>()(
       getMetaFTE: (id_contrato) =>
         get().metas.find((m) => m.id_contrato === id_contrato)?.meta_fte ?? 0,
 
-      setMetaFTE: (id_contrato, meta_fte) =>
+      setMetaFTE: async (id_contrato, meta_fte) => {
         set((state) => ({
           metas: state.metas.some((m) => m.id_contrato === id_contrato)
             ? state.metas.map((m) => (m.id_contrato === id_contrato ? { ...m, meta_fte } : m))
             : [...state.metas, { id_contrato, meta_fte }],
-        })),
+        }));
+
+        try {
+          const { error } = await supabase
+            .from("metas_fte")
+            .upsert({
+              id_contrato,
+              meta_fte,
+              updated_at: new Date().toISOString(),
+            });
+
+          if (error) throw error;
+
+          await useAuditoriaStore.getState().registrar({
+            modulo: "Asistencia",
+            accion: "Modificacion",
+            id_entidad: id_contrato,
+            nombre_entidad: `Meta FTE ${id_contrato}`,
+            detalle: `Meta FTE actualizada a ${meta_fte}.`,
+            meta: { meta_fte },
+          });
+        } catch (err) {
+          console.error(`Failed to update meta_fte for ${id_contrato} in Supabase:`, err);
+        }
+      },
 
       calcularDiasHabiles: (anio, mes) => {
         const totalDays = new Date(anio, mes, 0).getDate();

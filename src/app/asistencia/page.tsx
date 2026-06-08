@@ -166,12 +166,25 @@ export default function AsistenciaPage() {
   const [fechaFinRango, setFechaFinRango] = useState<string>(todayStr);
 
   // ── Stores ──────────────────────────────────────────────────────────────────
-  const { registros, auditoria, setEstado, getMetaFTE, calcularFTEReal, calcularDiasHabiles } =
-    useAsistenciaStore();
+  const {
+    registros,
+    auditoria,
+    setEstado,
+    getMetaFTE,
+    calcularFTEReal,
+    calcularDiasHabiles,
+    fetchAsistencia,
+    fetchMetasFTE,
+  } = useAsistenciaStore();
   const { contratos, fetchContratos } = useContratosStore();
   const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
 
-  React.useEffect(() => { fetchContratos(); fetchTrabajadores(); }, [fetchContratos, fetchTrabajadores]);
+  React.useEffect(() => {
+    fetchContratos();
+    fetchTrabajadores();
+    fetchAsistencia();
+    fetchMetasFTE();
+  }, [fetchContratos, fetchTrabajadores, fetchAsistencia, fetchMetasFTE]);
 
   const activeContratos = useMemo(() => contratos.filter((c) => c.estado === "Activo"), [contratos]);
   const selectedContrato = useMemo(

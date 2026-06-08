@@ -43,7 +43,7 @@ export default function Home() {
   const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
   const { contratos, fetchContratos } = useContratosStore();
   const { activos, fetchActivos } = useActivosStore();
-  const { examenes, cursos } = useControlStore();
+  const { examenes, cursos, catalogoExamenes, catalogoCursos } = useControlStore();
   const { tickets, fetchTickets } = useTicketsStore();
   const { fetchSolicitudes } = useSolicitudesStore();
 
@@ -180,10 +180,11 @@ export default function Home() {
     if (e.fecha_vencimiento) {
       const days = getDaysRemaining(e.fecha_vencimiento);
       if (days <= 30) {
+        const cat = catalogoExamenes.find(c => c.id === e.id_examen_catalogo);
         addAlertUnique({
           id: `e-ctrl-${e.id}`,
           tipo: "Examen",
-          item: e.tipo_examen,
+          item: cat?.nombre ?? "Examen",
           responsable: getWorkerName(e.id_trabajador),
           fecha_vencimiento: e.fecha_vencimiento,
           dias_restantes: days,
@@ -197,10 +198,11 @@ export default function Home() {
     if (c.fecha_vencimiento) {
       const days = getDaysRemaining(c.fecha_vencimiento);
       if (days <= 30) {
+        const cat = catalogoCursos.find(cat => cat.id === c.id_curso_catalogo);
         addAlertUnique({
           id: `c-ctrl-${c.id}`,
           tipo: "Curso",
-          item: c.nombre_curso,
+          item: cat?.nombre ?? "Curso",
           responsable: getWorkerName(c.id_trabajador),
           fecha_vencimiento: c.fecha_vencimiento,
           dias_restantes: days,

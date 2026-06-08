@@ -24,7 +24,9 @@ import {
   UserCog,
   Star,
   Utensils,
-  Store
+  Store,
+  Megaphone,
+  History
 } from "lucide-react";
 
 interface SidebarProps {
@@ -42,6 +44,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     { name: "Asistencia", href: "/asistencia", icon: CalendarDays, badge: null },
     { name: "Alimentación", href: "/alimentacion", icon: Utensils, badge: "Nuevo" },
     { name: "Proveedores", href: "/proveedores", icon: Store, badge: "Nuevo" },
+    { name: "Comunicaciones", href: "/comunicaciones", icon: Megaphone, badge: null },
     { name: "Contratos", href: "/contratos", icon: FileText, badge: null },
     { name: "Vehículos", href: "/vehiculos", icon: Car, badge: null },
     { name: "Inspecciones ECF 4", href: "/vehiculos/inspecciones", icon: ClipboardCheck, badge: null },
@@ -49,6 +52,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     { name: "Cursos y Exámenes", href: "/control", icon: GraduationCap, badge: null },
     { name: "Tickets IT", href: "/tickets", icon: Ticket, badge: null },
     { name: "Solicitudes", href: "/solicitudes", icon: ClipboardPen, badge: "New" },
+    { name: "Auditoria", href: "/auditoria", icon: History, badge: null },
     { name: "Usuarios", href: "/usuarios", icon: UserCog, badge: "Config" },
   ];
 

@@ -27,6 +27,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
     unidades: [] as ContratoUnidad[],
     cargos: [] as any[],
     trabajadores_asignados: [] as any[],
+    proveedores_asignados: [] as any[],
     historial: [] as any[]
   });
 

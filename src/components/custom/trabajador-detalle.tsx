@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Trabajador } from "@/store/trabajadores-store";
+
 import { 
   X, 
   Mail, 
@@ -16,10 +16,14 @@ import {
   User,
   Shield,
   CreditCard,
-  Edit
+  Edit,
+  Stethoscope,
+  GraduationCap
 } from "lucide-react";
 import TrabajadorForm from "./trabajador-form";
-import { useTrabajadoresStore } from "@/store/trabajadores-store";
+import { useTrabajadoresStore, Trabajador } from "@/store/trabajadores-store";
+import { useControlStore } from "@/store/control-store";
+import { AsignarControlModal } from "./control/asignar-control-modal";
 
 interface TrabajadorDetalleProps {
   trabajador: Trabajador;
@@ -28,8 +32,10 @@ interface TrabajadorDetalleProps {
 
 export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDetalleProps) {
   const { updateTrabajador } = useTrabajadoresStore();
-  const [activeTab, setActiveTab] = useState<"resumen" | "completo" | "epp">("resumen");
+  const { documentos, examenes, cursos, catalogoDocumentos, catalogoExamenes, catalogoCursos } = useControlStore();
+  const [activeTab, setActiveTab] = useState<"resumen" | "completo" | "epp" | "control">("resumen");
   const [isEditing, setIsEditing] = useState(false);
+  const [modalControl, setModalControl] = useState<{ isOpen: boolean, type: "documento"|"curso"|"examen" }>({ isOpen: false, type: "documento" });
   
   // Estado para Edición in-situ de Formación y Talento
   const [isEditingFormacion, setIsEditingFormacion] = useState(false);
@@ -167,7 +173,8 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
           {[
             { id: "resumen", label: "Vista General" },
             { id: "completo", label: "Información Completa" },
-            { id: "epp", label: "EPP & Operativo" }
+            { id: "epp", label: "EPP & Operativo" },
+            { id: "control", label: "Acreditaciones & Control" }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -465,6 +472,120 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
               </div>
             </div>
           )}
+
+          {/* TAB 4: ACREDITACIONES Y CONTROL */}
+          {activeTab === "control" && (
+            <div className="space-y-6 animate-fadeIn">
+              
+              {/* Documentos y Pases */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-1.5">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText size={14} /> Documentos y Pases
+                  </h4>
+                  <button onClick={() => setModalControl({ isOpen: true, type: "documento" })} className="btn btn-primary text-[10px] py-1 px-2 h-auto min-h-0">
+                    + Asignar Pase
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {documentos.filter(d => d.id_trabajador === trabajador.id_trabajador).map(doc => {
+                    const cat = catalogoDocumentos.find(c => c.id === doc.id_documento_catalogo);
+                    return (
+                      <div key={doc.id} className="p-4 rounded-xl bg-surface border border-border shadow-sm flex flex-col gap-2">
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-sm text-text">{cat?.nombre || "Documento"}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${doc.estado === "Vigente" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : doc.estado === "Vencido" ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"}`}>
+                            {doc.estado}
+                          </span>
+                        </div>
+                        <div className="text-xs text-text-muted space-y-1">
+                          <p>Nº: <span className="text-text-soft">{doc.numero_documento || "N/A"}</span></p>
+                          <p>Vence: <span className="text-text-soft font-semibold">{doc.fecha_vencimiento || "Sin Vencimiento"}</span></p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {documentos.filter(d => d.id_trabajador === trabajador.id_trabajador).length === 0 && (
+                    <div className="col-span-full p-4 border border-dashed border-border rounded-xl text-center text-zinc-500 text-sm">
+                      No hay documentos o pases registrados
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Exámenes Médicos */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-1.5">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <Stethoscope size={14} /> Exámenes de Salud Ocupacional
+                  </h4>
+                  <button onClick={() => setModalControl({ isOpen: true, type: "examen" })} className="btn btn-primary text-[10px] py-1 px-2 h-auto min-h-0">
+                    + Registrar Examen
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {examenes.filter(e => e.id_trabajador === trabajador.id_trabajador).map(ex => {
+                    const cat = catalogoExamenes.find(c => c.id === ex.id_examen_catalogo);
+                    return (
+                      <div key={ex.id} className="p-4 rounded-xl bg-surface border border-border shadow-sm flex flex-col gap-2">
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-sm text-text">{cat?.nombre || "Examen"}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ex.resultado.includes("Aprobado") ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : ex.resultado === "Rechazado" ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"}`}>
+                            {ex.resultado}
+                          </span>
+                        </div>
+                        <div className="text-xs text-text-muted space-y-1">
+                          <p>Realizado: <span className="text-text-soft">{ex.fecha_realizacion}</span></p>
+                          <p>Vence: <span className="text-text-soft font-semibold">{ex.fecha_vencimiento || "N/A"}</span></p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {examenes.filter(e => e.id_trabajador === trabajador.id_trabajador).length === 0 && (
+                    <div className="col-span-full p-4 border border-dashed border-border rounded-xl text-center text-zinc-500 text-sm">
+                      No hay exámenes médicos registrados
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Cursos */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-1.5">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap size={14} /> Cursos de Capacitación
+                  </h4>
+                  <button onClick={() => setModalControl({ isOpen: true, type: "curso" })} className="btn btn-primary text-[10px] py-1 px-2 h-auto min-h-0">
+                    + Añadir Curso
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {cursos.filter(c => c.id_trabajador === trabajador.id_trabajador).map(cu => {
+                    const cat = catalogoCursos.find(c => c.id === cu.id_curso_catalogo);
+                    return (
+                      <div key={cu.id} className="p-4 rounded-xl bg-surface border border-border shadow-sm flex flex-col gap-2">
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-sm text-text">{cat?.nombre || "Curso"}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cu.estado === "Aprobado" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : cu.estado === "Reprobado" ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"}`}>
+                            {cu.estado}
+                          </span>
+                        </div>
+                        <div className="text-xs text-text-muted space-y-1">
+                          <p>Institución: <span className="text-text-soft">{cu.institucion || "N/A"}</span></p>
+                          <p>Vence: <span className="text-text-soft font-semibold">{cu.fecha_vencimiento || "N/A"}</span></p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {cursos.filter(c => c.id_trabajador === trabajador.id_trabajador).length === 0 && (
+                    <div className="col-span-full p-4 border border-dashed border-border rounded-xl text-center text-zinc-500 text-sm">
+                      No hay cursos registrados
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -472,6 +593,14 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
         <TrabajadorForm 
           trabajadorId={trabajador.id_trabajador} 
           onClose={() => setIsEditing(false)} 
+        />
+      )}
+
+      {modalControl.isOpen && (
+        <AsignarControlModal
+          type={modalControl.type}
+          trabajadorId={trabajador.id_trabajador}
+          onClose={() => setModalControl({ isOpen: false, type: "documento" })}
         />
       )}
 

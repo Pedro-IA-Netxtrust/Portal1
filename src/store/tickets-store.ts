@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { useAuditoriaStore } from "@/store/auditoria-store";
 
 export interface ComentarioTicket {
   id_comentario: string;
@@ -89,6 +90,13 @@ const calcularSlaLimites = (prioridad: string, categoria: string, fechaCreacion:
     sla_resolucion_hasta: resoDate.toISOString()
   };
 };
+
+/** Genera un codigo de ticket unico basado en anio + timestamp parcial */
+function generarCodigoTicket(): string {
+  const anio = new Date().getFullYear();
+  const sufijo = Date.now().toString(36).toUpperCase().slice(-5);
+  return `IT-${anio}-${sufijo}`;
+}
 
 const mockTickets: Ticket[] = [
   {
@@ -253,8 +261,7 @@ export const useTicketsStore = create<TicketsState>()(
 
       addTicket: async (t) => {
         const tempId = `temp-tk-${Date.now()}`;
-        const count = get().tickets.length + 1;
-        const codigo = `IT-2026-${String(count).padStart(4, "0")}`;
+        const codigo = generarCodigoTicket();
         const fechaCreacion = new Date();
         const { sla_respuesta_hasta, sla_resolucion_hasta } = calcularSlaLimites(t.prioridad, t.categoria, fechaCreacion);
  
@@ -303,6 +310,13 @@ export const useTicketsStore = create<TicketsState>()(
                 item.id_ticket === tempId ? data[0] : item
               )
             }));
+            useAuditoriaStore.getState().registrar({
+              modulo: "Tickets",
+              accion: "Alta",
+              id_entidad: data[0].id_ticket,
+              nombre_entidad: t.asunto,
+              detalle: `Ticket ${data[0].codigo_ticket} creado. Prioridad: ${t.prioridad}. Categoria: ${t.categoria}.`,
+            });
           }
         } catch (err) {
           console.error("Failed to persist ticket to Supabase:", err);
@@ -347,17 +361,20 @@ export const useTicketsStore = create<TicketsState>()(
       },
 
       assignTicket: async (id, idTecnico) => {
-        let respondidoATiempo = true;
         const ahora = new Date();
-        
+        // Calcular si llego a tiempo ANTES de mutar el estado
+        const ticketActual = get().tickets.find((t) => t.id_ticket === id);
+        const respondidoATiempo = ticketActual
+          ? ahora.getTime() < new Date(ticketActual.sla_respuesta_hasta).getTime()
+          : true;
+
         set((state) => ({
           tickets: state.tickets.map((t) => {
             if (t.id_ticket === id) {
-              respondidoATiempo = ahora.getTime() < new Date(t.sla_respuesta_hasta).getTime();
-              return { 
-                ...t, 
-                estado: "En Atencion", 
-                id_tecnico_responsable: idTecnico, 
+              return {
+                ...t,
+                estado: "En Atencion",
+                id_tecnico_responsable: idTecnico,
                 fecha_asignacion: ahora.toISOString(),
                 cumplio_sla_respuesta: respondidoATiempo
               };
@@ -378,22 +395,35 @@ export const useTicketsStore = create<TicketsState>()(
             .eq("id_ticket", id);
  
           if (error) throw error;
+
+          if (ticketActual) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Tickets",
+              accion: "Asignacion",
+              id_entidad: id,
+              nombre_entidad: ticketActual.asunto,
+              detalle: `Ticket ${ticketActual.codigo_ticket} asignado a tecnico ${idTecnico}. SLA respuesta: ${respondidoATiempo ? "cumplido" : "incumplido"}.`,
+            });
+          }
         } catch (err) {
           console.error(`Failed to assign ticket ${id} in Supabase:`, err);
         }
       },
 
       closeTicket: async (id) => {
-        let resueltoATiempo = true;
         const ahora = new Date();
- 
+        // Calcular si se resolvio a tiempo ANTES de mutar el estado
+        const ticketActual = get().tickets.find((t) => t.id_ticket === id);
+        const resueltoATiempo = ticketActual
+          ? ahora.getTime() < new Date(ticketActual.sla_resolucion_hasta).getTime()
+          : true;
+
         set((state) => ({
           tickets: state.tickets.map((t) => {
             if (t.id_ticket === id) {
-              resueltoATiempo = ahora.getTime() < new Date(t.sla_resolucion_hasta).getTime();
-              return { 
-                ...t, 
-                estado: "Cerrado", 
+              return {
+                ...t,
+                estado: "Cerrado",
                 fecha_cierre: ahora.toISOString(),
                 cumplio_sla_resolucion: resueltoATiempo
               };
@@ -413,6 +443,16 @@ export const useTicketsStore = create<TicketsState>()(
             .eq("id_ticket", id);
  
           if (error) throw error;
+
+          if (ticketActual) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Tickets",
+              accion: "Cierre",
+              id_entidad: id,
+              nombre_entidad: ticketActual.asunto,
+              detalle: `Ticket ${ticketActual.codigo_ticket} cerrado. SLA resolucion: ${resueltoATiempo ? "cumplido" : "incumplido"}.`,
+            });
+          }
         } catch (err) {
           console.error(`Failed to close ticket ${id} in Supabase:`, err);
         }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { useAuditoriaStore } from "@/store/auditoria-store";
 
 export type ResultadoExamen = "Aprobado" | "Aprobado con Observaciones" | "Rechazado" | "Pendiente";
 export type EstadoCurso = "Aprobado" | "Reprobado" | "Pendiente" | "No Asiste";
@@ -315,21 +316,50 @@ export const useControlStore = create<ControlState>()(
       },
 
       addExamenMasivo: async (trabajadoresIds, e) => {
+        const tempIds: string[] = trabajadoresIds.map(
+          (_, idx) => `temp-ex-masivo-${Date.now()}-${idx}`
+        );
         const nuevos: ControlExamen[] = trabajadoresIds.map((id_trabajador, idx) => ({
           ...e,
           id_trabajador,
-          id: `temp-ex-masivo-${Date.now()}-${idx}`
+          id: tempIds[idx]
         }));
 
         set((state) => ({ examenes: [...state.examenes, ...nuevos] }));
 
         try {
-          const registrosInsert = trabajadoresIds.map(id_trabajador => ({
+          const registrosInsert = trabajadoresIds.map((id_trabajador) => ({
             ...e, id_trabajador
           }));
-          await supabase.from("control_examenes").insert(registrosInsert);
+          const { data, error } = await supabase
+            .from("control_examenes")
+            .insert(registrosInsert)
+            .select();
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            // Reemplazar temp IDs con UUIDs reales de Supabase
+            set((state) => ({
+              examenes: state.examenes.map((ex) => {
+                const tempIdx = tempIds.indexOf(ex.id);
+                return tempIdx !== -1 ? data[tempIdx] ?? ex : ex;
+              })
+            }));
+            useAuditoriaStore.getState().registrar({
+              modulo: "Control",
+              accion: "Alta",
+              id_entidad: e.id_examen_catalogo,
+              nombre_entidad: `Examen masivo (${data.length} trabajadores)`,
+              detalle: `Examen registrado para ${data.length} trabajador(es) de forma masiva.`,
+            });
+          }
         } catch (err) {
-          console.warn("Error insert masivo", err);
+          // Rollback: eliminar los registros temporales del estado
+          set((state) => ({
+            examenes: state.examenes.filter((ex) => !tempIds.includes(ex.id))
+          }));
+          console.warn("Error insert masivo examenes — rollback aplicado", err);
         }
       },
 
@@ -338,8 +368,13 @@ export const useControlStore = create<ControlState>()(
           examenes: state.examenes.map((e) => e.id === id ? { ...e, ...updates } : e)
         }));
         try {
-          if (!id.startsWith('temp-')) {
-            await supabase.from("control_examenes").update(updates).eq("id", id);
+          // Solo persistir si es un ID real (no temp)
+          if (!id.startsWith("temp-")) {
+            const { error } = await supabase
+              .from("control_examenes")
+              .update(updates)
+              .eq("id", id);
+            if (error) throw error;
           }
         } catch (err) { console.warn(err); }
       },
@@ -370,20 +405,42 @@ export const useControlStore = create<ControlState>()(
       },
 
       addCursoMasivo: async (trabajadoresIds, c) => {
+        const tempIds: string[] = trabajadoresIds.map(
+          (_, idx) => `temp-cu-masivo-${Date.now()}-${idx}`
+        );
         const nuevos: ControlCurso[] = trabajadoresIds.map((id_trabajador, idx) => ({
           ...c,
           id_trabajador,
-          id: `temp-cu-masivo-${Date.now()}-${idx}`
+          id: tempIds[idx]
         }));
 
         set((state) => ({ cursos: [...state.cursos, ...nuevos] }));
 
         try {
-          const registrosInsert = trabajadoresIds.map(id_trabajador => ({
+          const registrosInsert = trabajadoresIds.map((id_trabajador) => ({
             ...c, id_trabajador
           }));
-          await supabase.from("control_cursos").insert(registrosInsert);
-        } catch (err) { console.warn(err); }
+          const { data, error } = await supabase
+            .from("control_cursos")
+            .insert(registrosInsert)
+            .select();
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            set((state) => ({
+              cursos: state.cursos.map((cu) => {
+                const tempIdx = tempIds.indexOf(cu.id);
+                return tempIdx !== -1 ? data[tempIdx] ?? cu : cu;
+              })
+            }));
+          }
+        } catch (err) {
+          set((state) => ({
+            cursos: state.cursos.filter((cu) => !tempIds.includes(cu.id))
+          }));
+          console.warn("Error insert masivo cursos — rollback aplicado", err);
+        }
       },
 
       updateCurso: async (id, updates) => {
@@ -423,20 +480,42 @@ export const useControlStore = create<ControlState>()(
       },
 
       addDocumentoMasivo: async (trabajadoresIds, d) => {
+        const tempIds: string[] = trabajadoresIds.map(
+          (_, idx) => `temp-doc-masivo-${Date.now()}-${idx}`
+        );
         const nuevos: ControlDocumento[] = trabajadoresIds.map((id_trabajador, idx) => ({
           ...d,
           id_trabajador,
-          id: `temp-doc-masivo-${Date.now()}-${idx}`
+          id: tempIds[idx]
         }));
 
         set((state) => ({ documentos: [...state.documentos, ...nuevos] }));
 
         try {
-          const registrosInsert = trabajadoresIds.map(id_trabajador => ({
+          const registrosInsert = trabajadoresIds.map((id_trabajador) => ({
             ...d, id_trabajador
           }));
-          await supabase.from("control_documentos").insert(registrosInsert);
-        } catch (err) { console.warn(err); }
+          const { data, error } = await supabase
+            .from("control_documentos")
+            .insert(registrosInsert)
+            .select();
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            set((state) => ({
+              documentos: state.documentos.map((doc) => {
+                const tempIdx = tempIds.indexOf(doc.id);
+                return tempIdx !== -1 ? data[tempIdx] ?? doc : doc;
+              })
+            }));
+          }
+        } catch (err) {
+          set((state) => ({
+            documentos: state.documentos.filter((doc) => !tempIds.includes(doc.id))
+          }));
+          console.warn("Error insert masivo documentos — rollback aplicado", err);
+        }
       },
 
       updateDocumento: async (id, updates) => {
@@ -460,7 +539,8 @@ export const useControlStore = create<ControlState>()(
       },
 
       getAlertasByTrabajador: (id_trabajador) => {
-        const { examenes, cursos, catalogoExamenes, catalogoCursos } = get();
+        // Una sola llamada a get() para todos los datos necesarios
+        const { examenes, cursos, documentos, catalogoExamenes, catalogoCursos, catalogoDocumentos } = get();
         const alertas: AlertaControl[] = [];
 
         examenes.filter(e => e.id_trabajador === id_trabajador).forEach(ex => {
@@ -493,7 +573,6 @@ export const useControlStore = create<ControlState>()(
           });
         });
 
-        const { documentos, catalogoDocumentos } = get();
         documentos.filter(d => d.id_trabajador === id_trabajador).forEach(doc => {
           const cat = catalogoDocumentos.find(c => c.id === doc.id_documento_catalogo);
           const nombreDoc = cat ? cat.nombre : "Documento Desconocido";

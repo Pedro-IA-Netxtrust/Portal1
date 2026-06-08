@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { useAuditoriaStore } from "@/store/auditoria-store";
+
+/** Genera un codigo de solicitud unico basado en anio + timestamp parcial */
+function generarCodigoSolicitud(): string {
+  const anio = new Date().getFullYear();
+  const sufijo = Date.now().toString(36).toUpperCase().slice(-5);
+  return `SOL-${anio}-${sufijo}`;
+}
 
 // ─────────────────────────────────────────────
 //  Types
@@ -228,36 +236,36 @@ interface SolicitudesState {
   deleteSolicitud: (id: string) => Promise<void>;
 }
 
-function mapDbToSolicitud(db: any): Solicitud {
+function mapDbToSolicitud(db: Record<string, unknown>): Solicitud {
   return {
-    id_solicitud: db.id,
-    codigo_solicitud: db.code,
-    tipo: db.tipo,
-    estado: db.status,
-    prioridad: db.priority,
-    id_trabajador_solicitante: db.requester_id,
-    nombre_solicitante: db.requester_name,
-    area: db.requester_area,
-    asunto: db.subject,
-    payload: db.payload || {},
-    id_revisor: db.current_assignee_id,
-    nombre_revisor: db.current_assignee_name,
-    fecha_creacion: db.created_at,
-    fecha_revision: db.reviewed_at,
-    fecha_resolucion: db.resolved_at,
-    motivo_rechazo: db.rejection_reason,
-    observaciones: db.resolution_note
+    id_solicitud: db.id_solicitud as string,
+    codigo_solicitud: (db.codigo_solicitud as string) ?? "",
+    tipo: db.tipo as TipoSolicitud,
+    estado: db.estado as EstadoSolicitud,
+    prioridad: db.prioridad as PrioridadSolicitud,
+    id_trabajador_solicitante: db.id_trabajador_solicitante as string,
+    nombre_solicitante: db.nombre_solicitante as string,
+    area: db.area as string,
+    asunto: db.asunto as string,
+    payload: (db.payload as PayloadSolicitud) || ({} as PayloadSolicitud),
+    id_revisor: db.id_revisor as string | undefined,
+    nombre_revisor: db.nombre_revisor as string | undefined,
+    fecha_creacion: db.fecha_creacion as string,
+    fecha_revision: db.fecha_revision as string | undefined,
+    fecha_resolucion: db.fecha_resolucion as string | undefined,
+    motivo_rechazo: db.motivo_rechazo as string | undefined,
+    observaciones: db.observaciones as string | undefined,
   };
 }
 
-function mapDbToComentario(db: any): ComentarioSolicitud {
+function mapDbToComentario(db: Record<string, unknown>): ComentarioSolicitud {
   return {
-    id: db.id,
-    id_solicitud: db.ticket_request_id,
-    autor: db.author_name,
-    texto: db.comment,
-    es_resolucion: db.is_resolution,
-    fecha: db.created_at
+    id: db.id as string,
+    id_solicitud: db.id_solicitud as string,
+    autor: db.autor as string,
+    texto: db.texto as string,
+    es_resolucion: db.es_resolucion as boolean,
+    fecha: db.fecha as string,
   };
 }
 
@@ -270,88 +278,82 @@ export const useSolicitudesStore = create<SolicitudesState>()(
       fetchSolicitudes: async () => {
         try {
           const { data: reqData, error: reqError } = await supabase
-            .from("ticket_requests")
+            .from("solicitudes")
             .select("*")
-            .order("created_at", { ascending: false });
+            .order("fecha_creacion", { ascending: false });
 
-          if (reqError) throw reqError;
+          if (reqError) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[browser] Supabase no tiene tabla solicitudes, usando mock", reqError.message);
+            }
+            return;
+          }
 
           const { data: comData, error: comError } = await supabase
-            .from("ticket_comments")
+            .from("solicitud_comentarios")
             .select("*")
-            .order("created_at", { ascending: true });
+            .order("fecha", { ascending: true });
 
-          if (comError) throw comError;
+          if (comError && process.env.NODE_ENV === "development") {
+            console.warn("[browser] Supabase no tiene solicitud_comentarios, ignorando comentarios remotos");
+          }
 
           if (reqData && reqData.length > 0) {
             set({
               solicitudes: reqData.map(mapDbToSolicitud),
               comentarios: (comData || []).map(mapDbToComentario)
             });
-          } else {
-            // Seed base solicitudes if completely empty
-            const { data: contracts } = await supabase.from("contracts").select("id, code");
-            const { data: ticketTypes } = await supabase.from("ticket_types").select("id, tipo");
-
+          } else if (process.env.NODE_ENV !== "production") {
+            // Seed base solo en desarrollo
             const seededSolicitudes: Solicitud[] = [];
             const seededComments: ComentarioSolicitud[] = [];
 
             for (const mockSol of mockSolicitudes) {
-              const matchingContract = contracts?.find(c => c.code === "OP-NORTE") || contracts?.[0];
-              const matchingType = ticketTypes?.find(t => t.tipo === mockSol.tipo);
+              const dbInsert = {
+                tipo: mockSol.tipo,
+                estado: mockSol.estado,
+                prioridad: mockSol.prioridad,
+                id_trabajador_solicitante: mockSol.id_trabajador_solicitante,
+                nombre_solicitante: mockSol.nombre_solicitante,
+                area: mockSol.area,
+                asunto: mockSol.asunto,
+                payload: mockSol.payload,
+                id_revisor: mockSol.id_revisor,
+                nombre_revisor: mockSol.nombre_revisor,
+                observaciones: mockSol.observaciones,
+                motivo_rechazo: mockSol.motivo_rechazo,
+                fecha_creacion: mockSol.fecha_creacion,
+                fecha_revision: mockSol.fecha_revision,
+                fecha_resolucion: mockSol.fecha_resolucion,
+              };
 
-              if (matchingContract && matchingType) {
-                const dbInsert = {
-                  contract_id: matchingContract.id,
-                  ticket_type_id: matchingType.id,
-                  tipo: mockSol.tipo,
-                  requester_id: "00000000-0000-0000-0000-000000000001",
-                  requester_name: mockSol.nombre_solicitante,
-                  requester_area: mockSol.area,
-                  subject: mockSol.asunto,
-                  description: mockSol.asunto,
-                  status: mockSol.estado,
-                  priority: mockSol.prioridad,
-                  current_assignee_id: mockSol.id_revisor ? "00000000-0000-0000-0000-000000000003" : null,
-                  current_assignee_name: mockSol.nombre_revisor,
-                  resolution_note: mockSol.observaciones,
-                  rejection_reason: mockSol.motivo_rechazo,
-                  reviewed_at: mockSol.fecha_revision,
-                  resolved_at: mockSol.fecha_resolucion,
-                  created_at: mockSol.fecha_creacion,
-                  payload: mockSol.payload
-                };
+              const { data: createdSol, error: insertError } = await supabase
+                .from("solicitudes")
+                .insert([dbInsert])
+                .select();
 
-                const { data: createdSol, error: insertError } = await supabase
-                  .from("ticket_requests")
-                  .insert([dbInsert])
-                  .select();
+              if (insertError) break;
+              if (createdSol && createdSol[0]) {
+                const dbSol = createdSol[0];
+                seededSolicitudes.push(mapDbToSolicitud(dbSol));
 
-                if (insertError) throw insertError;
-                if (createdSol && createdSol[0]) {
-                  const dbSol = createdSol[0];
-                  seededSolicitudes.push(mapDbToSolicitud(dbSol));
-
-                  const mockComs = mockComentarios.filter(c => c.id_solicitud === mockSol.id_solicitud);
-                  for (const mockCom of mockComs) {
-                    const comInsert = {
-                      ticket_request_id: dbSol.id,
-                      user_id: "00000000-0000-0000-0000-000000000003",
-                      author_name: mockCom.autor,
-                      comment: mockCom.texto,
-                      is_resolution: mockCom.es_resolucion,
-                      created_at: mockCom.fecha
-                    };
-
-                    const { data: createdCom, error: comInsertError } = await supabase
-                      .from("ticket_comments")
-                      .insert([comInsert])
-                      .select();
-
-                    if (comInsertError) throw comInsertError;
-                    if (createdCom && createdCom[0]) {
-                      seededComments.push(mapDbToComentario(createdCom[0]));
-                    }
+                const mockComs = mockComentarios.filter(
+                  (c) => c.id_solicitud === mockSol.id_solicitud
+                );
+                for (const mockCom of mockComs) {
+                  const comInsert = {
+                    id_solicitud: dbSol.id_solicitud,
+                    autor: mockCom.autor,
+                    texto: mockCom.texto,
+                    es_resolucion: mockCom.es_resolucion,
+                    fecha: mockCom.fecha,
+                  };
+                  const { data: createdCom } = await supabase
+                    .from("solicitud_comentarios")
+                    .insert([comInsert])
+                    .select();
+                  if (createdCom && createdCom[0]) {
+                    seededComments.push(mapDbToComentario(createdCom[0]));
                   }
                 }
               }
@@ -361,14 +363,15 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             }
           }
         } catch (err) {
-          console.error("Failed to load solicitudes from Supabase:", err);
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[browser] Error al cargar/seed solicitudes:", err);
+          }
         }
       },
 
       addSolicitud: async (s) => {
         const tempId = `temp-sol-${Date.now()}`;
-        const count = get().solicitudes.length + 1;
-        const codigo = `SOL-2026-${String(count).padStart(4, "0")}`;
+        const codigo = generarCodigoSolicitud();
         const fechaCreacion = new Date().toISOString();
         const nuevoTemp: Solicitud = {
           ...s,
@@ -381,32 +384,19 @@ export const useSolicitudesStore = create<SolicitudesState>()(
         set((state) => ({ solicitudes: [...state.solicitudes, nuevoTemp] }));
 
         try {
-          const { data: contracts } = await supabase.from("contracts").select("id").limit(1);
-          const { data: ticketTypes } = await supabase.from("ticket_types").select("id").eq("tipo", s.tipo).limit(1);
-
-          const contractId = contracts?.[0]?.id;
-          const ticketTypeId = ticketTypes?.[0]?.id;
-
-          if (!contractId || !ticketTypeId) {
-            throw new Error(`Missing contract or ticket type configuration in database`);
-          }
-
           const dbInsert = {
-            contract_id: contractId,
-            ticket_type_id: ticketTypeId,
             tipo: s.tipo,
-            requester_id: s.id_trabajador_solicitante.startsWith("t-") ? "00000000-0000-0000-0000-000000000001" : s.id_trabajador_solicitante,
-            requester_name: s.nombre_solicitante,
-            requester_area: s.area,
-            subject: s.asunto,
-            description: s.asunto,
-            status: "Pendiente",
-            priority: s.prioridad,
-            payload: s.payload
+            estado: "Pendiente",
+            prioridad: s.prioridad,
+            id_trabajador_solicitante: s.id_trabajador_solicitante,
+            nombre_solicitante: s.nombre_solicitante,
+            area: s.area,
+            asunto: s.asunto,
+            payload: s.payload,
           };
 
           const { data, error } = await supabase
-            .from("ticket_requests")
+            .from("solicitudes")
             .insert([dbInsert])
             .select();
 
@@ -417,6 +407,13 @@ export const useSolicitudesStore = create<SolicitudesState>()(
                 item.id_solicitud === tempId ? mapDbToSolicitud(data[0]) : item
               )
             }));
+            useAuditoriaStore.getState().registrar({
+              modulo: "Solicitudes",
+              accion: "Alta",
+              id_entidad: data[0].id_solicitud,
+              nombre_entidad: s.asunto,
+              detalle: `Solicitud ${codigo} creada por ${s.nombre_solicitante}. Tipo: ${s.tipo}.`,
+            });
           }
         } catch (err) {
           console.error("Failed to persist request to Supabase:", err);
@@ -457,11 +454,22 @@ export const useSolicitudesStore = create<SolicitudesState>()(
           }
 
           const { error } = await supabase
-            .from("ticket_requests")
+            .from("solicitudes")
             .update(updateFields)
-            .eq("id", id);
+            .eq("id_solicitud", id);
 
           if (error) throw error;
+
+          const sol = get().solicitudes.find((s) => s.id_solicitud === id);
+          if (sol) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Solicitudes",
+              accion: "Modificacion",
+              id_entidad: id,
+              nombre_entidad: sol.asunto,
+              detalle: `Estado de solicitud actualizado a "${estado}".${opts?.motivo_rechazo ? ` Motivo: ${opts.motivo_rechazo}` : ""}`,
+            });
+          }
         } catch (err) {
           console.error(`Failed to update request state in Supabase:`, err);
         }
@@ -476,9 +484,9 @@ export const useSolicitudesStore = create<SolicitudesState>()(
 
         try {
           const { error } = await supabase
-            .from("ticket_requests")
-            .update({ status: "Cancelada", resolved_at: new Date().toISOString() })
-            .eq("id", id);
+            .from("solicitudes")
+            .update({ estado: "Cancelada", fecha_resolucion: new Date().toISOString() })
+            .eq("id_solicitud", id);
 
           if (error) throw error;
         } catch (err) {
@@ -506,7 +514,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
           };
 
           const { data, error } = await supabase
-            .from("ticket_comments")
+            .from("solicitud_comentarios")
             .insert([comInsert])
             .select();
 
@@ -531,9 +539,9 @@ export const useSolicitudesStore = create<SolicitudesState>()(
 
         try {
           const { error } = await supabase
-            .from("ticket_requests")
+            .from("solicitudes")
             .delete()
-            .eq("id", id);
+            .eq("id_solicitud", id);
 
           if (error) throw error;
         } catch (err) {

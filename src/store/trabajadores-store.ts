@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { useAuditoriaStore } from "@/store/auditoria-store";
 
 export interface Trabajador {
   id_trabajador: string;
@@ -208,22 +209,22 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
             .select("*")
             .order("created_at", { ascending: true });
 
-          if (error) throw error;
+          if (error) throw new Error(error.message);
 
           if (data && data.length > 0) {
             set({ trabajadores: data });
-          } else {
-            // Seed base if cloud DB is completely empty
+          } else if (process.env.NODE_ENV !== "production") {
+            // Seed base solo en desarrollo cuando la tabla esta vacia
             const { data: seeded, error: seedError } = await supabase
               .from("trabajadores")
               .insert(mockTrabajadores)
               .select();
 
-            if (seedError) throw seedError;
+            if (seedError) throw new Error(seedError.message);
             if (seeded) set({ trabajadores: seeded });
           }
         } catch (err) {
-          console.error("Failed to load workers from Supabase, using localStorage cache:", err);
+          console.error("Failed to load workers from Supabase, using localStorage cache:", err instanceof Error ? err.message : err);
           // LocalStorage fallback takes care of keeping the old offline list active
         }
       },
@@ -245,10 +246,18 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
           
           if (data && data[0]) {
             set((state) => ({
-              trabajadores: state.trabajadores.map((item) => 
+              trabajadores: state.trabajadores.map((item) =>
                 item.id_trabajador === tempId ? data[0] : item
               )
             }));
+            const w = data[0] as Trabajador;
+            useAuditoriaStore.getState().registrar({
+              modulo: "Trabajadores",
+              accion: "Alta",
+              id_entidad: w.id_trabajador,
+              nombre_entidad: `${w.nombre_1} ${w.apellido_paterno}`,
+              detalle: `Trabajador ${w.nombre_1} ${w.apellido_paterno} creado. RUT/ID: ${w.numero_identificacion}.`,
+            });
           }
         } catch (err) {
           console.error("Failed to persist new worker to Supabase:", err);
@@ -270,6 +279,18 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
             .eq("id_trabajador", id);
 
           if (error) throw error;
+
+          const w = get().trabajadores.find((t) => t.id_trabajador === id);
+          if (w) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Trabajadores",
+              accion: "Modificacion",
+              id_entidad: id,
+              nombre_entidad: `${w.nombre_1} ${w.apellido_paterno}`,
+              detalle: `Datos actualizados: ${Object.keys(updatedFields).join(", ")}.`,
+              meta: updatedFields as Record<string, unknown>,
+            });
+          }
         } catch (err) {
           console.error(`Failed to update worker ${id} in Supabase:`, err);
         }
@@ -281,6 +302,8 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
           trabajadores: state.trabajadores.filter((t) => t.id_trabajador !== id)
         }));
 
+        const wBorrado = get().trabajadores.find((t) => t.id_trabajador === id);
+
         try {
           const { error } = await supabase
             .from("trabajadores")
@@ -288,6 +311,16 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
             .eq("id_trabajador", id);
 
           if (error) throw error;
+
+          if (wBorrado) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Trabajadores",
+              accion: "Baja",
+              id_entidad: id,
+              nombre_entidad: `${wBorrado.nombre_1} ${wBorrado.apellido_paterno}`,
+              detalle: `Trabajador ${wBorrado.nombre_1} ${wBorrado.apellido_paterno} eliminado del sistema.`,
+            });
+          }
         } catch (err) {
           console.error(`Failed to delete worker ${id} from Supabase:`, err);
         }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { useAuditoriaStore } from "@/store/auditoria-store";
 
 // ─────────────────────────────────────────────────────────────
 //  Sub-entities
@@ -482,64 +483,70 @@ export const useContratosStore = create<ContratosState>()(
       fetchContratos: async () => {
         try {
           const { data, error } = await supabase
-            .from("contracts")
+            .from("contratos")
             .select("*")
-            .order("created_at", { ascending: true });
+            .order("fecha_inicio", { ascending: true });
 
-          if (error) throw error;
+          if (error) throw new Error(error.message);
 
           if (data && data.length > 0) {
             set((state) => {
-              const updatedContratos = data.map((dbContract) => {
-                const existing = state.contratos.find(c => c.id_contrato === dbContract.id || c.codigo_contrato === dbContract.code);
+              const updatedContratos = data.map((dbContrato) => {
+                const existing = state.contratos.find(
+                  (c) =>
+                    c.id_contrato === dbContrato.id_contrato ||
+                    c.codigo_contrato === dbContrato.codigo_contrato
+                );
+                // Mapear estado: la columna "estado" en DB es el texto directo
+                const estado = (dbContrato.estado as Contrato["estado"]) ?? "En Preparacion";
                 return {
-                  id_contrato: dbContract.id,
-                  codigo_contrato: dbContract.code,
-                  nombre_contrato: dbContract.name,
-                  id_mandante: existing?.id_mandante || "m-1",
-                  estado: (dbContract.active ? "Activo" : "Cerrado") as any,
-                  fecha_inicio: existing?.fecha_inicio || new Date().toISOString().split("T")[0],
-                  fecha_termino: existing?.fecha_termino || new Date().toISOString().split("T")[0],
-                  centros_costo: existing?.centros_costo || [],
-                  unidades: existing?.unidades || [],
-                  cargos: existing?.cargos || [],
-                  trabajadores_asignados: existing?.trabajadores_asignados || [],
-                  historial: existing?.historial || []
+                  id_contrato: dbContrato.id_contrato,
+                  codigo_contrato: dbContrato.codigo_contrato,
+                  nombre_contrato: dbContrato.nombre_contrato,
+                  id_mandante: dbContrato.id_mandante ?? existing?.id_mandante ?? "m-1",
+                  estado,
+                  fecha_inicio: dbContrato.fecha_inicio ?? existing?.fecha_inicio ?? "",
+                  fecha_termino: dbContrato.fecha_termino ?? existing?.fecha_termino ?? "",
+                  centros_costo: existing?.centros_costo ?? [],
+                  unidades: existing?.unidades ?? [],
+                  cargos: existing?.cargos ?? [],
+                  trabajadores_asignados: existing?.trabajadores_asignados ?? [],
+                  historial: existing?.historial ?? [],
+                  proveedores_asignados: existing?.proveedores_asignados ?? [],
                 };
               });
               return { contratos: updatedContratos };
             });
-          } else {
-            // Seed base if cloud DB is completely empty
-            const seedData = mockContratos.map(c => ({
-              name: c.nombre_contrato,
-              code: c.codigo_contrato,
-              description: `Contrato mandante ${c.id_mandante}`,
-              active: c.estado === "Activo"
+          } else if (process.env.NODE_ENV !== "production") {
+            // Seed base solo en desarrollo
+            const seedData = mockContratos.map((c) => ({
+              codigo_contrato: c.codigo_contrato,
+              nombre_contrato: c.nombre_contrato,
+              id_mandante: c.id_mandante,
+              estado: c.estado,
+              fecha_inicio: c.fecha_inicio,
+              fecha_termino: c.fecha_termino,
             }));
             const { data: seeded, error: seedError } = await supabase
-              .from("contracts")
+              .from("contratos")
               .insert(seedData)
               .select();
 
-            if (seedError) throw seedError;
+            if (seedError) throw new Error(seedError.message);
             if (seeded) {
-              set((state) => {
-                const updatedContratos = seeded.map((dbContract) => {
-                  const existing = mockContratos.find(c => c.codigo_contrato === dbContract.code)!;
-                  return {
-                    ...existing,
-                    id_contrato: dbContract.id,
-                    codigo_contrato: dbContract.code,
-                    nombre_contrato: dbContract.name
-                  };
+              set(() => {
+                const updatedContratos = seeded.map((dbContrato) => {
+                  const existing = mockContratos.find(
+                    (c) => c.codigo_contrato === dbContrato.codigo_contrato
+                  )!;
+                  return { ...existing, id_contrato: dbContrato.id_contrato };
                 });
                 return { contratos: updatedContratos };
               });
             }
           }
         } catch (err) {
-          console.error("Failed to load contracts from Supabase:", err);
+          console.error("Failed to load contracts from Supabase:", err instanceof Error ? err.message : err);
         }
       },
 
@@ -562,27 +569,33 @@ export const useContratosStore = create<ContratosState>()(
 
         try {
           const { data, error } = await supabase
-            .from("contracts")
+            .from("contratos")
             .insert([{
-              name: c.nombre_contrato,
-              code: c.codigo_contrato,
-              description: `Mandante: ${c.id_mandante}. Estado: ${c.estado}`,
-              active: c.estado === "Activo"
+              codigo_contrato: c.codigo_contrato,
+              nombre_contrato: c.nombre_contrato,
+              id_mandante: c.id_mandante,
+              estado: c.estado,
+              fecha_inicio: c.fecha_inicio,
+              fecha_termino: c.fecha_termino,
             }])
             .select();
 
           if (error) throw error;
           if (data && data[0]) {
             set((state) => ({
-              contratos: state.contratos.map((item) => 
-                item.id_contrato === tempId ? {
-                  ...item,
-                  id_contrato: data[0].id,
-                  codigo_contrato: data[0].code,
-                  nombre_contrato: data[0].name
-                } : item
+              contratos: state.contratos.map((item) =>
+                item.id_contrato === tempId
+                  ? { ...item, id_contrato: data[0].id_contrato }
+                  : item
               )
             }));
+            useAuditoriaStore.getState().registrar({
+              modulo: "Contratos",
+              accion: "Alta",
+              id_entidad: data[0].id_contrato,
+              nombre_entidad: c.nombre_contrato,
+              detalle: `Contrato ${c.codigo_contrato} creado. Estado: ${c.estado}.`,
+            });
           }
         } catch (err) {
           console.error("Failed to persist new contract to Supabase:", err);
@@ -598,32 +611,57 @@ export const useContratosStore = create<ContratosState>()(
         });
 
         try {
-          const updateFields: any = {};
-          if (fields.nombre_contrato !== undefined) updateFields.name = fields.nombre_contrato;
-          if (fields.codigo_contrato !== undefined) updateFields.code = fields.codigo_contrato;
-          if (fields.estado !== undefined) updateFields.active = fields.estado === "Activo";
+          const updateFields: Record<string, unknown> = {};
+          if (fields.nombre_contrato !== undefined) updateFields.nombre_contrato = fields.nombre_contrato;
+          if (fields.codigo_contrato !== undefined) updateFields.codigo_contrato = fields.codigo_contrato;
+          if (fields.estado !== undefined) updateFields.estado = fields.estado;
+          if (fields.fecha_inicio !== undefined) updateFields.fecha_inicio = fields.fecha_inicio;
+          if (fields.fecha_termino !== undefined) updateFields.fecha_termino = fields.fecha_termino;
 
           const { error } = await supabase
-            .from("contracts")
+            .from("contratos")
             .update(updateFields)
-            .eq("id", id);
+            .eq("id_contrato", id);
 
           if (error) throw error;
+
+          const contrato = useContratosStore.getState().contratos.find((c) => c.id_contrato === id);
+          if (contrato) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Contratos",
+              accion: "Modificacion",
+              id_entidad: id,
+              nombre_entidad: contrato.nombre_contrato,
+              detalle: `Campos actualizados: ${Object.keys(fields).join(", ")}.`,
+              meta: fields as Record<string, unknown>,
+            });
+          }
         } catch (err) {
           console.error(`Failed to update contract ${id} in Supabase:`, err);
         }
       },
 
       deleteContrato: async (id) => {
+        const contratoBorrado = useContratosStore.getState().contratos.find((c) => c.id_contrato === id);
         set((state) => ({ contratos: state.contratos.filter((c) => c.id_contrato !== id) }));
 
         try {
           const { error } = await supabase
-            .from("contracts")
+            .from("contratos")
             .delete()
-            .eq("id", id);
+            .eq("id_contrato", id);
 
           if (error) throw error;
+
+          if (contratoBorrado) {
+            useAuditoriaStore.getState().registrar({
+              modulo: "Contratos",
+              accion: "Baja",
+              id_entidad: id,
+              nombre_entidad: contratoBorrado.nombre_contrato,
+              detalle: `Contrato ${contratoBorrado.codigo_contrato} eliminado.`,
+            });
+          }
         } catch (err) {
           console.error(`Failed to delete contract ${id} from Supabase:`, err);
         }
