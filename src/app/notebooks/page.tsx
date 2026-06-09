@@ -26,6 +26,11 @@ export default function NotebooksPage() {
   const { trabajadores } = useTrabajadoresStore();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterEstado, setFilterEstado] = useState<"Todos" | "Disponible" | "Asignado" | "Baja">("Todos");
+  const [filterBrand, setFilterBrand] = useState<string>("Todas");
+  const [filterRam, setFilterRam] = useState<string>("Todas");
+  const [filterLicenses, setFilterLicenses] = useState<"Todas" | "Con Licencias" | "Sin Licencias">("Todas");
+  const [sortBy, setSortBy] = useState<"fecha_asignacion_desc" | "fecha_asignacion_asc" | "fecha_compra_desc" | "fecha_compra_asc" | "marca_modelo" | "ram_desc">("fecha_asignacion_desc");
 
   // Modals state
   const [formOpen, setFormOpen] = useState(false);
@@ -69,10 +74,68 @@ export default function NotebooksPage() {
 
   // Filtering Logic (only Notebooks)
   const notebooks = activos.filter(a => a.tipo === "Notebook");
-  const filteredNotebooks = notebooks.filter((a) => {
-    const searchString = `${a.marca} ${a.modelo} ${a.identificador_unico} ${getAssignedWorkerName(a.id_trabajador_asignado)}`.toLowerCase();
-    return searchString.includes(searchTerm.toLowerCase());
-  });
+  const uniqueBrands = ["Todas", ...Array.from(new Set(notebooks.map(a => a.marca).filter(Boolean)))];
+
+  const filteredNotebooks = notebooks
+    .filter((a) => {
+      // Search term
+      const searchString = `${a.marca} ${a.modelo} ${a.identificador_unico} ${getAssignedWorkerName(a.id_trabajador_asignado)}`.toLowerCase();
+      const matchesSearch = searchString.includes(searchTerm.toLowerCase());
+
+      // Status Filter
+      const matchesEstado = filterEstado === "Todos" || a.estado === filterEstado;
+
+      // Brand Filter
+      const matchesBrand = filterBrand === "Todas" || a.marca === filterBrand;
+
+      // RAM Filter
+      const ramVal = a.detalles_adicionales.ram_gb || 0;
+      let matchesRam = true;
+      if (filterRam !== "Todas") {
+        if (filterRam === "32GB+") {
+          matchesRam = ramVal >= 32;
+        } else {
+          matchesRam = ramVal === parseInt(filterRam);
+        }
+      }
+
+      // Licencias Filter
+      const hasActiveLicenses = a.detalles_adicionales.licencias && a.detalles_adicionales.licencias.some(l => l.activa);
+      const matchesLicenses = 
+        filterLicenses === "Todas" || 
+        (filterLicenses === "Con Licencias" && hasActiveLicenses) || 
+        (filterLicenses === "Sin Licencias" && !hasActiveLicenses);
+
+      return matchesSearch && matchesEstado && matchesBrand && matchesRam && matchesLicenses;
+    })
+    .sort((a, b) => {
+      // Sort logic
+      if (sortBy === "fecha_asignacion_desc" || sortBy === "fecha_asignacion_asc") {
+        const dateA = a.fecha_asignacion ? new Date(a.fecha_asignacion).getTime() : 0;
+        const dateB = b.fecha_asignacion ? new Date(b.fecha_asignacion).getTime() : 0;
+        return sortBy === "fecha_asignacion_desc" ? dateB - dateA : dateA - dateB;
+      }
+      
+      if (sortBy === "fecha_compra_desc" || sortBy === "fecha_compra_asc") {
+        const dateA = a.detalles_adicionales.fecha_compra ? new Date(a.detalles_adicionales.fecha_compra).getTime() : 0;
+        const dateB = b.detalles_adicionales.fecha_compra ? new Date(b.detalles_adicionales.fecha_compra).getTime() : 0;
+        return sortBy === "fecha_compra_desc" ? dateB - dateA : dateA - dateB;
+      }
+
+      if (sortBy === "marca_modelo") {
+        const nameA = `${a.marca} ${a.modelo}`.toLowerCase();
+        const nameB = `${b.marca} ${b.modelo}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      }
+
+      if (sortBy === "ram_desc") {
+        const ramA = a.detalles_adicionales.ram_gb || 0;
+        const ramB = b.detalles_adicionales.ram_gb || 0;
+        return ramB - ramA;
+      }
+
+      return 0;
+    });
 
   // Stats
   const totalNotebooks = notebooks.length;
@@ -146,7 +209,8 @@ export default function NotebooksPage() {
       </div>
 
       {/* Filter and search */}
-      <div className="card mb-6">
+      <div className="card space-y-4 mb-6">
+        {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-3 h-5 w-5 text-text-muted" />
           <input
@@ -156,6 +220,88 @@ export default function NotebooksPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input pl-10"
           />
+        </div>
+
+        {/* Filters and Sorting controls */}
+        <div className="flex flex-wrap gap-4 items-center justify-between pt-3 border-t border-border">
+          <div className="flex flex-wrap gap-4 items-center">
+            {/* Status Filter */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Disponibilidad</span>
+              <select
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value as any)}
+                className="select py-2 px-3 text-xs min-h-0 w-36"
+              >
+                <option value="Todos">Todos los Estados</option>
+                <option value="Disponible">Disponibles</option>
+                <option value="Asignado">Asignados</option>
+                <option value="Baja">De Baja</option>
+              </select>
+            </div>
+
+            {/* Brand Filter */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Marca</span>
+              <select
+                value={filterBrand}
+                onChange={(e) => setFilterBrand(e.target.value)}
+                className="select py-2 px-3 text-xs min-h-0 w-36"
+              >
+                {uniqueBrands.map(brand => (
+                  <option key={brand} value={brand}>{brand === "Todas" ? "Todas las Marcas" : brand}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* RAM Filter */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">RAM</span>
+              <select
+                value={filterRam}
+                onChange={(e) => setFilterRam(e.target.value)}
+                className="select py-2 px-3 text-xs min-h-0 w-28"
+              >
+                <option value="Todas">Todas</option>
+                <option value="8">8 GB</option>
+                <option value="16">16 GB</option>
+                <option value="18">18 GB</option>
+                <option value="32">32 GB</option>
+                <option value="32GB+">32 GB o más</option>
+              </select>
+            </div>
+
+            {/* Licencias Filter */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Licencias</span>
+              <select
+                value={filterLicenses}
+                onChange={(e) => setFilterLicenses(e.target.value as any)}
+                className="select py-2 px-3 text-xs min-h-0 w-36"
+              >
+                <option value="Todas">Todas las Licencias</option>
+                <option value="Con Licencias">Con Licencia Activa</option>
+                <option value="Sin Licencias">Sin Licencia Activa</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Sorting Box */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Ordenar por</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="select py-2 px-3 text-xs min-h-0 w-48 font-semibold text-primary"
+            >
+              <option value="fecha_asignacion_desc">Fecha de Entrega (Recientes)</option>
+              <option value="fecha_asignacion_asc">Fecha de Entrega (Antiguos)</option>
+              <option value="fecha_compra_desc">Fecha Adquisición (Nuevos)</option>
+              <option value="fecha_compra_asc">Fecha Adquisición (Viejos)</option>
+              <option value="marca_modelo">Marca y Modelo (A-Z)</option>
+              <option value="ram_desc">RAM (Mayor Capacidad)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -229,9 +375,16 @@ export default function NotebooksPage() {
 
               {/* Assignment details */}
               {activo.estado === "Asignado" && (
-                <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center gap-2.5 text-xs font-medium">
-                  <User size={14} className="text-primary" />
-                  <span className="text-text-soft">Poseído por: <strong className="text-primary">{getAssignedWorkerName(activo.id_trabajador_asignado)}</strong></span>
+                <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex flex-col gap-1.5 text-xs font-medium">
+                  <div className="flex items-center gap-2.5">
+                    <User size={14} className="text-primary" />
+                    <span className="text-text-soft">Poseído por: <strong className="text-primary">{getAssignedWorkerName(activo.id_trabajador_asignado)}</strong></span>
+                  </div>
+                  {activo.fecha_asignacion && (
+                    <div className="text-[10px] text-text-muted pl-6">
+                      Entregado el: <span className="text-text-soft font-semibold">{new Date(activo.fecha_asignacion).toLocaleDateString("es-CL", { timeZone: "UTC" })}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
