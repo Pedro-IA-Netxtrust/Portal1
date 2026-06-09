@@ -22,7 +22,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
     id_mandante: mandantes[0]?.id_mandante ?? "",
     fecha_inicio: "",
     fecha_termino: "",
-    estado: "Activo" as "Activo" | "Cerrado" | "En Preparación" | "Suspendido",
+    estado: "Activo" as "Activo" | "Cerrado" | "En Preparacion" | "Suspendido",
     centros_costo: [] as CentroCosto[],
     unidades: [] as ContratoUnidad[],
     cargos: [] as any[],
@@ -253,7 +253,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
                   className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500"
                 >
                   <option value="Activo">Activo</option>
-                  <option value="En Preparación">En Preparación</option>
+                  <option value="En Preparacion">En Preparacion</option>
                   <option value="Suspendido">Suspendido</option>
                   <option value="Cerrado">Cerrado</option>
                 </select>

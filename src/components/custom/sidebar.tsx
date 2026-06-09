@@ -40,8 +40,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   const menuItems = [
     { name: "Dashboard", href: "/", icon: Activity, badge: null },
     { name: "Trabajadores", href: "/trabajadores", icon: Users, badge: "Activo" },
+    { name: "Accesos SAP / TI", href: "/sap", icon: Shield, badge: "Nuevo" },
     { name: "Busca Talento", href: "/talentos", icon: Star, badge: "Nuevo" },
     { name: "Asistencia", href: "/asistencia", icon: CalendarDays, badge: null },
+    { name: "Reuniones", href: "/reuniones", icon: ClipboardCheck, badge: "Nuevo" },
     { name: "Alimentación", href: "/alimentacion", icon: Utensils, badge: "Nuevo" },
     { name: "Proveedores", href: "/proveedores", icon: Store, badge: "Nuevo" },
     { name: "Comunicaciones", href: "/comunicaciones", icon: Megaphone, badge: null },

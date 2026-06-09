@@ -17,7 +17,11 @@ import {
   Stethoscope,
   BookOpen,
   UploadCloud,
-  FileBadge
+  FileBadge,
+  Plus,
+  Trash2,
+  Save,
+  Edit2
 } from "lucide-react";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useContratosStore } from "@/store/contratos-store";
@@ -38,10 +42,17 @@ export default function ControlPage() {
     getAlertasByTrabajador,
     addExamen,
     addCurso,
-    addDocumento
+    addDocumento,
+    addCursoCatalogo,
+    deleteCursoCatalogo,
+    updateCursoCatalogo,
+    addExamenCatalogo,
+    deleteExamenCatalogo,
+    addDocumentoCatalogo,
+    deleteDocumentoCatalogo
   } = useControlStore();
 
-  const [activeTab, setActiveTab] = useState<"dashboard" | "trabajadores">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "trabajadores" | "catalogos">("dashboard");
   const [selectedContratoDashboard, setSelectedContratoDashboard] = useState<string>("Todos");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -56,6 +67,93 @@ export default function ControlPage() {
   const [selectedWorkersForMass, setSelectedWorkersForMass] = useState<string[]>([]);
   
   const [formData, setFormData] = useState<any>({});
+
+  // Catálogos search states
+  const [searchCurso, setSearchCurso] = useState("");
+  const [searchExamen, setSearchExamen] = useState("");
+  const [searchDoc, setSearchDoc] = useState("");
+
+  // Catálogos show form states
+  const [showAddCursoForm, setShowAddCursoForm] = useState(false);
+  const [showAddExamenForm, setShowAddExamenForm] = useState(false);
+  const [showAddDocForm, setShowAddDocForm] = useState(false);
+
+  // Catálogos form inputs
+  const [newCursoName, setNewCursoName] = useState("");
+  const [newCursoCat, setNewCursoCat] = useState("");
+  const [newCursoValidez, setNewCursoValidez] = useState("");
+  const [newExamenName, setNewExamenName] = useState("");
+  const [newExamenCat, setNewExamenCat] = useState("");
+  const [newDocName, setNewDocName] = useState("");
+  const [newDocCat, setNewDocCat] = useState("");
+
+  const handleCreateCurso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCursoName.trim() || !newCursoCat.trim()) return;
+    const months = newCursoValidez.trim() ? parseInt(newCursoValidez.trim(), 10) : null;
+    await addCursoCatalogo(newCursoName.trim(), newCursoCat.trim(), isNaN(months as any) ? null : months);
+    setNewCursoName("");
+    setNewCursoCat("");
+    setNewCursoValidez("");
+    setShowAddCursoForm(false);
+  };
+
+  const handleEditCurso = async (c: any) => {
+    const newName = prompt("Editar nombre del curso:", c.nombre);
+    if (newName === null) return;
+    const newCat = prompt("Editar categoría del curso:", c.categoria);
+    if (newCat === null) return;
+    const validezStr = prompt("Editar tiempo de validez en meses (vacío para sin vencimiento):", c.validez_meses?.toString() || "");
+    if (validezStr === null) return;
+
+    const validez = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
+    await updateCursoCatalogo(c.id, {
+      nombre: newName.trim() || c.nombre,
+      categoria: newCat.trim() || c.categoria,
+      validez_meses: (validezStr.trim() === "" || isNaN(validez as any)) ? null : validez
+    });
+  };
+
+  // Pre-calcular vencimiento de curso si tiene validez
+  React.useEffect(() => {
+    if (formData.id_curso_catalogo && formData.fecha_realizacion) {
+      const selectedCurso = catalogoCursos.find(c => c.id === formData.id_curso_catalogo);
+      if (selectedCurso && selectedCurso.validez_meses) {
+        const fechaRealizacion = new Date(formData.fecha_realizacion);
+        if (!isNaN(fechaRealizacion.getTime())) {
+          const fechaVencimiento = new Date(fechaRealizacion);
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + selectedCurso.validez_meses);
+          
+          const yyyy = fechaVencimiento.getFullYear();
+          const mm = String(fechaVencimiento.getMonth() + 1).padStart(2, '0');
+          const dd = String(fechaVencimiento.getDate()).padStart(2, '0');
+          const fechaStr = `${yyyy}-${mm}-${dd}`;
+          
+          if (formData.fecha_vencimiento !== fechaStr) {
+            setFormData((prev: any) => ({ ...prev, fecha_vencimiento: fechaStr }));
+          }
+        }
+      }
+    }
+  }, [formData.id_curso_catalogo, formData.fecha_realizacion, catalogoCursos]);
+
+  const handleCreateExamen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExamenName.trim() || !newExamenCat.trim()) return;
+    await addExamenCatalogo(newExamenName.trim(), newExamenCat.trim());
+    setNewExamenName("");
+    setNewExamenCat("");
+    setShowAddExamenForm(false);
+  };
+
+  const handleCreateDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDocName.trim() || !newDocCat.trim()) return;
+    await addDocumentoCatalogo(newDocName.trim(), newDocCat.trim());
+    setNewDocName("");
+    setNewDocCat("");
+    setShowAddDocForm(false);
+  };
 
   React.useEffect(() => {
     fetchTrabajadores();
@@ -276,8 +374,24 @@ export default function ControlPage() {
               <form onSubmit={handleAddExamenSubmit} className="p-5 bg-surface-2 border border-primary/20 rounded-xl space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1.5">
-                    <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Tipo de Examen *</label>
+                    <div className="flex justify-between items-end mb-1">
+                      <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-0">Tipo de Examen *</label>
+                      <button 
+                        type="button" 
+                        onClick={async () => {
+                          const name = prompt("Nombre del nuevo examen:");
+                          if (!name) return;
+                          const cat = prompt("Categoría:", "Salud Ocupacional");
+                          if (!cat) return;
+                          await addExamenCatalogo(name, cat);
+                        }}
+                        className="text-[10px] text-primary font-bold hover:underline"
+                      >
+                        + Crear Nuevo
+                      </button>
+                    </div>
                     <select required className="input" 
+                      value={formData.id_examen_catalogo || ""}
                       onChange={e => setFormData({...formData, id_examen_catalogo: e.target.value})}>
                       <option value="">Seleccionar del catálogo...</option>
                       {catalogoExamenes.map(c => (
@@ -375,8 +489,27 @@ export default function ControlPage() {
               <form onSubmit={handleAddCursoSubmit} className="p-5 bg-surface-2 border border-purple-500/20 rounded-xl space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1.5">
-                    <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Nombre del Curso *</label>
+                    <div className="flex justify-between items-end mb-1">
+                      <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-0">Nombre del Curso *</label>
+                      <button 
+                        type="button" 
+                        onClick={async () => {
+                          const name = prompt("Nombre del nuevo curso:");
+                          if (!name) return;
+                          const cat = prompt("Categoría:", "Seguridad y Salud");
+                          if (!cat) return;
+                          const validezStr = prompt("Tiempo de validez en meses (vacío para sin vencimiento):", "");
+                          if (validezStr === null) return;
+                          const valMeses = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
+                          await addCursoCatalogo(name, cat, isNaN(valMeses as any) ? null : valMeses);
+                        }}
+                        className="text-[10px] text-purple-400 font-bold hover:underline"
+                      >
+                        + Crear Nuevo
+                      </button>
+                    </div>
                     <select required className="input" 
+                      value={formData.id_curso_catalogo || ""}
                       onChange={e => setFormData({...formData, id_curso_catalogo: e.target.value})}>
                       <option value="">Seleccionar del catálogo...</option>
                       {catalogoCursos.map(c => (
@@ -481,8 +614,24 @@ export default function ControlPage() {
               <form onSubmit={handleAddDocumentoSubmit} className="p-5 bg-surface-2 border border-amber-500/20 rounded-xl space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1.5">
-                    <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Documento *</label>
+                    <div className="flex justify-between items-end mb-1">
+                      <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-0">Documento *</label>
+                      <button 
+                        type="button" 
+                        onClick={async () => {
+                          const name = prompt("Nombre de la acreditación/documento:");
+                          if (!name) return;
+                          const cat = prompt("Categoría:", "Acreditación");
+                          if (!cat) return;
+                          await addDocumentoCatalogo(name, cat);
+                        }}
+                        className="text-[10px] text-amber-500 font-bold hover:underline"
+                      >
+                        + Crear Nuevo
+                      </button>
+                    </div>
                     <select required className="input" 
+                      value={formData.id_documento_catalogo || ""}
                       onChange={e => setFormData({...formData, id_documento_catalogo: e.target.value})}>
                       <option value="">Seleccionar del catálogo...</option>
                       {catalogoDocumentos.map(c => (
@@ -609,6 +758,14 @@ export default function ControlPage() {
             >
               <User size={16}/> Trabajadores
             </button>
+            <button
+              onClick={() => setActiveTab("catalogos")}
+              className={`px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2.5 transition-all ${
+                activeTab === "catalogos" ? "bg-primary text-primary-content shadow-md" : "text-text-muted hover:text-text hover:bg-surface"
+              }`}
+            >
+              <BookOpen size={16}/> Catálogos
+            </button>
           </div>
         </div>
       </div>
@@ -624,8 +781,27 @@ export default function ControlPage() {
             <form onSubmit={handleMassAssignCursoSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4 bg-surface-2 p-5 rounded-xl border border-purple-500/20">
                 <div className="col-span-2 space-y-1.5">
-                  <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Curso a Asignar *</label>
+                  <div className="flex justify-between items-end mb-1">
+                    <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-0">Curso a Asignar *</label>
+                    <button 
+                      type="button" 
+                      onClick={async () => {
+                        const name = prompt("Nombre del nuevo curso:");
+                        if (!name) return;
+                        const cat = prompt("Categoría:", "Seguridad y Salud");
+                        if (!cat) return;
+                        const validezStr = prompt("Tiempo de validez en meses (vacío para sin vencimiento):", "");
+                        if (validezStr === null) return;
+                        const valMeses = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
+                        await addCursoCatalogo(name, cat, isNaN(valMeses as any) ? null : valMeses);
+                      }}
+                      className="text-[10px] text-purple-400 font-bold hover:underline"
+                    >
+                      + Crear Nuevo
+                    </button>
+                  </div>
                   <select required className="input bg-surface" 
+                    value={formData.id_curso_catalogo || ""}
                     onChange={e => setFormData({...formData, id_curso_catalogo: e.target.value})}>
                     <option value="">Seleccionar del catálogo...</option>
                     {catalogoCursos.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.categoria})</option>)}
@@ -687,8 +863,24 @@ export default function ControlPage() {
             <form onSubmit={handleMassAssignDocumentoSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4 bg-surface-2 p-5 rounded-xl border border-amber-500/20">
                 <div className="col-span-2 space-y-1.5">
-                  <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Documento a Asignar *</label>
+                  <div className="flex justify-between items-end mb-1">
+                    <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-0">Documento a Asignar *</label>
+                    <button 
+                      type="button" 
+                      onClick={async () => {
+                        const name = prompt("Nombre de la acreditación/documento:");
+                        if (!name) return;
+                        const cat = prompt("Categoría:", "Acreditación");
+                        if (!cat) return;
+                        await addDocumentoCatalogo(name, cat);
+                      }}
+                      className="text-[10px] text-amber-500 font-bold hover:underline"
+                    >
+                      + Crear Nuevo
+                    </button>
+                  </div>
                   <select required className="input bg-surface" 
+                    value={formData.id_documento_catalogo || ""}
                     onChange={e => setFormData({...formData, id_documento_catalogo: e.target.value})}>
                     <option value="">Seleccionar del catálogo...</option>
                     {catalogoDocumentos.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.categoria})</option>)}
@@ -912,6 +1104,261 @@ export default function ControlPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "catalogos" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+          {/* COLUMNA CURSOS */}
+          <div className="card space-y-5 p-6 border-purple-500/20 bg-surface flex flex-col h-[650px]">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="text-lg font-bold text-text flex items-center gap-2.5">
+                <BookOpen className="text-purple-500" size={20}/> Catálogo de Cursos
+              </h3>
+              <button 
+                onClick={() => setShowAddCursoForm(!showAddCursoForm)}
+                className="btn py-1.5 px-3 min-h-0 text-xs bg-purple-600 text-white hover:bg-purple-700 border-none flex items-center gap-1"
+              >
+                <Plus size={14}/> {showAddCursoForm ? "Cerrar" : "Nuevo"}
+              </button>
+            </div>
+
+            {showAddCursoForm && (
+              <form onSubmit={handleCreateCurso} className="p-4 bg-surface-2 border border-purple-500/20 rounded-xl space-y-3 shrink-0">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Nombre del Curso</label>
+                  <input required type="text" value={newCursoName} onChange={e => setNewCursoName(e.target.value)} placeholder="Ej: Trabajo en Altura" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Categoría</label>
+                  <input required type="text" value={newCursoCat} onChange={e => setNewCursoCat(e.target.value)} placeholder="Ej: Seguridad / Técnico" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Validez (Meses)</label>
+                  <input type="number" value={newCursoValidez} onChange={e => setNewCursoValidez(e.target.value)} placeholder="Ej: 12 (opcional)" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button type="button" onClick={() => setShowAddCursoForm(false)} className="btn btn-secondary py-1 px-3 min-h-0 text-[11px]">Cancelar</button>
+                  <button type="submit" className="btn bg-purple-600 text-white hover:bg-purple-700 border-none py-1 px-3 min-h-0 text-[11px] flex items-center gap-1"><Save size={12}/> Guardar</button>
+                </div>
+              </form>
+            )}
+
+            <div className="relative shrink-0">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+              <input 
+                type="text" 
+                placeholder="Buscar curso..." 
+                value={searchCurso}
+                onChange={(e) => setSearchCurso(e.target.value)}
+                className="input pl-9 text-xs py-2 min-h-0 bg-surface-2"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 overflow-y-auto pr-1">
+              {catalogoCursos
+                .filter(c => c.nombre.toLowerCase().includes(searchCurso.toLowerCase()) || c.categoria.toLowerCase().includes(searchCurso.toLowerCase()))
+                .map(c => {
+                  const numAsignado = cursos.filter(x => x.id_curso_catalogo === c.id).length;
+                  return (
+                    <div key={c.id} className="p-3 rounded-lg border border-border bg-surface-2 flex justify-between items-center hover:border-purple-500/30 transition-all group">
+                      <div className="min-w-0 flex-1 mr-2">
+                        <p className="font-bold text-text text-xs truncate" title={c.nombre}>{c.nombre}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400">{c.categoria}</span>
+                          {c.validez_meses && (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-800 text-zinc-300">Validez: {c.validez_meses} meses</span>
+                          )}
+                          {numAsignado > 0 && <span className="text-[9px] text-text-muted font-semibold">({numAsignado} asignado{numAsignado > 1 ? "s" : ""})</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          type="button"
+                          onClick={() => handleEditCurso(c)}
+                          className="p-1.5 rounded-lg border border-transparent transition-all text-text-muted hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100"
+                          title="Editar curso del catálogo"
+                        >
+                          <Edit2 size={13}/>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(`¿Eliminar "${c.nombre}" del catálogo?`)) {
+                              const res = await deleteCursoCatalogo(c.id);
+                              if (!res.success) alert(res.message);
+                            }
+                          }}
+                          className={`p-1.5 rounded-lg border transition-all text-text-muted hover:text-danger hover:bg-danger/10 border-transparent hover:border-danger/20 ${numAsignado > 0 ? "cursor-not-allowed opacity-40" : "opacity-0 group-hover:opacity-100"}`}
+                          title={numAsignado > 0 ? "No se puede eliminar: está asignado a trabajadores" : "Eliminar del catálogo"}
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              {catalogoCursos.filter(c => c.nombre.toLowerCase().includes(searchCurso.toLowerCase()) || c.categoria.toLowerCase().includes(searchCurso.toLowerCase())).length === 0 && (
+                <p className="text-center text-xs text-text-muted italic py-6">No se encontraron cursos.</p>
+              )}
+            </div>
+          </div>
+
+          {/* COLUMNA EXÁMENES */}
+          <div className="card space-y-5 p-6 border-primary/20 bg-surface flex flex-col h-[650px]">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="text-lg font-bold text-text flex items-center gap-2.5">
+                <Stethoscope className="text-primary" size={20}/> Catálogo de Exámenes
+              </h3>
+              <button 
+                onClick={() => setShowAddExamenForm(!showAddExamenForm)}
+                className="btn py-1.5 px-3 min-h-0 text-xs btn-primary flex items-center gap-1"
+              >
+                <Plus size={14}/> {showAddExamenForm ? "Cerrar" : "Nuevo"}
+              </button>
+            </div>
+
+            {showAddExamenForm && (
+              <form onSubmit={handleCreateExamen} className="p-4 bg-surface-2 border border-primary/20 rounded-xl space-y-3 shrink-0">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Nombre del Examen</label>
+                  <input required type="text" value={newExamenName} onChange={e => setNewExamenName(e.target.value)} placeholder="Ej: Psicosensométrico" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Categoría</label>
+                  <input required type="text" value={newExamenCat} onChange={e => setNewExamenCat(e.target.value)} placeholder="Ej: Salud Ocupacional" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button type="button" onClick={() => setShowAddExamenForm(false)} className="btn btn-secondary py-1 px-3 min-h-0 text-[11px]">Cancelar</button>
+                  <button type="submit" className="btn btn-primary py-1 px-3 min-h-0 text-[11px] flex items-center gap-1"><Save size={12}/> Guardar</button>
+                </div>
+              </form>
+            )}
+
+            <div className="relative shrink-0">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+              <input 
+                type="text" 
+                placeholder="Buscar examen..." 
+                value={searchExamen}
+                onChange={(e) => setSearchExamen(e.target.value)}
+                className="input pl-9 text-xs py-2 min-h-0 bg-surface-2"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 overflow-y-auto pr-1">
+              {catalogoExamenes
+                .filter(c => c.nombre.toLowerCase().includes(searchExamen.toLowerCase()) || c.categoria.toLowerCase().includes(searchExamen.toLowerCase()))
+                .map(c => {
+                  const numAsignado = examenes.filter(x => x.id_examen_catalogo === c.id).length;
+                  return (
+                    <div key={c.id} className="p-3 rounded-lg border border-border bg-surface-2 flex justify-between items-center hover:border-primary/30 transition-all group">
+                      <div className="min-w-0 flex-1 mr-2">
+                        <p className="font-bold text-text text-xs truncate" title={c.nombre}>{c.nombre}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary">{c.categoria}</span>
+                          {numAsignado > 0 && <span className="text-[9px] text-text-muted font-semibold">({numAsignado} asignado{numAsignado > 1 ? "s" : ""})</span>}
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          if (confirm(`¿Eliminar "${c.nombre}" del catálogo?`)) {
+                            const res = await deleteExamenCatalogo(c.id);
+                            if (!res.success) alert(res.message);
+                          }
+                        }}
+                        className={`p-1.5 rounded-lg border transition-all text-text-muted hover:text-danger hover:bg-danger/10 border-transparent hover:border-danger/20 ${numAsignado > 0 ? "cursor-not-allowed opacity-40" : "opacity-0 group-hover:opacity-100"}`}
+                        title={numAsignado > 0 ? "No se puede eliminar: está asignado a trabajadores" : "Eliminar del catálogo"}
+                      >
+                        <Trash2 size={14}/>
+                      </button>
+                    </div>
+                  );
+                })}
+              {catalogoExamenes.filter(c => c.nombre.toLowerCase().includes(searchExamen.toLowerCase()) || c.categoria.toLowerCase().includes(searchExamen.toLowerCase())).length === 0 && (
+                <p className="text-center text-xs text-text-muted italic py-6">No se encontraron exámenes.</p>
+              )}
+            </div>
+          </div>
+
+          {/* COLUMNA DOCUMENTOS / ACREDITACIONES */}
+          <div className="card space-y-5 p-6 border-amber-500/20 bg-surface flex flex-col h-[650px]">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <h3 className="text-lg font-bold text-text flex items-center gap-2.5">
+                <FileBadge className="text-amber-500" size={20}/> Catálogo de Acreditaciones
+              </h3>
+              <button 
+                onClick={() => setShowAddDocForm(!showAddDocForm)}
+                className="btn py-1.5 px-3 min-h-0 text-xs bg-amber-500 text-white hover:bg-amber-600 border-none flex items-center gap-1"
+              >
+                <Plus size={14}/> {showAddDocForm ? "Cerrar" : "Nuevo"}
+              </button>
+            </div>
+
+            {showAddDocForm && (
+              <form onSubmit={handleCreateDoc} className="p-4 bg-surface-2 border border-amber-500/20 rounded-xl space-y-3 shrink-0">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Nombre del Documento / Pase</label>
+                  <input required type="text" value={newDocName} onChange={e => setNewDocName(e.target.value)} placeholder="Ej: Pase de Ingreso Faena" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase block">Categoría</label>
+                  <input required type="text" value={newDocCat} onChange={e => setNewDocCat(e.target.value)} placeholder="Ej: Acreditación / Pase" className="input bg-surface text-sm py-1.5"/>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button type="button" onClick={() => setShowAddDocForm(false)} className="btn btn-secondary py-1 px-3 min-h-0 text-[11px]">Cancelar</button>
+                  <button type="submit" className="btn bg-amber-500 text-white hover:bg-amber-600 border-none py-1 px-3 min-h-0 text-[11px] flex items-center gap-1"><Save size={12}/> Guardar</button>
+                </div>
+              </form>
+            )}
+
+            <div className="relative shrink-0">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+              <input 
+                type="text" 
+                placeholder="Buscar documento..." 
+                value={searchDoc}
+                onChange={(e) => setSearchDoc(e.target.value)}
+                className="input pl-9 text-xs py-2 min-h-0 bg-surface-2"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 overflow-y-auto pr-1">
+              {catalogoDocumentos
+                .filter(c => c.nombre.toLowerCase().includes(searchDoc.toLowerCase()) || c.categoria.toLowerCase().includes(searchDoc.toLowerCase()))
+                .map(c => {
+                  const numAsignado = documentos.filter(x => x.id_documento_catalogo === c.id).length;
+                  return (
+                    <div key={c.id} className="p-3 rounded-lg border border-border bg-surface-2 flex justify-between items-center hover:border-amber-500/30 transition-all group">
+                      <div className="min-w-0 flex-1 mr-2">
+                        <p className="font-bold text-text text-xs truncate" title={c.nombre}>{c.nombre}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500">{c.categoria}</span>
+                          {numAsignado > 0 && <span className="text-[9px] text-text-muted font-semibold">({numAsignado} asignado{numAsignado > 1 ? "s" : ""})</span>}
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          if (confirm(`¿Eliminar "${c.nombre}" del catálogo?`)) {
+                            const res = await deleteDocumentoCatalogo(c.id);
+                            if (!res.success) alert(res.message);
+                          }
+                        }}
+                        className={`p-1.5 rounded-lg border transition-all text-text-muted hover:text-danger hover:bg-danger/10 border-transparent hover:border-danger/20 ${numAsignado > 0 ? "cursor-not-allowed opacity-40" : "opacity-0 group-hover:opacity-100"}`}
+                        title={numAsignado > 0 ? "No se puede eliminar: está asignado a trabajadores" : "Eliminar del catálogo"}
+                      >
+                        <Trash2 size={14}/>
+                      </button>
+                    </div>
+                  );
+                })}
+              {catalogoDocumentos.filter(c => c.nombre.toLowerCase().includes(searchDoc.toLowerCase()) || c.categoria.toLowerCase().includes(searchDoc.toLowerCase())).length === 0 && (
+                <p className="text-center text-xs text-text-muted italic py-6">No se encontraron documentos.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

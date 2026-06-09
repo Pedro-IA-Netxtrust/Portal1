@@ -72,7 +72,7 @@ export interface Contrato {
   codigo_contrato: string;
   nombre_contrato: string;
   id_mandante: string;
-  estado: "Activo" | "Cerrado" | "En Preparación" | "Suspendido";
+  estado: "Activo" | "Cerrado" | "En Preparacion" | "Suspendido";
   fecha_inicio: string;
   fecha_termino: string;
   centros_costo: CentroCosto[];
@@ -376,7 +376,7 @@ const mockContratos: Contrato[] = [
     codigo_contrato: "MON-2026-ADM",
     nombre_contrato: "Administración Operativa Central",
     id_mandante: "m-3",
-    estado: "En Preparación",
+    estado: "En Preparacion",
     fecha_inicio: "2026-07-01",
     fecha_termino: "2029-06-30",
     centros_costo: [

@@ -36,7 +36,7 @@ const NIVEL_COLOR: Record<string, string> = {
 const ESTADO_COLOR: Record<string, string> = {
   Activo:          "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   Cerrado:         "bg-zinc-700/50 text-zinc-500 border-zinc-600/30",
-  "En Preparación":"bg-amber-500/10 text-amber-400 border-amber-500/20",
+  "En Preparacion":"bg-amber-500/10 text-amber-400 border-amber-500/20",
   Suspendido:      "bg-red-500/10 text-red-400 border-red-500/20"
 };
 const TIPO_HIST_COLOR: Record<string, string> = {
@@ -133,7 +133,7 @@ function TabInfo({ contrato, id_contrato }: { contrato: any; id_contrato: string
             <div className="space-y-1.5"><label className="text-xs text-zinc-500">Código</label><input className={inputClass} value={form.codigo_contrato} onChange={e => setForm(f => ({...f, codigo_contrato: e.target.value}))} /></div>
             <div className="space-y-1.5"><label className="text-xs text-zinc-500">Estado</label>
               <select className={selectClass} value={form.estado} onChange={e => setForm(f => ({...f, estado: e.target.value as any}))}>
-                {["Activo","En Preparación","Suspendido","Cerrado"].map(e => <option key={e}>{e}</option>)}
+                {["Activo","En Preparacion","Suspendido","Cerrado"].map(e => <option key={e}>{e}</option>)}
               </select>
             </div>
             <div className="space-y-1.5"><label className="text-xs text-zinc-500">Mandante</label>

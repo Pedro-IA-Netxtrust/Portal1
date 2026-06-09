@@ -94,7 +94,7 @@ export interface Trabajador {
 interface TrabajadoresState {
   trabajadores: Trabajador[];
   fetchTrabajadores: () => Promise<void>;
-  addTrabajador: (t: Omit<Trabajador, "id_trabajador">) => Promise<void>;
+  addTrabajador: (t: Omit<Trabajador, "id_trabajador">) => Promise<Trabajador | null>;
   updateTrabajador: (id: string, updatedFields: Partial<Trabajador>) => Promise<void>;
   deleteTrabajador: (id: string) => Promise<void>;
 }
@@ -258,9 +258,12 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
               nombre_entidad: `${w.nombre_1} ${w.apellido_paterno}`,
               detalle: `Trabajador ${w.nombre_1} ${w.apellido_paterno} creado. RUT/ID: ${w.numero_identificacion}.`,
             });
+            return w;
           }
+          return null;
         } catch (err) {
           console.error("Failed to persist new worker to Supabase:", err);
+          return null;
         }
       },
 

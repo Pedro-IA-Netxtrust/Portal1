@@ -160,7 +160,12 @@ function exportarCSV(entradas: EntradaAuditoria[]): void {
 // ─────────────────────────────────────────────────────────────
 
 function AccionBadge({ accion }: { accion: TipoAccion }) {
-  const cfg = ACCION_CONFIG[accion];
+  const cfg = ACCION_CONFIG[accion] || {
+    label: (accion as string) || "Evento",
+    bg: "bg-zinc-500/10 border-zinc-500/20",
+    text: "text-zinc-400",
+    icon: <Clock size={12} />,
+  };
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${cfg.bg} ${cfg.text}`}

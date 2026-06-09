@@ -14,7 +14,7 @@ import {
 const ESTADO_COLOR: Record<string, string> = {
   Activo:           "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   Cerrado:          "bg-zinc-800 text-zinc-500 border-zinc-700",
-  "En Preparación": "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  "En Preparacion": "bg-amber-500/10 text-amber-400 border-amber-500/20",
   Suspendido:       "bg-red-500/10 text-red-400 border-red-500/20"
 };
 

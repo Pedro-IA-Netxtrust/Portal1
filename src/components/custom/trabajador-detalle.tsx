@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import TrabajadorForm from "./trabajador-form";
 import { useTrabajadoresStore, Trabajador } from "@/store/trabajadores-store";
+import { useTrabajadoresSAPStore } from "@/store/trabajadores-sap-store";
 import { useControlStore } from "@/store/control-store";
 import { AsignarControlModal } from "./control/asignar-control-modal";
 
@@ -33,9 +34,125 @@ interface TrabajadorDetalleProps {
 export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDetalleProps) {
   const { updateTrabajador } = useTrabajadoresStore();
   const { documentos, examenes, cursos, catalogoDocumentos, catalogoExamenes, catalogoCursos } = useControlStore();
-  const [activeTab, setActiveTab] = useState<"resumen" | "completo" | "epp" | "control">("resumen");
+  const [activeTab, setActiveTab] = useState<"resumen" | "completo" | "epp" | "control" | "sap">("resumen");
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingSap, setIsEditingSap] = useState(false);
   const [modalControl, setModalControl] = useState<{ isOpen: boolean, type: "documento"|"curso"|"examen" }>({ isOpen: false, type: "documento" });
+
+  const { sapList, fetchSAPData, upsertSAPData } = useTrabajadoresSAPStore();
+
+  React.useEffect(() => {
+    fetchSAPData();
+  }, [fetchSAPData]);
+
+  const sapRecord = sapList.find(s => s.id_trabajador === trabajador.id_trabajador);
+
+  const [sapFormData, setSapFormData] = useState({
+    correo_adc_codelco: "",
+    aprobacion_correo_adc_codelco: "",
+    solicitud_cuenta_realizada_codelco: "",
+    cuenta_correo_activa_codelco: false,
+    ticket_codelco: "",
+    correo_adc_sap: "",
+    aprobacion_correo_adc_sap: "",
+    solicitud_cuenta_sap: "",
+    cuenta_sap_activa: false,
+    ticket_sap: "",
+    correo_adc_perfiles_sap: "",
+    aprobacion_correo_adc_perfiles_sap: "",
+    solicitud_perfiles_roles_sap: "",
+    ticket_perfiles_sap: "",
+    perfiles_sap_activos: false,
+    requiere_datamart: false,
+    correo_adc_datamart: "",
+    aprobacion_correo_adc_datamart: "",
+    solicitud_datamart: "",
+    datamart_activo: false,
+    ticket_datamart: ""
+  });
+
+  const handleEditSapOpen = () => {
+    if (sapRecord) {
+      setSapFormData({
+        correo_adc_codelco: sapRecord.correo_adc_codelco || "",
+        aprobacion_correo_adc_codelco: sapRecord.aprobacion_correo_adc_codelco || "",
+        solicitud_cuenta_realizada_codelco: sapRecord.solicitud_cuenta_realizada_codelco || "",
+        cuenta_correo_activa_codelco: !!sapRecord.cuenta_correo_activa_codelco,
+        ticket_codelco: sapRecord.ticket_codelco || "",
+        correo_adc_sap: sapRecord.correo_adc_sap || "",
+        aprobacion_correo_adc_sap: sapRecord.aprobacion_correo_adc_sap || "",
+        solicitud_cuenta_sap: sapRecord.solicitud_cuenta_sap || "",
+        cuenta_sap_activa: !!sapRecord.cuenta_sap_activa,
+        ticket_sap: sapRecord.ticket_sap || "",
+        correo_adc_perfiles_sap: sapRecord.correo_adc_perfiles_sap || "",
+        aprobacion_correo_adc_perfiles_sap: sapRecord.aprobacion_correo_adc_perfiles_sap || "",
+        solicitud_perfiles_roles_sap: sapRecord.solicitud_perfiles_roles_sap || "",
+        ticket_perfiles_sap: sapRecord.ticket_perfiles_sap || "",
+        perfiles_sap_activos: !!sapRecord.perfiles_sap_activos,
+        requiere_datamart: !!sapRecord.requiere_datamart,
+        correo_adc_datamart: sapRecord.correo_adc_datamart || "",
+        aprobacion_correo_adc_datamart: sapRecord.aprobacion_correo_adc_datamart || "",
+        solicitud_datamart: sapRecord.solicitud_datamart || "",
+        datamart_activo: !!sapRecord.datamart_activo,
+        ticket_datamart: sapRecord.ticket_datamart || "",
+      });
+    } else {
+      setSapFormData({
+        correo_adc_codelco: "",
+        aprobacion_correo_adc_codelco: "",
+        solicitud_cuenta_realizada_codelco: "",
+        cuenta_correo_activa_codelco: false,
+        ticket_codelco: "",
+        correo_adc_sap: "",
+        aprobacion_correo_adc_sap: "",
+        solicitud_cuenta_sap: "",
+        cuenta_sap_activa: false,
+        ticket_sap: "",
+        correo_adc_perfiles_sap: "",
+        aprobacion_correo_adc_perfiles_sap: "",
+        solicitud_perfiles_roles_sap: "",
+        ticket_perfiles_sap: "",
+        perfiles_sap_activos: false,
+        requiere_datamart: false,
+        correo_adc_datamart: "",
+        aprobacion_correo_adc_datamart: "",
+        solicitud_datamart: "",
+        datamart_activo: false,
+        ticket_datamart: ""
+      });
+    }
+    setIsEditingSap(true);
+  };
+
+  const handleSapSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const mapToNull = (val: string) => val.trim() === "" ? null : val;
+    const cleanSapData = {
+      correo_adc_codelco: mapToNull(sapFormData.correo_adc_codelco),
+      aprobacion_correo_adc_codelco: mapToNull(sapFormData.aprobacion_correo_adc_codelco),
+      solicitud_cuenta_realizada_codelco: mapToNull(sapFormData.solicitud_cuenta_realizada_codelco),
+      cuenta_correo_activa_codelco: sapFormData.cuenta_correo_activa_codelco,
+      ticket_codelco: mapToNull(sapFormData.ticket_codelco),
+      correo_adc_sap: mapToNull(sapFormData.correo_adc_sap),
+      aprobacion_correo_adc_sap: mapToNull(sapFormData.aprobacion_correo_adc_sap),
+      solicitud_cuenta_sap: mapToNull(sapFormData.solicitud_cuenta_sap),
+      cuenta_sap_activa: sapFormData.cuenta_sap_activa,
+      ticket_sap: mapToNull(sapFormData.ticket_sap),
+      correo_adc_perfiles_sap: mapToNull(sapFormData.correo_adc_perfiles_sap),
+      aprobacion_correo_adc_perfiles_sap: mapToNull(sapFormData.aprobacion_correo_adc_perfiles_sap),
+      solicitud_perfiles_roles_sap: mapToNull(sapFormData.solicitud_perfiles_roles_sap),
+      ticket_perfiles_sap: mapToNull(sapFormData.ticket_perfiles_sap),
+      perfiles_sap_activos: sapFormData.perfiles_sap_activos,
+      requiere_datamart: sapFormData.requiere_datamart,
+      correo_adc_datamart: mapToNull(sapFormData.correo_adc_datamart),
+      aprobacion_correo_adc_datamart: mapToNull(sapFormData.aprobacion_correo_adc_datamart),
+      solicitud_datamart: mapToNull(sapFormData.solicitud_datamart),
+      datamart_activo: sapFormData.datamart_activo,
+      ticket_datamart: mapToNull(sapFormData.ticket_datamart),
+    };
+    await upsertSAPData(trabajador.id_trabajador, cleanSapData);
+    setIsEditingSap(false);
+  };
   
   // Estado para Edición in-situ de Formación y Talento
   const [isEditingFormacion, setIsEditingFormacion] = useState(false);
@@ -174,7 +291,8 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
             { id: "resumen", label: "Vista General" },
             { id: "completo", label: "Información Completa" },
             { id: "epp", label: "EPP & Operativo" },
-            { id: "control", label: "Acreditaciones & Control" }
+            { id: "control", label: "Acreditaciones & Control" },
+            { id: "sap", label: "Accesos TI y SAP" }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -586,6 +704,120 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
               </div>
             </div>
           )}
+
+          {activeTab === "sap" && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-1.5">
+                <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Shield size={14} /> Accesos TI y Credenciales SAP
+                </h4>
+                <button 
+                  onClick={handleEditSapOpen}
+                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-[10px] uppercase font-bold"
+                >
+                  <Edit size={12} /> Editar Accesos
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Correo Codelco */}
+                <div className="p-4 rounded-xl bg-surface-2 border border-border space-y-3.5">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/50">
+                    <span className="font-bold text-sm text-text">Correo Codelco</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      sapRecord?.cuenta_correo_activa_codelco 
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                        : sapRecord?.solicitud_cuenta_realizada_codelco
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                    }`}>
+                      {sapRecord?.cuenta_correo_activa_codelco ? "Activa" : sapRecord?.solicitud_cuenta_realizada_codelco ? "Solicitada" : "No iniciada"}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-text-muted">
+                    <div className="flex justify-between"><span className="text-text-soft">Correo a AdC:</span> <span className="text-text font-medium">{sapRecord?.correo_adc_codelco || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">Aprobación AdC:</span> <span className="text-text font-medium">{sapRecord?.aprobacion_correo_adc_codelco || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">Solicitud Cuenta:</span> <span className="text-text font-medium">{sapRecord?.solicitud_cuenta_realizada_codelco || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">N° Ticket:</span> <span className="text-text font-bold">{sapRecord?.ticket_codelco || "—"}</span></div>
+                  </div>
+                </div>
+
+                {/* 2. Cuenta SAP */}
+                <div className="p-4 rounded-xl bg-surface-2 border border-border space-y-3.5">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/50">
+                    <span className="font-bold text-sm text-text">Cuenta SAP</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      sapRecord?.cuenta_sap_activa 
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                        : sapRecord?.solicitud_cuenta_sap
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                    }`}>
+                      {sapRecord?.cuenta_sap_activa ? "Activa" : sapRecord?.solicitud_cuenta_sap ? "Solicitada" : "No iniciada"}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-text-muted">
+                    <div className="flex justify-between"><span className="text-text-soft">Correo a AdC:</span> <span className="text-text font-medium">{sapRecord?.correo_adc_sap || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">Aprobación AdC:</span> <span className="text-text font-medium">{sapRecord?.aprobacion_correo_adc_sap || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">Solicitud Cuenta:</span> <span className="text-text font-medium">{sapRecord?.solicitud_cuenta_sap || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">N° Ticket (3):</span> <span className="text-text font-bold">{sapRecord?.ticket_sap || "—"}</span></div>
+                  </div>
+                </div>
+
+                {/* 3. Perfiles SAP */}
+                <div className="p-4 rounded-xl bg-surface-2 border border-border space-y-3.5">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/50">
+                    <span className="font-bold text-sm text-text">Perfiles SAP</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      sapRecord?.perfiles_sap_activos 
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                        : sapRecord?.solicitud_perfiles_roles_sap
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                    }`}>
+                      {sapRecord?.perfiles_sap_activos ? "Activos" : sapRecord?.solicitud_perfiles_roles_sap ? "Solicitados" : "No iniciados"}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-text-muted">
+                    <div className="flex justify-between"><span className="text-text-soft">Correo a AdC:</span> <span className="text-text font-medium">{sapRecord?.correo_adc_perfiles_sap || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">Aprobación AdC:</span> <span className="text-text font-medium">{sapRecord?.aprobacion_correo_adc_perfiles_sap || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">Solicitud Perfiles:</span> <span className="text-text font-medium">{sapRecord?.solicitud_perfiles_roles_sap || "—"}</span></div>
+                    <div className="flex justify-between"><span className="text-text-soft">N° Ticket:</span> <span className="text-text font-bold">{sapRecord?.ticket_perfiles_sap || "—"}</span></div>
+                  </div>
+                </div>
+
+                {/* 4. Datamart */}
+                <div className="p-4 rounded-xl bg-surface-2 border border-border space-y-3.5">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/50">
+                    <span className="font-bold text-sm text-text">Datamart</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      !sapRecord?.requiere_datamart
+                        ? "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                        : sapRecord?.datamart_activo 
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                        : sapRecord?.solicitud_datamart
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    }`}>
+                      {!sapRecord?.requiere_datamart ? "No requerido" : sapRecord?.datamart_activo ? "Activo" : sapRecord?.solicitud_datamart ? "Solicitado" : "Requerido"}
+                    </span>
+                  </div>
+                  {sapRecord?.requiere_datamart ? (
+                    <div className="space-y-1.5 text-xs text-text-muted">
+                      <div className="flex justify-between"><span className="text-text-soft">Correo a AdC:</span> <span className="text-text font-medium">{sapRecord?.correo_adc_datamart || "—"}</span></div>
+                      <div className="flex justify-between"><span className="text-text-soft">Aprobación AdC:</span> <span className="text-text font-medium">{sapRecord?.aprobacion_correo_adc_datamart || "—"}</span></div>
+                      <div className="flex justify-between"><span className="text-text-soft">Solicitud Datamart:</span> <span className="text-text font-medium">{sapRecord?.solicitud_datamart || "—"}</span></div>
+                      <div className="flex justify-between"><span className="text-text-soft">N° Ticket (2):</span> <span className="text-text font-bold">{sapRecord?.ticket_datamart || "—"}</span></div>
+                    </div>
+                  ) : (
+                    <div className="h-[76px] flex items-center justify-center text-xs text-text-muted italic">
+                      Este trabajador no requiere acceso a Datamart
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -602,6 +834,171 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
           trabajadorId={trabajador.id_trabajador}
           onClose={() => setModalControl({ isOpen: false, type: "documento" })}
         />
+      )}
+
+      {isEditingSap && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-zinc-950 border border-zinc-800 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2"><Shield className="text-primary" size={20}/> Editar Accesos TI y SAP</h2>
+              <button onClick={() => setIsEditingSap(false)} className="text-zinc-500 hover:text-white transition-colors"><X size={20}/></button>
+            </div>
+            <form onSubmit={handleSapSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* 1. Correo Codelco */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-800 pb-1.5">Cuenta de Correo Codelco</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Correo a AdC</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.correo_adc_codelco} onChange={e => setSapFormData({...sapFormData, correo_adc_codelco: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo AdC</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.aprobacion_correo_adc_codelco} onChange={e => setSapFormData({...sapFormData, aprobacion_correo_adc_codelco: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Solicitud Realizada</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.solicitud_cuenta_realizada_codelco} onChange={e => setSapFormData({...sapFormData, solicitud_cuenta_realizada_codelco: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">N° de Ticket</label>
+                    <input type="text" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.ticket_codelco} onChange={e => setSapFormData({...sapFormData, ticket_codelco: e.target.value})} />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex items-center pt-6">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                        checked={sapFormData.cuenta_correo_activa_codelco} onChange={e => setSapFormData({...sapFormData, cuenta_correo_activa_codelco: e.target.checked})} />
+                      <span className="group-hover:text-primary transition-colors">Cuenta correo activa</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Cuenta SAP */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-800 pb-1.5">Cuenta SAP</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Correo a AdC SAP</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.correo_adc_sap} onChange={e => setSapFormData({...sapFormData, correo_adc_sap: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo SAP</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.aprobacion_correo_adc_sap} onChange={e => setSapFormData({...sapFormData, aprobacion_correo_adc_sap: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Solicitud SAP</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.solicitud_cuenta_sap} onChange={e => setSapFormData({...sapFormData, solicitud_cuenta_sap: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">N° de Ticket (3)</label>
+                    <input type="text" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.ticket_sap} onChange={e => setSapFormData({...sapFormData, ticket_sap: e.target.value})} />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex items-center pt-6">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                        checked={sapFormData.cuenta_sap_activa} onChange={e => setSapFormData({...sapFormData, cuenta_sap_activa: e.target.checked})} />
+                      <span className="group-hover:text-primary transition-colors">Cuenta SAP activa</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Perfiles SAP */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-800 pb-1.5">Perfiles SAP</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Correo a AdC Perfiles</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.correo_adc_perfiles_sap} onChange={e => setSapFormData({...sapFormData, correo_adc_perfiles_sap: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo Perfiles</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.aprobacion_correo_adc_perfiles_sap} onChange={e => setSapFormData({...sapFormData, aprobacion_correo_adc_perfiles_sap: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Solicitud Perfiles y Roles</label>
+                    <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.solicitud_perfiles_roles_sap} onChange={e => setSapFormData({...sapFormData, solicitud_perfiles_roles_sap: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">N° de Ticket</label>
+                    <input type="text" className="input bg-zinc-900 border-zinc-800" 
+                      value={sapFormData.ticket_perfiles_sap} onChange={e => setSapFormData({...sapFormData, ticket_perfiles_sap: e.target.value})} />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex items-center pt-6">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                        checked={sapFormData.perfiles_sap_activos} onChange={e => setSapFormData({...sapFormData, perfiles_sap_activos: e.target.checked})} />
+                      <span className="group-hover:text-primary transition-colors">Perfiles SAP activos</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Datamart */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b border-zinc-800 pb-1.5">Datamart</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="col-span-2 md:col-span-3 flex items-center pb-2">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                        checked={sapFormData.requiere_datamart} onChange={e => setSapFormData({...sapFormData, requiere_datamart: e.target.checked})} />
+                      <span className="group-hover:text-primary transition-colors">Requiere Datamart</span>
+                    </label>
+                  </div>
+
+                  {sapFormData.requiere_datamart && (
+                    <>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">Correo a AdC Datamart</label>
+                        <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                          value={sapFormData.correo_adc_datamart} onChange={e => setSapFormData({...sapFormData, correo_adc_datamart: e.target.value})} />
+                      </div>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo Datamart</label>
+                        <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                          value={sapFormData.aprobacion_correo_adc_datamart} onChange={e => setSapFormData({...sapFormData, aprobacion_correo_adc_datamart: e.target.value})} />
+                      </div>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">Solicitud Datamart</label>
+                        <input type="date" className="input bg-zinc-900 border-zinc-800" 
+                          value={sapFormData.solicitud_datamart} onChange={e => setSapFormData({...sapFormData, solicitud_datamart: e.target.value})} />
+                      </div>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">N° de Ticket (2)</label>
+                        <input type="text" className="input bg-zinc-900 border-zinc-800" 
+                          value={sapFormData.ticket_datamart} onChange={e => setSapFormData({...sapFormData, ticket_datamart: e.target.value})} />
+                      </div>
+                      <div className="flex items-center pt-6 animate-fadeIn">
+                        <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                          <input type="checkbox" className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                            checked={sapFormData.datamart_activo} onChange={e => setSapFormData({...sapFormData, datamart_activo: e.target.checked})} />
+                          <span className="group-hover:text-primary transition-colors">Datamart activo</span>
+                        </label>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </form>
+            <div className="p-4 border-t border-zinc-800 flex justify-end gap-3 bg-zinc-900/40 rounded-b-2xl">
+              <button type="button" onClick={() => setIsEditingSap(false)} className="btn btn-secondary py-2 min-h-0 text-sm">Cancelar</button>
+              <button type="button" onClick={handleSapSubmit} className="btn py-2 min-h-0 text-sm bg-primary text-white hover:bg-primary-hover border-none">Guardar Accesos</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {isEditingFormacion && (

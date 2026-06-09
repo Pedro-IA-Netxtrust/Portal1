@@ -17,6 +17,7 @@ export interface CatalogoCurso {
   id: string;
   nombre: string;
   categoria: string;
+  validez_meses?: number | null; // Tiempo de validez opcional en meses
 }
 
 export interface CatalogoDocumento {
@@ -103,6 +104,14 @@ interface ControlState {
   // Helpers
   getAlertasByTrabajador: (id_trabajador: string) => AlertaControl[];
   getAllAlertas: () => { trabajador_id: string; alerta: AlertaControl }[];
+
+  addCursoCatalogo: (nombre: string, categoria: string, validez_meses?: number | null) => Promise<void>;
+  deleteCursoCatalogo: (id: string) => Promise<{ success: boolean; message?: string }>;
+  updateCursoCatalogo: (id: string, updates: Partial<Omit<CatalogoCurso, "id">>) => Promise<void>;
+  addExamenCatalogo: (nombre: string, categoria: string) => Promise<void>;
+  deleteExamenCatalogo: (id: string) => Promise<{ success: boolean; message?: string }>;
+  addDocumentoCatalogo: (nombre: string, categoria: string) => Promise<void>;
+  deleteDocumentoCatalogo: (id: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 // Datos Mock Iniciales para visualización
@@ -287,11 +296,60 @@ export const useControlStore = create<ControlState>()(
             set({ documentos: docData });
           }
 
+          // Fetch catalog courses
+          const { data: catCuData, error: catCuError } = await supabase
+            .from("control_catalogo_cursos")
+            .select("*")
+            .order("nombre", { ascending: true });
+
+          if (catCuError) {
+            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_catalogo_cursos, usando mock");
+            const { catalogoCursos } = get();
+            if (catalogoCursos.length === 0) set({ catalogoCursos: mockCatalogoCursos });
+          } else if (catCuData) {
+            set({ catalogoCursos: catCuData });
+          }
+
+          // Fetch catalog exams
+          const { data: catExData, error: catExError } = await supabase
+            .from("control_catalogo_examenes")
+            .select("*")
+            .order("nombre", { ascending: true });
+
+          if (catExError) {
+            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_catalogo_examenes, usando mock");
+            const { catalogoExamenes } = get();
+            if (catalogoExamenes.length === 0) set({ catalogoExamenes: mockCatalogoExamenes });
+          } else if (catExData) {
+            set({ catalogoExamenes: catExData });
+          }
+
+          // Fetch catalog documents
+          const { data: catDocData, error: catDocError } = await supabase
+            .from("control_catalogo_documentos")
+            .select("*")
+            .order("nombre", { ascending: true });
+
+          if (catDocError) {
+            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_catalogo_documentos, usando mock");
+            const { catalogoDocumentos } = get();
+            if (catalogoDocumentos.length === 0) set({ catalogoDocumentos: mockCatalogoDocumentos });
+          } else if (catDocData) {
+            set({ catalogoDocumentos: catDocData });
+          }
+
         } catch (err) {
           if (process.env.NODE_ENV === "development") console.warn("Error red control-store", err);
-          const { examenes, cursos, documentos } = get();
+          const { examenes, cursos, documentos, catalogoCursos, catalogoExamenes, catalogoDocumentos } = get();
           if (examenes.length === 0 && cursos.length === 0 && documentos.length === 0) {
-            set({ examenes: mockExamenes, cursos: mockCursos, documentos: mockDocumentos });
+            set({ 
+              examenes: mockExamenes, 
+              cursos: mockCursos, 
+              documentos: mockDocumentos,
+              catalogoCursos: catalogoCursos.length === 0 ? mockCatalogoCursos : catalogoCursos,
+              catalogoExamenes: catalogoExamenes.length === 0 ? mockCatalogoExamenes : catalogoExamenes,
+              catalogoDocumentos: catalogoDocumentos.length === 0 ? mockCatalogoDocumentos : catalogoDocumentos
+            });
           }
         }
       },
@@ -628,6 +686,176 @@ export const useControlStore = create<ControlState>()(
           }
           return 0;
         });
+      },
+
+      addCursoCatalogo: async (nombre, categoria, validez_meses = null) => {
+        const id = `cat-cu-${Date.now()}`;
+        const nuevo: CatalogoCurso = { id, nombre, categoria, validez_meses };
+        set((state) => ({ catalogoCursos: [...state.catalogoCursos, nuevo] }));
+        
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Alta",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Creado nuevo curso en catálogo: ${nombre} (${categoria})${validez_meses ? ` con validez de ${validez_meses} meses` : ""}`
+        });
+
+        try {
+          await supabase.from("control_catalogo_cursos").insert([{ id, nombre, categoria, validez_meses }]);
+        } catch (err) {
+          console.warn("Error persistiendo curso en catálogo", err);
+        }
+      },
+
+      updateCursoCatalogo: async (id, updates) => {
+        set((state) => ({
+          catalogoCursos: state.catalogoCursos.map((c) => c.id === id ? { ...c, ...updates } : c)
+        }));
+
+        const cursoObj = get().catalogoCursos.find(c => c.id === id);
+        const nombre = cursoObj ? cursoObj.nombre : id;
+
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Modificacion",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Modificado curso en catálogo: ${nombre}. Nuevos valores: ${JSON.stringify(updates)}`
+        });
+
+        try {
+          await supabase.from("control_catalogo_cursos").update(updates).eq("id", id);
+        } catch (err) {
+          console.warn("Error modificando curso en catálogo", err);
+        }
+      },
+
+      deleteCursoCatalogo: async (id) => {
+        const { cursos, catalogoCursos } = get();
+        const asignado = cursos.some((c) => c.id_curso_catalogo === id);
+        if (asignado) {
+          return { success: false, message: "No se puede eliminar el curso porque está asignado a uno o más trabajadores." };
+        }
+        
+        const cursoObj = catalogoCursos.find(c => c.id === id);
+        const nombre = cursoObj ? cursoObj.nombre : id;
+
+        set((state) => ({ catalogoCursos: state.catalogoCursos.filter((c) => c.id !== id) }));
+        
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Baja",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Eliminado curso del catálogo: ${nombre}`
+        });
+
+        try {
+          await supabase.from("control_catalogo_cursos").delete().eq("id", id);
+        } catch (err) {
+          console.warn("Error eliminando curso del catálogo", err);
+        }
+
+        return { success: true };
+      },
+
+      addExamenCatalogo: async (nombre, categoria) => {
+        const id = `cat-ex-${Date.now()}`;
+        const nuevo: CatalogoExamen = { id, nombre, categoria };
+        set((state) => ({ catalogoExamenes: [...state.catalogoExamenes, nuevo] }));
+
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Alta",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Creado nuevo examen en catálogo: ${nombre} (${categoria})`
+        });
+
+        try {
+          await supabase.from("control_catalogo_examenes").insert([{ id, nombre, categoria }]);
+        } catch (err) {
+          console.warn("Error persistiendo examen en catálogo", err);
+        }
+      },
+
+      deleteExamenCatalogo: async (id) => {
+        const { examenes, catalogoExamenes } = get();
+        const asignado = examenes.some((e) => e.id_examen_catalogo === id);
+        if (asignado) {
+          return { success: false, message: "No se puede eliminar el examen porque está asignado a uno o más trabajadores." };
+        }
+
+        const examenObj = catalogoExamenes.find(e => e.id === id);
+        const nombre = examenObj ? examenObj.nombre : id;
+
+        set((state) => ({ catalogoExamenes: state.catalogoExamenes.filter((e) => e.id !== id) }));
+
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Baja",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Eliminado examen del catálogo: ${nombre}`
+        });
+
+        try {
+          await supabase.from("control_catalogo_examenes").delete().eq("id", id);
+        } catch (err) {
+          console.warn("Error eliminando examen del catálogo", err);
+        }
+
+        return { success: true };
+      },
+
+      addDocumentoCatalogo: async (nombre, categoria) => {
+        const id = `cat-doc-${Date.now()}`;
+        const nuevo: CatalogoDocumento = { id, nombre, categoria };
+        set((state) => ({ catalogoDocumentos: [...state.catalogoDocumentos, nuevo] }));
+
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Alta",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Creado nuevo documento/pase en catálogo: ${nombre} (${categoria})`
+        });
+
+        try {
+          await supabase.from("control_catalogo_documentos").insert([{ id, nombre, categoria }]);
+        } catch (err) {
+          console.warn("Error persistiendo documento en catálogo", err);
+        }
+      },
+
+      deleteDocumentoCatalogo: async (id) => {
+        const { documentos, catalogoDocumentos } = get();
+        const asignado = documentos.some((d) => d.id_documento_catalogo === id);
+        if (asignado) {
+          return { success: false, message: "No se puede eliminar el documento porque está asignado a uno o más trabajadores." };
+        }
+
+        const docObj = catalogoDocumentos.find(d => d.id === id);
+        const nombre = docObj ? docObj.nombre : id;
+
+        set((state) => ({ catalogoDocumentos: state.catalogoDocumentos.filter((d) => d.id !== id) }));
+
+        useAuditoriaStore.getState().registrar({
+          modulo: "Control",
+          accion: "Baja",
+          id_entidad: id,
+          nombre_entidad: nombre,
+          detalle: `Eliminado documento/pase del catálogo: ${nombre}`
+        });
+
+        try {
+          await supabase.from("control_catalogo_documentos").delete().eq("id", id);
+        } catch (err) {
+          console.warn("Error eliminando documento del catálogo", err);
+        }
+
+        return { success: true };
       }
     }),
     {

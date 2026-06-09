@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Trabajador, useTrabajadoresStore } from "@/store/trabajadores-store";
+import { useTrabajadoresSAPStore } from "@/store/trabajadores-sap-store";
 import { X, Save, AlertCircle, CheckCircle, Info } from "lucide-react";
 
 interface TrabajadorFormProps {
@@ -14,7 +15,33 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
   const isEditing = !!trabajadorId;
 
   // Active Tab State
-  const [activeTab, setActiveTab] = useState<"personal" | "laboral" | "prevision" | "operativo" | "talento">("personal");
+  const [activeTab, setActiveTab] = useState<"personal" | "laboral" | "prevision" | "operativo" | "talento" | "sap">("personal");
+
+  const { sapList, fetchSAPData, upsertSAPData } = useTrabajadoresSAPStore();
+
+  const [sapData, setSapData] = useState({
+    correo_adc_codelco: "",
+    aprobacion_correo_adc_codelco: "",
+    solicitud_cuenta_realizada_codelco: "",
+    cuenta_correo_activa_codelco: false,
+    ticket_codelco: "",
+    correo_adc_sap: "",
+    aprobacion_correo_adc_sap: "",
+    solicitud_cuenta_sap: "",
+    cuenta_sap_activa: false,
+    ticket_sap: "",
+    correo_adc_perfiles_sap: "",
+    aprobacion_correo_adc_perfiles_sap: "",
+    solicitud_perfiles_roles_sap: "",
+    ticket_perfiles_sap: "",
+    perfiles_sap_activos: false,
+    requiere_datamart: false,
+    correo_adc_datamart: "",
+    aprobacion_correo_adc_datamart: "",
+    solicitud_datamart: "",
+    datamart_activo: false,
+    ticket_datamart: ""
+  });
 
   // Form State
   const [formData, setFormData] = useState<Omit<Trabajador, "id_trabajador">>({
@@ -116,6 +143,10 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
 
   // Load existing data if editing
   useEffect(() => {
+    fetchSAPData();
+  }, [fetchSAPData]);
+
+  useEffect(() => {
     if (isEditing && trabajadorId) {
       const existing = trabajadores.find(t => t.id_trabajador === trabajadorId);
       if (existing) {
@@ -128,8 +159,35 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
           anos_experiencia: rest.anos_experiencia || 0,
         });
       }
+      
+      const existingSap = sapList.find(s => s.id_trabajador === trabajadorId);
+      if (existingSap) {
+        setSapData({
+          correo_adc_codelco: existingSap.correo_adc_codelco || "",
+          aprobacion_correo_adc_codelco: existingSap.aprobacion_correo_adc_codelco || "",
+          solicitud_cuenta_realizada_codelco: existingSap.solicitud_cuenta_realizada_codelco || "",
+          cuenta_correo_activa_codelco: !!existingSap.cuenta_correo_activa_codelco,
+          ticket_codelco: existingSap.ticket_codelco || "",
+          correo_adc_sap: existingSap.correo_adc_sap || "",
+          aprobacion_correo_adc_sap: existingSap.aprobacion_correo_adc_sap || "",
+          solicitud_cuenta_sap: existingSap.solicitud_cuenta_sap || "",
+          cuenta_sap_activa: !!existingSap.cuenta_sap_activa,
+          ticket_sap: existingSap.ticket_sap || "",
+          correo_adc_perfiles_sap: existingSap.correo_adc_perfiles_sap || "",
+          aprobacion_correo_adc_perfiles_sap: existingSap.aprobacion_correo_adc_perfiles_sap || "",
+          solicitud_perfiles_roles_sap: existingSap.solicitud_perfiles_roles_sap || "",
+          ticket_perfiles_sap: existingSap.ticket_perfiles_sap || "",
+          perfiles_sap_activos: !!existingSap.perfiles_sap_activos,
+          requiere_datamart: !!existingSap.requiere_datamart,
+          correo_adc_datamart: existingSap.correo_adc_datamart || "",
+          aprobacion_correo_adc_datamart: existingSap.aprobacion_correo_adc_datamart || "",
+          solicitud_datamart: existingSap.solicitud_datamart || "",
+          datamart_activo: !!existingSap.datamart_activo,
+          ticket_datamart: existingSap.ticket_datamart || "",
+        });
+      }
     }
-  }, [isEditing, trabajadorId, trabajadores]);
+  }, [isEditing, trabajadorId, trabajadores, sapList]);
 
   // Helper: Validar RUT Chileno
   const validarRutChileno = (rut: string): boolean => {
@@ -271,7 +329,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
   };
 
   // Submit Form
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       // Switch tab to first error
@@ -283,10 +341,40 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
       return;
     }
 
+    const mapToNull = (val: string) => val.trim() === "" ? null : val;
+
+    const cleanSapData = {
+      correo_adc_codelco: mapToNull(sapData.correo_adc_codelco),
+      aprobacion_correo_adc_codelco: mapToNull(sapData.aprobacion_correo_adc_codelco),
+      solicitud_cuenta_realizada_codelco: mapToNull(sapData.solicitud_cuenta_realizada_codelco),
+      cuenta_correo_activa_codelco: sapData.cuenta_correo_activa_codelco,
+      ticket_codelco: mapToNull(sapData.ticket_codelco),
+      correo_adc_sap: mapToNull(sapData.correo_adc_sap),
+      aprobacion_correo_adc_sap: mapToNull(sapData.aprobacion_correo_adc_sap),
+      solicitud_cuenta_sap: mapToNull(sapData.solicitud_cuenta_sap),
+      cuenta_sap_activa: sapData.cuenta_sap_activa,
+      ticket_sap: mapToNull(sapData.ticket_sap),
+      correo_adc_perfiles_sap: mapToNull(sapData.correo_adc_perfiles_sap),
+      aprobacion_correo_adc_perfiles_sap: mapToNull(sapData.aprobacion_correo_adc_perfiles_sap),
+      solicitud_perfiles_roles_sap: mapToNull(sapData.solicitud_perfiles_roles_sap),
+      ticket_perfiles_sap: mapToNull(sapData.ticket_perfiles_sap),
+      perfiles_sap_activos: sapData.perfiles_sap_activos,
+      requiere_datamart: sapData.requiere_datamart,
+      correo_adc_datamart: mapToNull(sapData.correo_adc_datamart),
+      aprobacion_correo_adc_datamart: mapToNull(sapData.aprobacion_correo_adc_datamart),
+      solicitud_datamart: mapToNull(sapData.solicitud_datamart),
+      datamart_activo: sapData.datamart_activo,
+      ticket_datamart: mapToNull(sapData.ticket_datamart),
+    };
+
     if (isEditing && trabajadorId) {
-      updateTrabajador(trabajadorId, formData);
+      await updateTrabajador(trabajadorId, formData);
+      await upsertSAPData(trabajadorId, cleanSapData);
     } else {
-      addTrabajador(formData);
+      const createdWorker = await addTrabajador(formData);
+      if (createdWorker && createdWorker.id_trabajador) {
+        await upsertSAPData(createdWorker.id_trabajador, cleanSapData);
+      }
     }
     onClose();
   };
@@ -318,7 +406,8 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
             { id: "personal", label: "1. Identidad y Domicilio" },
             { id: "laboral", label: "2. Contacto y Laboral" },
             { id: "prevision", label: "3. Previsión y Banco" },
-            { id: "operativo", label: "4. EPP y Operaciones" }
+            { id: "operativo", label: "4. EPP y Operaciones" },
+            { id: "sap", label: "5. Accesos TI y SAP" }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -898,11 +987,252 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
                   />
                 </div>
               </div>
-
             </div>
           )}
 
+          {activeTab === "sap" && (
+            <div className="space-y-6">
+              {/* 1. Cuenta de Correo Codelco */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-900/80 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                  Cuenta de Correo Codelco
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Correo a AdC</label>
+                    <input
+                      type="date"
+                      value={sapData.correo_adc_codelco}
+                      onChange={e => setSapData({ ...sapData, correo_adc_codelco: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo AdC</label>
+                    <input
+                      type="date"
+                      value={sapData.aprobacion_correo_adc_codelco}
+                      onChange={e => setSapData({ ...sapData, aprobacion_correo_adc_codelco: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Solicitud de Cuenta Realizada</label>
+                    <input
+                      type="date"
+                      value={sapData.solicitud_cuenta_realizada_codelco}
+                      onChange={e => setSapData({ ...sapData, solicitud_cuenta_realizada_codelco: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">N° de Ticket</label>
+                    <input
+                      type="text"
+                      value={sapData.ticket_codelco}
+                      onChange={e => setSapData({ ...sapData, ticket_codelco: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex items-center pt-6">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={sapData.cuenta_correo_activa_codelco}
+                        onChange={e => setSapData({ ...sapData, cuenta_correo_activa_codelco: e.target.checked })}
+                        className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      />
+                      <span className="group-hover:text-primary transition-colors">Cuenta correo activa</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
 
+              {/* 2. Cuenta SAP */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-900/80 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                  Cuenta SAP
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Correo a AdC SAP</label>
+                    <input
+                      type="date"
+                      value={sapData.correo_adc_sap}
+                      onChange={e => setSapData({ ...sapData, correo_adc_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo SAP</label>
+                    <input
+                      type="date"
+                      value={sapData.aprobacion_correo_adc_sap}
+                      onChange={e => setSapData({ ...sapData, aprobacion_correo_adc_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Solicitud Cuenta SAP</label>
+                    <input
+                      type="date"
+                      value={sapData.solicitud_cuenta_sap}
+                      onChange={e => setSapData({ ...sapData, solicitud_cuenta_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">N° de Ticket (3)</label>
+                    <input
+                      type="text"
+                      value={sapData.ticket_sap}
+                      onChange={e => setSapData({ ...sapData, ticket_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex items-center pt-6">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={sapData.cuenta_sap_activa}
+                        onChange={e => setSapData({ ...sapData, cuenta_sap_activa: e.target.checked })}
+                        className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      />
+                      <span className="group-hover:text-primary transition-colors">Cuenta SAP activa</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Perfiles SAP */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-900/80 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                  Perfiles SAP
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Correo a AdC Perfiles</label>
+                    <input
+                      type="date"
+                      value={sapData.correo_adc_perfiles_sap}
+                      onChange={e => setSapData({ ...sapData, correo_adc_perfiles_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo Perfiles</label>
+                    <input
+                      type="date"
+                      value={sapData.aprobacion_correo_adc_perfiles_sap}
+                      onChange={e => setSapData({ ...sapData, aprobacion_correo_adc_perfiles_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">Solicitud Perfiles y Roles</label>
+                    <input
+                      type="date"
+                      value={sapData.solicitud_perfiles_roles_sap}
+                      onChange={e => setSapData({ ...sapData, solicitud_perfiles_roles_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-400 font-semibold">N° de Ticket</label>
+                    <input
+                      type="text"
+                      value={sapData.ticket_perfiles_sap}
+                      onChange={e => setSapData({ ...sapData, ticket_perfiles_sap: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex items-center pt-6">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={sapData.perfiles_sap_activos}
+                        onChange={e => setSapData({ ...sapData, perfiles_sap_activos: e.target.checked })}
+                        className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      />
+                      <span className="group-hover:text-primary transition-colors">Perfiles SAP activos</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Datamart */}
+              <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-900/80 space-y-4">
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-zinc-800 pb-2">
+                  Datamart
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="col-span-2 md:col-span-3 flex items-center pb-2">
+                    <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={sapData.requiere_datamart}
+                        onChange={e => setSapData({ ...sapData, requiere_datamart: e.target.checked })}
+                        className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                      />
+                      <span className="group-hover:text-primary transition-colors">Requiere Datamart</span>
+                    </label>
+                  </div>
+
+                  {sapData.requiere_datamart && (
+                    <>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">Correo a AdC Datamart</label>
+                        <input
+                          type="date"
+                          value={sapData.correo_adc_datamart}
+                          onChange={e => setSapData({ ...sapData, correo_adc_datamart: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">Aprobación Correo Datamart</label>
+                        <input
+                          type="date"
+                          value={sapData.aprobacion_correo_adc_datamart}
+                          onChange={e => setSapData({ ...sapData, aprobacion_correo_adc_datamart: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">Solicitud de Datamart</label>
+                        <input
+                          type="date"
+                          value={sapData.solicitud_datamart}
+                          onChange={e => setSapData({ ...sapData, solicitud_datamart: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 animate-fadeIn">
+                        <label className="text-xs text-zinc-400 font-semibold">N° de Ticket (2)</label>
+                        <input
+                          type="text"
+                          value={sapData.ticket_datamart}
+                          onChange={e => setSapData({ ...sapData, ticket_datamart: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      <div className="flex items-center pt-6 animate-fadeIn">
+                        <label className="flex items-center gap-2.5 text-xs text-white font-semibold cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={sapData.datamart_activo}
+                            onChange={e => setSapData({ ...sapData, datamart_activo: e.target.checked })}
+                            className="w-4 h-4 text-primary bg-zinc-950 border-zinc-800 rounded focus:ring-primary cursor-pointer"
+                          />
+                          <span className="group-hover:text-primary transition-colors">Datamart activo</span>
+                        </label>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </form>
 
         {/* Form Footer */}

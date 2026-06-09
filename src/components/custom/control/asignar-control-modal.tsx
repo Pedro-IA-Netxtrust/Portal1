@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Save, FileText, Stethoscope, GraduationCap } from "lucide-react";
 import { useControlStore } from "@/store/control-store";
 
@@ -13,7 +13,8 @@ interface Props {
 export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
   const { 
     catalogoDocumentos, catalogoCursos, catalogoExamenes,
-    addDocumento, addCurso, addExamen
+    addDocumento, addCurso, addExamen,
+    addCursoCatalogo, addExamenCatalogo, addDocumentoCatalogo
   } = useControlStore();
 
   const [formData, setFormData] = useState({
@@ -33,6 +34,29 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
     fecha_vencimiento: "",
     observaciones: ""
   });
+
+  // Pre-calcular vencimiento de curso si tiene validez
+  useEffect(() => {
+    if (type === "curso" && formData.catalogo_id && formData.fecha_emision) {
+      const selectedCurso = catalogoCursos.find(c => c.id === formData.catalogo_id);
+      if (selectedCurso && selectedCurso.validez_meses) {
+        const fechaEmision = new Date(formData.fecha_emision);
+        if (!isNaN(fechaEmision.getTime())) {
+          const fechaVencimiento = new Date(fechaEmision);
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + selectedCurso.validez_meses);
+          
+          const yyyy = fechaVencimiento.getFullYear();
+          const mm = String(fechaVencimiento.getMonth() + 1).padStart(2, '0');
+          const dd = String(fechaVencimiento.getDate()).padStart(2, '0');
+          const fechaStr = `${yyyy}-${mm}-${dd}`;
+          
+          if (formData.fecha_vencimiento !== fechaStr) {
+            setFormData(prev => ({ ...prev, fecha_vencimiento: fechaStr }));
+          }
+        }
+      }
+    }
+  }, [formData.catalogo_id, formData.fecha_emision, type, catalogoCursos]);
 
   const getTitle = () => {
     switch (type) {
@@ -110,7 +134,32 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs text-zinc-400 font-semibold">Tipo (Catálogo) *</label>
+            <div className="flex justify-between items-end mb-1">
+              <label className="text-xs text-zinc-400 font-semibold mb-0">Tipo (Catálogo) *</label>
+              <button 
+                type="button" 
+                onClick={async () => {
+                  const name = prompt(`Nombre del nuevo ${type === "documento" ? "documento/pase" : type === "curso" ? "curso" : "examen"}:`);
+                  if (!name) return;
+                  const cat = prompt("Categoría:", type === "documento" ? "Acreditación" : type === "curso" ? "Seguridad y Salud" : "Salud Ocupacional");
+                  if (!cat) return;
+
+                  if (type === "documento") {
+                    await addDocumentoCatalogo(name, cat);
+                  } else if (type === "curso") {
+                    const validezStr = prompt("Tiempo de validez en meses (vacío para sin vencimiento):", "");
+                    if (validezStr === null) return;
+                    const valMeses = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
+                    await addCursoCatalogo(name, cat, isNaN(valMeses as any) ? null : valMeses);
+                  } else if (type === "examen") {
+                    await addExamenCatalogo(name, cat);
+                  }
+                }}
+                className="text-[10px] text-primary font-bold hover:underline"
+              >
+                + Crear Nuevo
+              </button>
+            </div>
             <select 
               className="input bg-zinc-900 border-zinc-800 text-sm"
               value={formData.catalogo_id}
