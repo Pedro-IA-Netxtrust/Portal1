@@ -7,10 +7,12 @@
 --  TIPOS ENUMERADOS
 -- ============================================================
 
-create type proveedor_estado as enum (
-  'Activo',
-  'Inactivo'
-);
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'proveedor_estado') then
+    create type proveedor_estado as enum ('Activo', 'Inactivo');
+  end if;
+end$$;
 
 -- ============================================================
 --  TABLAS
