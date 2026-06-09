@@ -1,28 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
-import { useProveedoresStore, Proveedor, CategoriaProveedor } from "@/store/proveedores-store";
+import React, { useState, useEffect } from "react";
+import { useProveedoresStore, Proveedor } from "@/store/proveedores-store";
 import { Store, Plus, Search, Filter, Edit, Trash2, Mail, Phone, CheckCircle2, XCircle } from "lucide-react";
 
 export default function ProveedoresPage() {
-  const { proveedores, addProveedor, updateProveedor, deleteProveedor } = useProveedoresStore();
+  const { 
+    proveedores, 
+    categorias, 
+    fetchProveedores, 
+    fetchCategorias, 
+    addProveedor, 
+    updateProveedor, 
+    deleteProveedor,
+    addCategoria
+  } = useProveedoresStore();
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategoria, setFilterCategoria] = useState<CategoriaProveedor | "Todas">("Todas");
+  const [filterCategoria, setFilterCategoria] = useState<string>("Todas");
 
   // Edit / Add modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Category inline state
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+
   // Form state
   const [formData, setFormData] = useState<Partial<Proveedor>>({
     nombre: "",
     rut: "",
-    categoria: "Alimentación",
+    categoria: "",
     estado: "Activo",
     contacto_nombre: "",
     contacto_email: "",
     contacto_telefono: ""
   });
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchProveedores();
+    fetchCategorias();
+  }, [fetchProveedores, fetchCategorias]);
 
   const filteredProveedores = proveedores.filter(p => {
     const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || p.rut.includes(searchTerm);
@@ -31,6 +51,8 @@ export default function ProveedoresPage() {
   });
 
   const handleOpenModal = (prov?: Proveedor) => {
+    setShowNewCatInput(false);
+    setNewCatName("");
     if (prov) {
       setEditingId(prov.id_proveedor);
       setFormData(prov);
@@ -39,7 +61,7 @@ export default function ProveedoresPage() {
       setFormData({
         nombre: "",
         rut: "",
-        categoria: "Alimentación",
+        categoria: categorias[0]?.nombre || "Alimentación",
         estado: "Activo",
         contacto_nombre: "",
         contacto_email: "",
@@ -60,11 +82,29 @@ export default function ProveedoresPage() {
     setIsModalOpen(false);
   };
 
+  const handleAddNewCat = async () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+
+    const exists = categorias.some(c => c.nombre.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      alert("Esta categoría ya existe.");
+      return;
+    }
+
+    await addCategoria(trimmed);
+    setFormData(prev => ({ ...prev, categoria: trimmed }));
+    setNewCatName("");
+    setShowNewCatInput(false);
+  };
+
   const getCategoryColor = (cat: string) => {
     switch (cat) {
       case "Alimentación": return "text-orange-500 bg-orange-500/10 border-orange-500/20";
       case "Tecnología": return "text-blue-500 bg-blue-500/10 border-blue-500/20";
       case "Vehículos": return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+      case "Transporte": return "text-purple-450 bg-purple-500/10 border-purple-500/20";
+      case "Servicios Generales": return "text-amber-500 bg-amber-500/10 border-amber-500/20";
       default: return "text-zinc-400 bg-zinc-800 border-zinc-700";
     }
   };
@@ -79,7 +119,7 @@ export default function ProveedoresPage() {
             Proveedores
           </h1>
           <p className="text-sm font-medium text-text-soft mt-1">
-            Gestión de proveedores de servicios y contratistas.
+            Gestión de proveedores de servicios y contratistas de faena.
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
@@ -104,14 +144,12 @@ export default function ProveedoresPage() {
           <select 
             className="input min-h-0 py-2.5 w-auto" 
             value={filterCategoria} 
-            onChange={e => setFilterCategoria(e.target.value as any)}
+            onChange={e => setFilterCategoria(e.target.value)}
           >
             <option value="Todas">Todas las Categorías</option>
-            <option value="Alimentación">Alimentación</option>
-            <option value="Tecnología">Tecnología</option>
-            <option value="Vehículos">Vehículos</option>
-            <option value="Transporte">Transporte</option>
-            <option value="Servicios Generales">Servicios Generales</option>
+            {categorias.map(cat => (
+              <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -156,8 +194,8 @@ export default function ProveedoresPage() {
                 {p.estado === 'Activo' ? <CheckCircle2 size={14}/> : <XCircle size={14}/>} {p.estado}
               </span>
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleOpenModal(p)} className="p-1.5 rounded bg-surface-2 text-text-muted hover:text-primary"><Edit size={14}/></button>
-                <button onClick={() => deleteProveedor(p.id_proveedor)} className="p-1.5 rounded bg-surface-2 text-text-muted hover:text-danger"><Trash2 size={14}/></button>
+                <button onClick={() => handleOpenModal(p)} className="p-1.5 rounded bg-surface-2 text-text-muted hover:text-primary cursor-pointer"><Edit size={14}/></button>
+                <button onClick={() => { if (confirm("¿Eliminar este proveedor?")) deleteProveedor(p.id_proveedor); }} className="p-1.5 rounded bg-surface-2 text-text-muted hover:text-danger cursor-pointer"><Trash2 size={14}/></button>
               </div>
             </div>
           </div>
@@ -186,15 +224,43 @@ export default function ProveedoresPage() {
                   <label className="label">RUT</label>
                   <input type="text" className="input" value={formData.rut} onChange={e => setFormData({...formData, rut: e.target.value})} />
                 </div>
+                
                 <div>
-                  <label className="label">Categoría</label>
-                  <select className="input" value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value as any})}>
-                    <option value="Alimentación">Alimentación</option>
-                    <option value="Tecnología">Tecnología</option>
-                    <option value="Vehículos">Vehículos</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Servicios Generales">Servicios Generales</option>
-                  </select>
+                  <label className="label flex justify-between items-center">
+                    <span>Categoría</span>
+                    <button 
+                      type="button"
+                      onClick={() => setShowNewCatInput(!showNewCatInput)}
+                      className="text-[10px] font-bold text-primary hover:underline cursor-pointer select-none"
+                    >
+                      {showNewCatInput ? "Cancelar" : "+ Nuevo Tipo"}
+                    </button>
+                  </label>
+                  {showNewCatInput ? (
+                    <div className="flex gap-2 mt-1 animate-fadeIn">
+                      <input 
+                        type="text" 
+                        placeholder="Ej: Seguridad" 
+                        className="input py-2 text-xs flex-1"
+                        value={newCatName}
+                        onChange={e => setNewCatName(e.target.value)}
+                        autoFocus
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleAddNewCat}
+                        className="btn btn-primary px-3 text-xs min-h-0 py-2"
+                      >
+                        Crear
+                      </button>
+                    </div>
+                  ) : (
+                    <select className="input" value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})}>
+                      {categorias.map(cat => (
+                        <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
