@@ -25,7 +25,8 @@ import {
   Utensils,
   Store,
   Megaphone,
-  History
+  History,
+  GitBranch
 } from "lucide-react";
 
 interface NavItem {
@@ -87,6 +88,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         { name: "Busca Talento", href: "/talentos", icon: Star, badge: "Nuevo" },
         { name: "Notebooks", href: "/notebooks", icon: Laptop, badge: null },
         { name: "Auditoria", href: "/auditoria", icon: History, badge: null },
+        { name: "Flujos de Información", href: "/flujos", icon: GitBranch, badge: "Nuevo" },
       ]
     },
     {

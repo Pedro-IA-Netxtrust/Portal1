@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+import { useWorkflowsStore } from "@/store/workflows-store";
 
 /** Genera un codigo de solicitud unico basado en anio + timestamp parcial */
 function generarCodigoSolicitud(): string {
@@ -402,9 +403,10 @@ export const useSolicitudesStore = create<SolicitudesState>()(
 
           if (error) throw error;
           if (data && data[0]) {
+            const finalSol = mapDbToSolicitud(data[0]);
             set((state) => ({
               solicitudes: state.solicitudes.map((item) =>
-                item.id_solicitud === tempId ? mapDbToSolicitud(data[0]) : item
+                item.id_solicitud === tempId ? finalSol : item
               )
             }));
             useAuditoriaStore.getState().registrar({
@@ -414,9 +416,13 @@ export const useSolicitudesStore = create<SolicitudesState>()(
               nombre_entidad: s.asunto,
               detalle: `Solicitud ${codigo} creada por ${s.nombre_solicitante}. Tipo: ${s.tipo}.`,
             });
+            // Disparar notificación de creación (Pendiente)
+            useWorkflowsStore.getState().dispararNotificacion(finalSol, "Pendiente");
           }
         } catch (err) {
           console.error("Failed to persist request to Supabase:", err);
+          // Disparar notificación en modo local/desarrollo offline
+          useWorkflowsStore.getState().dispararNotificacion(nuevoTemp, "Pendiente");
         }
       },
 
@@ -469,9 +475,24 @@ export const useSolicitudesStore = create<SolicitudesState>()(
               nombre_entidad: sol.asunto,
               detalle: `Estado de solicitud actualizado a "${estado}".${opts?.motivo_rechazo ? ` Motivo: ${opts.motivo_rechazo}` : ""}`,
             });
+            // Disparar notificación
+            useWorkflowsStore.getState().dispararNotificacion(sol, estado, {
+              observaciones: opts.observaciones,
+              motivo_rechazo: opts.motivo_rechazo,
+              nombre_revisor: opts.nombre_revisor
+            });
           }
         } catch (err) {
           console.error(`Failed to update request state in Supabase:`, err);
+          // Disparar notificación en modo local/desarrollo offline
+          const sol = get().solicitudes.find((s) => s.id_solicitud === id);
+          if (sol) {
+            useWorkflowsStore.getState().dispararNotificacion(sol, estado, {
+              observaciones: opts.observaciones,
+              motivo_rechazo: opts.motivo_rechazo,
+              nombre_revisor: opts.nombre_revisor
+            });
+          }
         }
       },
 
@@ -489,8 +510,18 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             .eq("id_solicitud", id);
 
           if (error) throw error;
+
+          const sol = get().solicitudes.find((s) => s.id_solicitud === id);
+          if (sol) {
+            useWorkflowsStore.getState().dispararNotificacion(sol, "Cancelada");
+          }
         } catch (err) {
           console.error(`Failed to cancel request ${id} in Supabase:`, err);
+          // Disparar notificación en modo local/desarrollo offline
+          const sol = get().solicitudes.find((s) => s.id_solicitud === id);
+          if (sol) {
+            useWorkflowsStore.getState().dispararNotificacion(sol, "Cancelada");
+          }
         }
       },
 

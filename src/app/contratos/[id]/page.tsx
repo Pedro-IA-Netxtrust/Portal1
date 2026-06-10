@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Building2, Users, GitBranch, Briefcase, History,
   Calendar, CreditCard, ChevronDown, ChevronRight, Plus, Edit3,
   Trash2, UserMinus, UserCheck, UserPlus, X, Check, AlertTriangle,
-  TrendingUp, Clock, Activity, Layers, RefreshCw, Save
+  TrendingUp, Clock, Activity, Layers, RefreshCw, Save, Mail
 } from "lucide-react";
 import { useContratosStore, type ContratoUnidad, type ContratoCargo, type ContratoTrabajador } from "@/store/contratos-store";
 import { useMandantesStore } from "@/store/mandantes-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
+import { useWorkflowsStore } from "@/store/workflows-store";
 
 // ─────────────────────────────────────────────────────────────
 //  Helpers & constants
@@ -23,6 +24,7 @@ const TABS = [
   { id: "jerarquia",   label: "Jerarquía",    icon: GitBranch },
   { id: "cargos",      label: "Cargos",       icon: Briefcase },
   { id: "historial",   label: "Historial",    icon: History },
+  { id: "notificaciones", label: "Notificaciones", icon: Mail },
 ] as const;
 type TabId = typeof TABS[number]["id"];
 
@@ -714,6 +716,446 @@ function TabHistorial({ contrato }: { contrato: any }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  TAB 6 — Notificaciones y Flujos por Contrato
+// ─────────────────────────────────────────────────────────────
+
+function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contrato: string }) {
+  const { 
+    ticketTypes, 
+    contractSettings, 
+    ccRecipients, 
+    fetchWorkflowsData, 
+    saveContractSetting, 
+    addCcRecipient, 
+    removeCcRecipient, 
+    updateContractManager 
+  } = useWorkflowsStore();
+
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
+
+  const [selectedManagerId, setSelectedManagerId] = useState<string>(contrato.manager_id || "");
+  const [isManagerSaved, setIsManagerSaved] = useState(false);
+
+  const [activeTypeTab, setActiveTypeTab] = useState<string>("");
+  
+  // Form State for settings
+  const [primaryType, setPrimaryType] = useState<any>("jefatura");
+  const [primaryId, setPrimaryId] = useState<string>("");
+  const [slaHours, setSlaHours] = useState<number>(48);
+  const [enableCc, setEnableCc] = useState<boolean>(false);
+  const [notes, setNotes] = useState<string>("");
+  const [isSettingSaved, setIsSettingSaved] = useState(false);
+
+  // CC state
+  const [ccType, setCcType] = useState<any>("rrhh");
+  const [ccId, setCcId] = useState<string>("");
+  const [ccLabel, setCcLabel] = useState<string>("");
+  const [addingCc, setAddingCc] = useState(false);
+
+  useEffect(() => {
+    fetchWorkflowsData();
+    fetchTrabajadores();
+  }, [fetchWorkflowsData, fetchTrabajadores]);
+
+  // Autoselect first type
+  useEffect(() => {
+    if (ticketTypes.length > 0 && !activeTypeTab) {
+      setActiveTypeTab(ticketTypes[0].id);
+    }
+  }, [ticketTypes, activeTypeTab]);
+
+  const currentSetting = contractSettings.find(
+    s => s.contract_id === id_contrato && s.ticket_type_id === activeTypeTab
+  );
+
+  useEffect(() => {
+    if (currentSetting) {
+      setPrimaryType(currentSetting.primary_recipient_type);
+      setPrimaryId(currentSetting.primary_recipient_id || "");
+      setSlaHours(currentSetting.sla_hours);
+      setEnableCc(currentSetting.enable_cc);
+      setNotes(currentSetting.notes || "");
+    } else {
+      setPrimaryType("jefatura");
+      setPrimaryId("");
+      setSlaHours(48);
+      setEnableCc(false);
+      setNotes("");
+    }
+  }, [currentSetting, activeTypeTab]);
+
+  const handleSaveManager = async () => {
+    await updateContractManager(id_contrato, selectedManagerId || null);
+    setIsManagerSaved(true);
+    setTimeout(() => setIsManagerSaved(false), 2000);
+  };
+
+  const handleSaveSetting = async () => {
+    if (!activeTypeTab) return;
+    await saveContractSetting({
+      id: currentSetting?.id,
+      contract_id: id_contrato,
+      ticket_type_id: activeTypeTab,
+      primary_recipient_type: primaryType,
+      primary_recipient_id: primaryId || undefined,
+      sla_hours: slaHours,
+      enable_cc: enableCc,
+      active: true,
+      notes: notes || undefined
+    });
+    setIsSettingSaved(true);
+    setTimeout(() => setIsSettingSaved(false), 2000);
+  };
+
+  const handleAddCc = async () => {
+    if (!activeTypeTab) return;
+    const labelText = ccLabel.trim() || (ccType === "trabajador" ? trabajadores.find(t => t.id_trabajador === ccId)?.nombre_1 : ccType.toUpperCase());
+    await addCcRecipient({
+      contract_id: id_contrato,
+      ticket_type_id: activeTypeTab,
+      recipient_type: ccType,
+      recipient_id: ccId || undefined,
+      label: labelText || undefined,
+      active: true
+    });
+    setCcId("");
+    setCcLabel("");
+    setAddingCc(false);
+  };
+
+  const activeCcRecipients = ccRecipients.filter(
+    cc => cc.contract_id === id_contrato && cc.ticket_type_id === activeTypeTab
+  );
+
+  const selectedTypeObj = ticketTypes.find(t => t.id === activeTypeTab);
+
+  return (
+    <div className="space-y-6">
+      
+      {/* 1. Responsable General del Contrato */}
+      <SectionCard 
+        title="Responsable General del Contrato" 
+        action={
+          <button 
+            onClick={handleSaveManager}
+            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+          >
+            {isManagerSaved ? <Check size={12} /> : <Save size={12} />}
+            {isManagerSaved ? "Guardado" : "Guardar Administrador"}
+          </button>
+        }
+      >
+        <div className="max-w-xl space-y-3">
+          <p className="text-xs text-zinc-500">
+            Define al Administrador de Contrato responsable general. Actuará como destinatario por defecto de las notificaciones si no hay un responsable específico configurado.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+            <div className="space-y-1">
+              <label className="text-[10px] text-zinc-500 font-bold uppercase">Administrador de Contrato</label>
+              <select 
+                value={selectedManagerId} 
+                onChange={e => setSelectedManagerId(e.target.value)} 
+                className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded p-2 focus:outline-none focus:border-blue-500"
+              >
+                <option value="">Seleccionar responsable...</option>
+                {trabajadores.map(t => (
+                  <option key={t.id_trabajador} value={t.id_trabajador}>
+                    {t.nombre_1} {t.apellido_paterno} — {t.numero_identificacion}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedManagerId && (
+              <div className="pt-4 md:pt-0 pl-2">
+                <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg font-semibold block text-center">
+                  📧 Recibirá notificaciones generales del contrato
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* 2. Responsables y Derivación por Tipo de Solicitud */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        
+        {/* Left selector - 4 cols */}
+        <div className="md:col-span-4 bg-zinc-900 border border-zinc-805 rounded-xl p-3 space-y-1.5">
+          <h4 className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2.5 pb-2 border-b border-zinc-800/50 mb-2">
+            Tipos de Solicitud
+          </h4>
+          {ticketTypes.map(t => {
+            const isActive = t.id === activeTypeTab;
+            const setting = contractSettings.find(s => s.contract_id === id_contrato && s.ticket_type_id === t.id);
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTypeTab(t.id)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
+                  isActive 
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" 
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span>{t.icon || "📋"}</span>
+                  <span className="truncate">{t.name}</span>
+                </div>
+                {setting && (
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
+                    isActive ? "bg-white/20 text-white" : "bg-blue-500/10 text-blue-400"
+                  }`}>
+                    {setting.primary_recipient_type === "trabajador" ? "Personal" : setting.primary_recipient_type}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right configuration - 8 cols */}
+        <div className="md:col-span-8">
+          {selectedTypeObj ? (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
+              
+              {/* Header card */}
+              <div className="px-5 py-4 border-b border-zinc-800 bg-zinc-950/20 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{selectedTypeObj.icon}</span>
+                  <div>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">{selectedTypeObj.name}</h4>
+                    <p className="text-[10px] text-zinc-500">{selectedTypeObj.description || "Asignación de destinatarios y derivación"}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleSaveSetting}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {isSettingSaved ? <Check size={12} /> : <Save size={12} />}
+                  {isSettingSaved ? "Cambios Guardados" : "Guardar Regla"}
+                </button>
+              </div>
+
+              {/* Form body */}
+              <div className="p-5 space-y-6">
+                
+                {/* Asignatario Principal */}
+                <div className="space-y-3.5">
+                  <h5 className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest border-b border-zinc-800/50 pb-1">
+                    Responsable Principal de Responder
+                  </h5>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-zinc-400 font-semibold">Tipo de Destinatario</label>
+                      <select 
+                        value={primaryType} 
+                        onChange={e => setPrimaryType(e.target.value as any)}
+                        className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded p-2 focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="jefatura">Supervisor Directo / Jefe de Unidad</option>
+                        <option value="trabajador">Persona Específica (Trabajador)</option>
+                        <option value="rrhh">Recursos Humanos (RRHH)</option>
+                        <option value="ti">Área de Soporte TI</option>
+                        <option value="seguridad">Encargado de Seguridad</option>
+                        <option value="prevencion">Prevención de Riesgos</option>
+                        <option value="administracion">Administración General</option>
+                        <option value="otro">Otro / Correo Externo</option>
+                      </select>
+                    </div>
+
+                    {primaryType === "trabajador" ? (
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-zinc-400 font-semibold">Seleccionar Responsable</label>
+                        <select 
+                          value={primaryId} 
+                          onChange={e => setPrimaryId(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded p-2 focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="">Seleccionar trabajador...</option>
+                          {trabajadores.map(t => (
+                            <option key={t.id_trabajador} value={t.id_trabajador}>
+                              {t.nombre_1} {t.apellido_paterno}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-zinc-400 font-semibold">SLA de Respuesta Máximo (Horas)</label>
+                        <input 
+                          type="number" 
+                          min={1} 
+                          value={slaHours} 
+                          onChange={e => setSlaHours(parseInt(e.target.value) || 24)}
+                          className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded p-2 focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* Notes / Obs */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-zinc-500 font-semibold">Notas / Instrucciones de Derivación</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ej: Derivar automáticamente a la mesa de soporte..."
+                      value={notes} 
+                      onChange={e => setNotes(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded p-2.5 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Copias (CC) */}
+                <div className="space-y-4 pt-2">
+                  <div className="flex justify-between items-center border-b border-zinc-800/50 pb-1">
+                    <h5 className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                      Destinatarios en Copia (CC)
+                    </h5>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        type="button"
+                        onClick={() => setEnableCc(!enableCc)}
+                        className={`text-[9px] px-2 py-0.5 rounded font-black border uppercase transition-all ${
+                          enableCc 
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-800 text-zinc-500 border-zinc-700"
+                        }`}
+                      >
+                        {enableCc ? "Copia Habilitada" : "Copia Deshabilitada"}
+                      </button>
+                      
+                      {enableCc && (
+                        <button 
+                          onClick={() => setAddingCc(true)}
+                          className="flex items-center gap-0.5 text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase cursor-pointer animate-fadeIn"
+                        >
+                          <Plus size={10} /> Agregar CC
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CC Adder Form */}
+                  {addingCc && enableCc && (
+                    <div className="p-3 bg-zinc-950/40 rounded-xl border border-blue-500/20 grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-slideIn">
+                      <div className="space-y-1">
+                        <label className="text-[9px] text-zinc-500 uppercase font-bold">Tipo</label>
+                        <select 
+                          value={ccType} 
+                          onChange={e => setCcType(e.target.value as any)}
+                          className="w-full bg-zinc-900 border border-zinc-850 text-xs text-white rounded p-1.5 focus:outline-none"
+                        >
+                          <option value="rrhh">RRHH</option>
+                          <option value="ti">TI</option>
+                          <option value="seguridad">Seguridad</option>
+                          <option value="prevencion">Prevención</option>
+                          <option value="jefatura">Jefe Directo</option>
+                          <option value="trabajador">Trabajador Específico</option>
+                        </select>
+                      </div>
+                      
+                      {ccType === "trabajador" ? (
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-zinc-500 uppercase font-bold">Trabajador</label>
+                          <select 
+                            value={ccId} 
+                            onChange={e => setCcId(e.target.value)}
+                            className="w-full bg-zinc-900 border border-zinc-850 text-xs text-white rounded p-1.5 focus:outline-none"
+                          >
+                            <option value="">Seleccionar...</option>
+                            {trabajadores.map(t => (
+                              <option key={t.id_trabajador} value={t.id_trabajador}>{t.nombre_1} {t.apellido_paterno}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-zinc-500 uppercase font-bold">Etiqueta Identificadora</label>
+                          <input 
+                            type="text" 
+                            placeholder="Ej: Soporte TI" 
+                            value={ccLabel}
+                            onChange={e => setCcLabel(e.target.value)}
+                            className="w-full bg-zinc-900 border border-zinc-850 text-xs text-white rounded p-1.5 focus:outline-none"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex items-end gap-2.5">
+                        <button 
+                          onClick={handleAddCc}
+                          className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold cursor-pointer"
+                        >
+                          Confirmar
+                        </button>
+                        <button 
+                          onClick={() => setAddingCc(false)}
+                          className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded text-xs cursor-pointer"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CC List */}
+                  <div className="space-y-2">
+                    {!enableCc ? (
+                      <p className="text-xs text-zinc-650 italic">Las notificaciones CC están desactivadas para este tipo de solicitud en el contrato.</p>
+                    ) : activeCcRecipients.length === 0 ? (
+                      <p className="text-xs text-zinc-650 italic">No hay destinatarios CC agregados todavía.</p>
+                    ) : (
+                      activeCcRecipients.map(cc => {
+                        let displayName = cc.label || cc.recipient_type.toUpperCase();
+                        if (cc.recipient_type === "trabajador" && cc.recipient_id) {
+                          const w = trabajadores.find(t => t.id_trabajador === cc.recipient_id);
+                          if (w) displayName = `${w.nombre_1} ${w.apellido_paterno}`;
+                        }
+                        return (
+                          <div 
+                            key={cc.id} 
+                            className="flex justify-between items-center p-2.5 bg-zinc-950/20 border border-zinc-850 rounded-lg"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] bg-zinc-850 text-zinc-400 font-bold px-2 py-0.5 rounded border border-zinc-800">
+                                {cc.recipient_type === "trabajador" ? "Personal" : cc.recipient_type.toUpperCase()}
+                              </span>
+                              <span className="text-xs text-zinc-200 font-semibold">{displayName}</span>
+                            </div>
+                            <button 
+                              onClick={() => removeCcRecipient(cc.id)}
+                              className="p-1 rounded text-zinc-600 hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-600 italic text-center py-10 bg-zinc-900 border border-zinc-800 rounded-xl">
+              Cargando catálogo de tipos de solicitud...
+            </p>
+          )}
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 //  PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────────
 
@@ -799,6 +1241,7 @@ export default function ContratoDetallePage() {
         {activeTab === "jerarquia"    && <TabJerarquia     contrato={contrato} id_contrato={contrato.id_contrato} />}
         {activeTab === "cargos"       && <TabCargos        contrato={contrato} id_contrato={contrato.id_contrato} />}
         {activeTab === "historial"    && <TabHistorial     contrato={contrato} />}
+        {activeTab === "notificaciones" && <TabNotificaciones contrato={contrato} id_contrato={contrato.id_contrato} />}
       </div>
     </div>
   );

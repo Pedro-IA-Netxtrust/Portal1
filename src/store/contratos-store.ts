@@ -81,6 +81,7 @@ export interface Contrato {
   trabajadores_asignados: ContratoTrabajador[];
   proveedores_asignados: { id_proveedor: string; categoria: string }[];
   historial: MovimientoHistorial[];
+  manager_id?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -513,6 +514,7 @@ export const useContratosStore = create<ContratosState>()(
                   trabajadores_asignados: existing?.trabajadores_asignados ?? [],
                   historial: existing?.historial ?? [],
                   proveedores_asignados: existing?.proveedores_asignados ?? [],
+                  manager_id: dbContrato.manager_id ?? existing?.manager_id ?? null,
                 };
               });
               return { contratos: updatedContratos };
