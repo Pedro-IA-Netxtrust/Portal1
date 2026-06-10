@@ -26,7 +26,8 @@ import {
   Store,
   Megaphone,
   History,
-  GitBranch
+  GitBranch,
+  ShieldAlert
 } from "lucide-react";
 
 interface NavItem {
@@ -113,6 +114,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       items: [
         { name: "Inspección", href: "/vehiculos/inspecciones", icon: ClipboardCheck, badge: null },
         { name: "Cursos y Exámenes", href: "/control", icon: GraduationCap, badge: null },
+        { name: "Entrega de EPP", href: "/epp", icon: ShieldAlert, badge: "Nuevo" },
       ]
     },
     { type: "item", name: "Tickets IT", href: "/tickets", icon: Ticket, badge: null },
