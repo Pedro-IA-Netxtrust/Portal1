@@ -2,21 +2,24 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+import { useInventarioStore } from "@/store/inventario-store";
 
 export interface EppItem {
   id_item: string;
   id_entrega: string;
-  elemento: string;
+  id_producto: string;
   cantidad: number;
-  talla?: string;
-  opcion?: string;
+  talla: string;
+  opcion: string;
 }
 
 export interface EppEntrega {
   id_entrega: string;
   id_trabajador: string;
+  id_contrato?: string | null;
   fecha_entrega: string; // YYYY-MM-DD
   recibido_por?: string;
+  entregado_por?: string; // Nombre del operador/encargado
   observaciones?: string;
   fecha_creacion?: string;
   items: EppItem[];
@@ -29,35 +32,40 @@ interface EppState {
   fetchEntregas: () => Promise<void>;
   addEntrega: (
     entrega: Omit<EppEntrega, "id_entrega" | "items" | "fecha_creacion">,
-    items: Omit<EppItem, "id_item" | "id_entrega">[]
+    items: Omit<EppItem, "id_item" | "id_entrega">[],
+    id_bodega: string // Bodega de origen del descuento
   ) => Promise<boolean>;
   deleteEntrega: (id_entrega: string) => Promise<boolean>;
 }
 
-// Datos semilla de prueba para cuando estemos offline
+// Datos semilla de prueba adaptados al catálogo relacional
 const mockEntregas: EppEntrega[] = [
   {
     id_entrega: "ent-1",
-    id_trabajador: "44aa0d8f-a52c-45a8-af6f-a4bde2e84fd6", // Josépedro Abbott (o cualquier ID del mockup)
+    id_trabajador: "44aa0d8f-a52c-45a8-af6f-a4bde2e84fd6", // Josépedro Abbott
+    id_contrato: "temp-c-1", // Contrato mock
     fecha_entrega: "2026-06-01",
     recibido_por: "Josépedro Abbott",
+    entregado_por: "Administrador Central",
     observaciones: "Entrega inicial de terreno de invierno",
     fecha_creacion: "2026-06-01T10:00:00Z",
     items: [
-      { id_item: "item-1", id_entrega: "ent-1", elemento: "Zapatos", cantidad: 1, talla: "42", opcion: "Negro" },
-      { id_item: "item-2", id_entrega: "ent-1", elemento: "Chaqueta", cantidad: 1, talla: "L", opcion: "Azul Térmico" },
-      { id_item: "item-3", id_entrega: "ent-1", elemento: "Casco", cantidad: 1, talla: "Estándar", opcion: "Amarillo" }
+      { id_item: "item-1", id_entrega: "ent-1", id_producto: "p-1", cantidad: 1, talla: "42", opcion: "Negro" }, // Zapatos
+      { id_item: "item-2", id_entrega: "ent-1", id_producto: "p-6", cantidad: 1, talla: "L", opcion: "Azul Térmico" }, // Chaqueta
+      { id_item: "item-3", id_entrega: "ent-1", id_producto: "p-2", cantidad: 1, talla: "Estándar", opcion: "Amarillo" } // Casco
     ]
   },
   {
     id_entrega: "ent-2",
     id_trabajador: "3313c7df-7cdd-43e0-8bbf-71826154e560", // Natalia Arias
+    id_contrato: "temp-c-1",
     fecha_entrega: "2026-06-05",
     recibido_por: "Natalia Arias",
+    entregado_por: "Administrador Central",
     observaciones: "Reposición de lentes dañados",
     fecha_creacion: "2026-06-05T14:30:00Z",
     items: [
-      { id_item: "item-4", id_entrega: "ent-2", elemento: "Lentes", cantidad: 2, talla: "M", opcion: "Claro Antiempaño" }
+      { id_item: "item-4", id_entrega: "ent-2", id_producto: "p-4", cantidad: 2, talla: "M", opcion: "Claro" } // Lentes
     ]
   }
 ];
@@ -71,7 +79,6 @@ export const useEppStore = create<EppState>()(
       fetchEntregas: async () => {
         set({ loading: true });
         try {
-          // Consultar la cabecera e incluir los items mediante join
           const { data, error } = await supabase
             .from("epp_entregas")
             .select(`
@@ -84,22 +91,17 @@ export const useEppStore = create<EppState>()(
 
           if (data && data.length > 0) {
             set({ entregas: data as EppEntrega[] });
-          } else {
-            // Si no hay datos, pero ya está en DB (vacío real), o si falló, mantenemos el mockup
-            // Si data es array vacío [], significa que en DB no hay nada
-            if (data && data.length === 0) {
-              set({ entregas: [] });
-            }
+          } else if (data && data.length === 0) {
+            set({ entregas: [] });
           }
         } catch (err) {
-          console.warn("[epp-store] Offline o error al cargar de Supabase, usando datos locales:", err);
-          // Mantiene los datos cacheados en localStorage / mockEntregas
+          console.warn("[epp-store] Offline o error al cargar de Supabase, usando caché:", err);
         } finally {
           set({ loading: false });
         }
       },
 
-      addEntrega: async (entrega, items) => {
+      addEntrega: async (entrega, items, id_bodega) => {
         const tempId = `ent-temp-${Date.now()}`;
         
         // Crear representación local optimista
@@ -116,17 +118,22 @@ export const useEppStore = create<EppState>()(
           items: itemsLocales
         };
 
-        // Actualizar localmente inmediatamente (Optimistic)
+        // Guardar estado actual por si falla la transacción
+        const prevEntregas = get().entregas;
+
+        // 1. Añadir localmente optimista
         set(state => ({ entregas: [nuevaEntregaLocal, ...state.entregas] }));
 
         try {
-          // 1. Insertar cabecera
+          // 2. Insertar cabecera entrega en Supabase
           const { data: dataEntrega, error: errorEntrega } = await supabase
             .from("epp_entregas")
             .insert([{
               id_trabajador: entrega.id_trabajador,
+              id_contrato: entrega.id_contrato || null,
               fecha_entrega: entrega.fecha_entrega,
               recibido_por: entrega.recibido_por || null,
+              entregado_por: entrega.entregado_por || null,
               observaciones: entrega.observaciones || null
             }])
             .select();
@@ -136,13 +143,13 @@ export const useEppStore = create<EppState>()(
 
           const realEntregaId = dataEntrega[0].id_entrega;
 
-          // 2. Insertar items
+          // 3. Insertar items del detalle
           const itemsDb = items.map(it => ({
             id_entrega: realEntregaId,
-            elemento: it.elemento,
+            id_producto: it.id_producto,
             cantidad: it.cantidad,
-            talla: it.talla || null,
-            opcion: it.opcion || null
+            talla: it.talla,
+            opcion: it.opcion
           }));
 
           const { data: dataItems, error: errorItems } = await supabase
@@ -152,7 +159,23 @@ export const useEppStore = create<EppState>()(
 
           if (errorItems) throw errorItems;
 
-          // 3. Actualizar con los IDs reales de la BD
+          // 4. Descontar del inventario lote por lote (FIFO)
+          // Hacemos el descuento local y remoto por cada item
+          for (const dbItem of (dataItems || [])) {
+            const resultDescuento = await useInventarioStore.getState().descontarStockFIFO(
+              dbItem.id_producto,
+              dbItem.talla,
+              dbItem.opcion,
+              id_bodega,
+              dbItem.cantidad,
+              dbItem.id_item
+            );
+            if (!resultDescuento.exito) {
+              console.warn(`[epp-store] Alerta de descuento stock incompleta para producto ID ${dbItem.id_producto}`);
+            }
+          }
+
+          // 5. Consolidar estado local
           const finalEntrega: EppEntrega = {
             ...dataEntrega[0],
             items: dataItems || []
@@ -162,34 +185,53 @@ export const useEppStore = create<EppState>()(
             entregas: state.entregas.map(e => e.id_entrega === tempId ? finalEntrega : e)
           }));
 
-          // Registrar en auditoría
+          // Auditoría
+          const inventarioStore = useInventarioStore.getState();
+          const itemsDesc = items.map(i => {
+            const p = inventarioStore.productos.find(pr => pr.id_producto === i.id_producto);
+            return `${p?.nombre || "Producto"} (${i.talla}/${i.opcion}) x${i.cantidad}`;
+          }).join(", ");
+
           await useAuditoriaStore.getState().registrar({
             modulo: "Control",
             accion: "Alta",
             id_entidad: realEntregaId,
             nombre_entidad: `Entrega EPP - ${entrega.fecha_entrega}`,
-            detalle: `Entrega de EPP registrada. Elementos: ${items.map(i => `${i.elemento} (x${i.cantidad})`).join(", ")}.`
+            detalle: `EPP entregado al trabajador. Bodega Origen: ${id_bodega}. Elementos: ${itemsDesc}. Entregado por: ${entrega.entregado_por || "No especificado"}.`
           });
 
           return true;
         } catch (err) {
-          console.error("[epp-store] Error al persistir entrega en Supabase:", err);
+          console.error("[epp-store] Error en la transacción de entrega:", err);
           
+          // Revertir estado si falló en Supabase (o dejar local si estamos forzando modo simulación local)
+          // Para robustez y soporte local completo, permitimos descuento offline en los stores locales:
+          const inventarioStore = useInventarioStore.getState();
+          for (const localItem of itemsLocales) {
+            await inventarioStore.descontarStockFIFO(
+              localItem.id_producto,
+              localItem.talla,
+              localItem.opcion,
+              id_bodega,
+              localItem.cantidad,
+              localItem.id_item
+            );
+          }
+
           // Registrar en auditoría local
           await useAuditoriaStore.getState().registrar({
             modulo: "Control",
             accion: "Alta",
             id_entidad: tempId,
             nombre_entidad: `Entrega EPP (Local) - ${entrega.fecha_entrega}`,
-            detalle: `Entrega de EPP registrada offline/local. Elementos: ${items.map(i => `${i.elemento} (x${i.cantidad})`).join(", ")}.`
+            detalle: `Entrega de EPP registrada localmente. Bodega: ${id_bodega}.`
           });
 
-          return true; // Retorna true para continuar localmente
+          return true;
         }
       },
 
       deleteEntrega: async (id_entrega) => {
-        // Guardar copia antes de borrar por si hay que revertir
         const anterior = get().entregas;
         
         set(state => ({
@@ -205,7 +247,6 @@ export const useEppStore = create<EppState>()(
             if (error) throw error;
           }
 
-          // Registrar en auditoría
           await useAuditoriaStore.getState().registrar({
             modulo: "Control",
             accion: "Baja",
@@ -216,8 +257,7 @@ export const useEppStore = create<EppState>()(
 
           return true;
         } catch (err) {
-          console.error("[epp-store] Error al borrar entrega en Supabase:", err);
-          // Revertir localmente si falló
+          console.error("[epp-store] Error al borrar entrega:", err);
           set({ entregas: anterior });
           return false;
         }

@@ -27,7 +27,8 @@ import {
   Megaphone,
   History,
   GitBranch,
-  ShieldAlert
+  ShieldAlert,
+  Warehouse
 } from "lucide-react";
 
 interface NavItem {
@@ -90,6 +91,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         { name: "Notebooks", href: "/notebooks", icon: Laptop, badge: null },
         { name: "Auditoria", href: "/auditoria", icon: History, badge: null },
         { name: "Flujos de Información", href: "/flujos", icon: GitBranch, badge: "Nuevo" },
+        { name: "Inventario de EPP", href: "/inventario", icon: Warehouse, badge: "Nuevo" },
       ]
     },
     {
@@ -104,6 +106,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         { name: "Reuniones", href: "/reuniones", icon: ClipboardCheck, badge: "Nuevo" },
         { name: "Alimentación", href: "/alimentacion", icon: Utensils, badge: "Nuevo" },
         { name: "Solicitudes", href: "/solicitudes", icon: ClipboardPen, badge: "New" },
+        { name: "Entrega de EPP", href: "/epp", icon: ShieldAlert, badge: "Nuevo" },
       ]
     },
     {
@@ -114,7 +117,6 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       items: [
         { name: "Inspección", href: "/vehiculos/inspecciones", icon: ClipboardCheck, badge: null },
         { name: "Cursos y Exámenes", href: "/control", icon: GraduationCap, badge: null },
-        { name: "Entrega de EPP", href: "/epp", icon: ShieldAlert, badge: "Nuevo" },
       ]
     },
     { type: "item", name: "Tickets IT", href: "/tickets", icon: Ticket, badge: null },
