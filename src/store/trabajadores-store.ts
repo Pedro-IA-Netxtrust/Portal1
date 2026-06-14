@@ -2,6 +2,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+import type {
+  ModalidadTrabajo,
+  TipoIdentificacion,
+  TipoContrato,
+  SistemaSalud,
+} from "@/lib/enums";
 
 export interface Trabajador {
   id_trabajador: string;
@@ -15,7 +21,7 @@ export interface Trabajador {
   fecha_nacimiento: string;
   ciudad_nacimiento?: string;
   nacionalidad: string;
-  tipo_identificacion: "RUT" | "DNI" | "PASAPORTE";
+  tipo_identificacion: TipoIdentificacion;
   numero_identificacion: string;
   fecha_vencimiento_id?: string;
   estado_civil?: "Soltero" | "Casado" | "Divorciado" | "Viudo" | "Conviviente";
@@ -44,7 +50,7 @@ export interface Trabajador {
 
   // Previsión
   afp?: string;
-  sistema_salud?: "Fonasa" | "Isapre";
+  sistema_salud?: SistemaSalud;
   nombre_isapre?: string;
   valor_plan_uf?: number;
 
@@ -55,11 +61,11 @@ export interface Trabajador {
 
   // Laboral
   fecha_ingreso: string;
-  tipo_contrato: "Indefinido" | "Plazo Fijo" | "Honorarios" | "Práctica";
+  tipo_contrato: TipoContrato;
   fecha_vencimiento_contrato?: string;
   cargo?: string;
   area_departamento?: string;
-  modalidad_trabajo: "Presencial" | "Teletrabajo" | "Híbrido";
+  modalidad_trabajo: ModalidadTrabajo;
 
   // Operativo
   talla_chaqueta?: string;

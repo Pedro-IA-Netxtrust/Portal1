@@ -196,7 +196,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
     if (valor.length < 2) return false;
 
     const cuerpo = valor.slice(0, -1);
-    let dv = valor.slice(-1);
+    const dv = valor.slice(-1);
 
     if (!/^\d+$/.test(cuerpo)) return false;
 
@@ -210,7 +210,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
     }
 
     const dvEsperado = 11 - (suma % 11);
-    let dvCalculado = dvEsperado === 11 ? "0" : dvEsperado === 10 ? "K" : dvEsperado.toString();
+    const dvCalculado = dvEsperado === 11 ? "0" : dvEsperado === 10 ? "K" : dvEsperado.toString();
 
     return dvCalculado === dv;
   };

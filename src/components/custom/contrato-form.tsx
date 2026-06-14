@@ -317,7 +317,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
 
               {formData.centros_costo.length === 0 && (
                 <p className="text-xs text-zinc-500 italic text-center py-2 bg-zinc-900/10 rounded-lg border border-zinc-900 border-dashed">
-                  Sin centros de costo definidos. Haz clic en "Añadir CC".
+                  Sin centros de costo definidos. Haz clic en &ldquo;Añadir CC&rdquo;.
                 </p>
               )}
             </div>
@@ -380,7 +380,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
 
               {formData.unidades.length === 0 && (
                 <p className="text-xs text-zinc-500 italic text-center py-2 bg-zinc-900/10 rounded-lg border border-zinc-900 border-dashed">
-                  Sin unidades operativas definidas. Haz clic en "Añadir Unidad".
+                  Sin unidades operativas definidas. Haz clic en &ldquo;Añadir Unidad&rdquo;.
                 </p>
               )}
             </div>

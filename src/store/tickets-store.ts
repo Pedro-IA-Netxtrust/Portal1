@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+import type { EstadoTicket, PrioridadTicket } from "@/lib/enums";
 
 export interface ComentarioTicket {
   id_comentario: string;
@@ -19,8 +20,8 @@ export interface Ticket {
   id_activo_relacionado: string | null;
   tipo: "Incidencia" | "Requerimiento" | "Consulta";
   categoria: "Hardware" | "Software" | "Red" | "Accesos" | "Otros";
-  prioridad: "Baja" | "Media" | "Alta" | "Critica";
-  estado: "Abierto" | "En Atencion" | "Cerrado";
+  prioridad: PrioridadTicket;
+  estado: EstadoTicket;
   id_tecnico_responsable: string | null;
   asunto: string;
   descripcion: string;

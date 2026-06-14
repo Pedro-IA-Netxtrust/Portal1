@@ -319,7 +319,7 @@ export default function InventarioPage() {
             {stockList.length === 0 ? (
               <div className="py-20 text-center text-zinc-650 italic text-xs border border-dashed border-zinc-900 rounded-xl space-y-2">
                 <p>No hay stock de productos en ninguna bodega.</p>
-                <p className="text-[10px] font-normal">Ve a la pestaña "Ingreso de Compras" para cargar tu primera factura.</p>
+                <p className="text-[10px] font-normal">Ve a la pestaña &ldquo;Ingreso de Compras&rdquo; para cargar tu primera factura.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">

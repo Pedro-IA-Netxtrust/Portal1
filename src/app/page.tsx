@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   Users, 
@@ -8,7 +8,6 @@ import {
   Ticket, 
   Cpu, 
   ArrowUpRight, 
-  Layers,
   Sparkles,
   CheckCircle2,
   Clock,
@@ -17,7 +16,9 @@ import {
   Laptop,
   ArrowRight,
   Activity,
-  ShieldCheck
+  ShieldCheck,
+  Zap,
+  TrendingUp
 } from "lucide-react";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useContratosStore } from "@/store/contratos-store";
@@ -25,6 +26,11 @@ import { useActivosStore } from "@/store/activos-store";
 import { useControlStore } from "@/store/control-store";
 import { useTicketsStore } from "@/store/tickets-store";
 import { useSolicitudesStore } from "@/store/solicitudes-store";
+import { useCicloVidaStore } from "@/store/ciclo-vida-store";
+import { useOnboardingStore } from "@/store/onboarding-store";
+import { useNotificacionesStore } from "@/store/notificaciones-store";
+import { diasRestantes } from "@/lib/fechas";
+import { esTicketAbierto, esTicketCerrado } from "@/lib/enums";
 
 interface AlertaVencimiento {
   id: string;
@@ -39,13 +45,36 @@ interface AlertaVencimiento {
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
 
-  // Load stores
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { activos, fetchActivos } = useActivosStore();
-  const { examenes, cursos, catalogoExamenes, catalogoCursos } = useControlStore();
-  const { tickets, fetchTickets } = useTicketsStore();
-  const { fetchSolicitudes } = useSolicitudesStore();
+  // Selectores granulares: cada componente se suscribe sólo al slice que usa,
+  // evitando re-renders por cambios en campos no relacionados del store.
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const fetchTrabajadores = useTrabajadoresStore((s) => s.fetchTrabajadores);
+
+  const contratos = useContratosStore((s) => s.contratos);
+  const fetchContratos = useContratosStore((s) => s.fetchContratos);
+
+  const activos = useActivosStore((s) => s.activos);
+  const fetchActivos = useActivosStore((s) => s.fetchActivos);
+
+  const examenes = useControlStore((s) => s.examenes);
+  const cursos = useControlStore((s) => s.cursos);
+  const catalogoExamenes = useControlStore((s) => s.catalogoExamenes);
+  const catalogoCursos = useControlStore((s) => s.catalogoCursos);
+
+  const tickets = useTicketsStore((s) => s.tickets);
+  const fetchTickets = useTicketsStore((s) => s.fetchTickets);
+
+  const fetchSolicitudes = useSolicitudesStore((s) => s.fetchSolicitudes);
+
+  const ciclos = useCicloVidaStore((s) => s.ciclos);
+  const fetchCiclos = useCicloVidaStore((s) => s.fetchCiclos);
+
+  const fetchTareas = useOnboardingStore((s) => s.fetchTareas);
+  const getProgressByTrabajador = useOnboardingStore(
+    (s) => s.getProgressByTrabajador
+  );
+
+  const addNotification = useNotificacionesStore((s) => s.addNotification);
 
   useEffect(() => {
     setIsClient(true);
@@ -54,7 +83,161 @@ export default function Home() {
     fetchActivos();
     fetchTickets();
     fetchSolicitudes();
-  }, [fetchTrabajadores, fetchContratos, fetchActivos, fetchTickets, fetchSolicitudes]);
+    fetchCiclos();
+    fetchTareas();
+  }, [fetchTrabajadores, fetchContratos, fetchActivos, fetchTickets, fetchSolicitudes, fetchCiclos, fetchTareas]);
+
+  // Generar notificaciones por vencimientos críticos. addNotification es idempotente
+  // por id, así que las re-ejecuciones por cambios en stores no producen duplicados.
+  useEffect(() => {
+    if (trabajadores.length === 0 && activos.length === 0) return;
+
+    // Trabajadores: licencia y carnet
+    trabajadores.forEach((t) => {
+      const nombre = `${t.nombre_1} ${t.apellido_paterno}`;
+      const checks: { campo?: string | null; label: string }[] = [
+        { campo: t.vencimiento_licencia_conducir, label: "Licencia de conducir" },
+        { campo: t.vencimiento_carnet, label: "Carnet de identidad" },
+        { campo: t.vencimiento_psicosensometrico, label: "Examen psicosensométrico" },
+      ];
+      checks.forEach(({ campo, label }) => {
+        const dias = diasRestantes(campo);
+        if (dias <= 7) {
+          addNotification({
+            id: `venc-${t.id_trabajador}-${label}`,
+            titulo: dias < 0 ? `${label} vencido` : `${label} por vencer`,
+            mensaje:
+              dias < 0
+                ? `${nombre}: ${label} venció hace ${Math.abs(dias)} días`
+                : `${nombre}: ${label} vence en ${dias} días`,
+            nivel: dias < 0 ? "critica" : "advertencia",
+          });
+        }
+      });
+    });
+
+    // Vehículos: revisión técnica
+    activos.forEach((a) => {
+      const rt = a.detalles_adicionales?.vencimiento_revision_tecnica;
+      if (a.tipo === "Vehículo" && rt) {
+        const dias = diasRestantes(rt);
+        if (dias <= 7) {
+          addNotification({
+            id: `venc-rt-${a.id_activo}`,
+            titulo: dias < 0 ? "Revisión técnica vencida" : "Revisión técnica por vencer",
+            mensaje: `${a.marca} ${a.modelo} (${a.identificador_unico}): ${
+              dias < 0 ? `vencida hace ${Math.abs(dias)} días` : `vence en ${dias} días`
+            }`,
+            nivel: dias < 0 ? "critica" : "advertencia",
+          });
+        }
+      }
+    });
+  }, [trabajadores, activos, addNotification]);
+
+  // Helper: Get worker full name
+  const getWorkerName = (idWorker: string) => {
+    const worker = trabajadores.find(t => t.id_trabajador === idWorker);
+    return worker ? `${worker.nombre_1} ${worker.apellido_paterno}` : "Cargando...";
+  };
+
+  // Compilación memoizada de alertas. Dedupe por id usando Map (O(1)) y orden
+  // por urgencia ascendente (más vencido primero).
+  // Importante: este hook DEBE declararse antes de cualquier early return para
+  // respetar las reglas de los hooks de React.
+  const alertas = useMemo<AlertaVencimiento[]>(() => {
+    const mapa = new Map<string, AlertaVencimiento>();
+    const push = (alert: AlertaVencimiento) => {
+      if (!mapa.has(alert.id)) mapa.set(alert.id, alert);
+    };
+
+    // 1. Trabajadores: licencia, carnet, exámenes operacionales
+    trabajadores.forEach(t => {
+      const wName = `${t.nombre_1} ${t.apellido_paterno}`;
+
+      const checks: { campo?: string | null; idSuffix: string; tipo: AlertaVencimiento["tipo"]; item: string }[] = [
+        { campo: t.vencimiento_licencia_conducir, idSuffix: "lic", tipo: "Licencia", item: "Licencia de Conducir" },
+        { campo: t.vencimiento_carnet, idSuffix: "car", tipo: "Identificación", item: `Cédula de Identidad (${t.tipo_identificacion})` },
+        { campo: t.vencimiento_altura_geo, idSuffix: "alt", tipo: "Examen", item: "Examen Altura Geográfica" },
+        { campo: t.vencimiento_psicosensometrico, idSuffix: "psi", tipo: "Examen", item: "Examen Psicosensométrico" },
+      ];
+
+      checks.forEach(({ campo, idSuffix, tipo, item }) => {
+        if (!campo) return;
+        const days = diasRestantes(campo);
+        if (days <= 30) {
+          push({
+            id: `w-${idSuffix}-${t.id_trabajador}`,
+            tipo,
+            item,
+            responsable: wName,
+            fecha_vencimiento: campo,
+            dias_restantes: days,
+            urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA",
+          });
+        }
+      });
+    });
+
+    // 2. Vehículos: revisión técnica (optional chaining seguro)
+    activos.forEach(a => {
+      const rt = a.detalles_adicionales?.vencimiento_revision_tecnica;
+      if (a.tipo === "Vehículo" && rt) {
+        const days = diasRestantes(rt);
+        if (days <= 30) {
+          push({
+            id: `a-rt-${a.id_activo}`,
+            tipo: "Vehículo",
+            item: `Revisión Técnica - Patente: ${a.identificador_unico}`,
+            responsable: `${a.marca} ${a.modelo}`,
+            fecha_vencimiento: rt,
+            dias_restantes: days,
+            urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA",
+          });
+        }
+      }
+    });
+
+    // 3. Exámenes registrados en Control Store
+    examenes.forEach(e => {
+      if (!e.fecha_vencimiento) return;
+      const days = diasRestantes(e.fecha_vencimiento);
+      if (days <= 30) {
+        const cat = catalogoExamenes.find(c => c.id === e.id_examen_catalogo);
+        push({
+          id: `e-ctrl-${e.id}`,
+          tipo: "Examen",
+          item: cat?.nombre ?? "Examen",
+          responsable: getWorkerName(e.id_trabajador),
+          fecha_vencimiento: e.fecha_vencimiento,
+          dias_restantes: days,
+          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA",
+        });
+      }
+    });
+
+    // 4. Cursos registrados en Control Store
+    cursos.forEach(c => {
+      if (!c.fecha_vencimiento) return;
+      const days = diasRestantes(c.fecha_vencimiento);
+      if (days <= 30) {
+        const cat = catalogoCursos.find(cc => cc.id === c.id_curso_catalogo);
+        push({
+          id: `c-ctrl-${c.id}`,
+          tipo: "Curso",
+          item: cat?.nombre ?? "Curso",
+          responsable: getWorkerName(c.id_trabajador),
+          fecha_vencimiento: c.fecha_vencimiento,
+          dias_restantes: days,
+          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA",
+        });
+      }
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => a.dias_restantes - b.dias_restantes);
+    // `getWorkerName` cierra sobre `trabajadores`, ya incluido en deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trabajadores, activos, examenes, cursos, catalogoExamenes, catalogoCursos]);
 
   if (!isClient) {
     return (
@@ -65,161 +248,11 @@ export default function Home() {
     );
   }
 
-  // Helper: Get worker full name
-  const getWorkerName = (idWorker: string) => {
-    const worker = trabajadores.find(t => t.id_trabajador === idWorker);
-    return worker ? `${worker.nombre_1} ${worker.apellido_paterno}` : "Cargando...";
-  };
-
-  // Helper: Calculate remaining days
-  const getDaysRemaining = (dateStr?: string | null) => {
-    if (!dateStr) return 999;
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const limit = new Date(dateStr);
-    limit.setHours(0, 0, 0, 0);
-    const diffTime = limit.getTime() - hoy.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  // Dynamic alerts list
-  const alertas: AlertaVencimiento[] = [];
-
-  const addAlertUnique = (alert: AlertaVencimiento) => {
-    const exists = alertas.some(a => a.item === alert.item && a.responsable === alert.responsable);
-    if (!exists) {
-      alertas.push(alert);
-    }
-  };
-
-  // 1. Scan Workers for Licencias and Carnet
-  trabajadores.forEach(t => {
-    const wName = `${t.nombre_1} ${t.apellido_paterno}`;
-    
-    if (t.vencimiento_licencia_conducir) {
-      const days = getDaysRemaining(t.vencimiento_licencia_conducir);
-      if (days <= 30) {
-        addAlertUnique({
-          id: `w-lic-${t.id_trabajador}`,
-          tipo: "Licencia",
-          item: "Licencia de Conducir",
-          responsable: wName,
-          fecha_vencimiento: t.vencimiento_licencia_conducir,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-
-    if (t.vencimiento_carnet) {
-      const days = getDaysRemaining(t.vencimiento_carnet);
-      if (days <= 30) {
-        addAlertUnique({
-          id: `w-car-${t.id_trabajador}`,
-          tipo: "Identificación",
-          item: `Cédula de Identidad (${t.tipo_identificacion})`,
-          responsable: wName,
-          fecha_vencimiento: t.vencimiento_carnet,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-
-    if (t.vencimiento_altura_geo) {
-      const days = getDaysRemaining(t.vencimiento_altura_geo);
-      if (days <= 30) {
-        addAlertUnique({
-          id: `w-alt-${t.id_trabajador}`,
-          tipo: "Examen",
-          item: "Examen Altura Geográfica",
-          responsable: wName,
-          fecha_vencimiento: t.vencimiento_altura_geo,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-
-    if (t.vencimiento_psicosensometrico) {
-      const days = getDaysRemaining(t.vencimiento_psicosensometrico);
-      if (days <= 30) {
-        addAlertUnique({
-          id: `w-psi-${t.id_trabajador}`,
-          tipo: "Examen",
-          item: "Examen Psicosensométrico",
-          responsable: wName,
-          fecha_vencimiento: t.vencimiento_psicosensometrico,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-  });
-
-  // 2. Scan Vehicles for Revision Tecnica
-  activos.forEach(a => {
-    if (a.tipo === "Vehículo" && a.detalles_adicionales.vencimiento_revision_tecnica) {
-      const days = getDaysRemaining(a.detalles_adicionales.vencimiento_revision_tecnica);
-      if (days <= 30) {
-        addAlertUnique({
-          id: `a-rt-${a.id_activo}`,
-          tipo: "Vehículo",
-          item: `Revisión Técnica - Patente: ${a.identificador_unico}`,
-          responsable: `${a.marca} ${a.modelo}`,
-          fecha_vencimiento: a.detalles_adicionales.vencimiento_revision_tecnica,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-  });
-
-  // 3. Scan registered exams & courses in Control Store
-  examenes.forEach(e => {
-    if (e.fecha_vencimiento) {
-      const days = getDaysRemaining(e.fecha_vencimiento);
-      if (days <= 30) {
-        const cat = catalogoExamenes.find(c => c.id === e.id_examen_catalogo);
-        addAlertUnique({
-          id: `e-ctrl-${e.id}`,
-          tipo: "Examen",
-          item: cat?.nombre ?? "Examen",
-          responsable: getWorkerName(e.id_trabajador),
-          fecha_vencimiento: e.fecha_vencimiento,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-  });
-
-  cursos.forEach(c => {
-    if (c.fecha_vencimiento) {
-      const days = getDaysRemaining(c.fecha_vencimiento);
-      if (days <= 30) {
-        const cat = catalogoCursos.find(cat => cat.id === c.id_curso_catalogo);
-        addAlertUnique({
-          id: `c-ctrl-${c.id}`,
-          tipo: "Curso",
-          item: cat?.nombre ?? "Curso",
-          responsable: getWorkerName(c.id_trabajador),
-          fecha_vencimiento: c.fecha_vencimiento,
-          dias_restantes: days,
-          urgencia: days < 0 ? "CRITICA" : "ADVERTENCIA"
-        });
-      }
-    }
-  });
-
-  // Sort alerts: most expired/urgent first
-  alertas.sort((a, b) => a.dias_restantes - b.dias_restantes);
-
   // Statistics calculation
   const totalTrabajadores = trabajadores.length;
   const contratosActivos = contratos.filter(c => c.estado === "Activo").length;
   const activosAsignados = activos.filter(a => a.estado === "Asignado").length;
-  const ticketsAbiertos = tickets.filter(t => t.estado === "Abierto" || t.estado === "En Atencion").length;
+  const ticketsAbiertos = tickets.filter(t => esTicketAbierto(t.estado)).length;
   
   const alertasCriticasCount = alertas.filter(a => a.urgencia === "CRITICA").length;
   const alertasAdvertenciaCount = alertas.filter(a => a.urgencia === "ADVERTENCIA").length;
@@ -285,6 +318,13 @@ export default function Home() {
             </p>
           </div>
           <div className="flex gap-4">
+            <Link 
+              href="/onboarding"
+              className="btn btn-secondary text-sm"
+            >
+              <Zap size={18} />
+              Dashboard Onboarding
+            </Link>
             <Link 
               href="/control"
               className="btn btn-accent text-sm"
@@ -455,7 +495,7 @@ export default function Home() {
               </div>
               
               <div className="space-y-3">
-                {tickets.filter(t => t.estado !== "Cerrado").slice(0, 3).map(tk => (
+                {tickets.filter(t => !esTicketCerrado(t.estado)).slice(0, 3).map(tk => (
                   <div key={tk.id_ticket} className="p-3.5 rounded-xl bg-bg-alt border border-border flex justify-between items-start gap-3 text-sm">
                     <div>
                       <span className="text-[10px] text-text-soft block uppercase font-bold tracking-wider">{tk.codigo_ticket}</span>
@@ -472,7 +512,7 @@ export default function Home() {
                   </div>
                 ))}
 
-                {tickets.filter(t => t.estado !== "Cerrado").length === 0 && (
+                {tickets.filter(t => !esTicketCerrado(t.estado)).length === 0 && (
                   <p className="text-center py-5 text-xs text-text-soft font-medium">No hay tickets de soporte abiertos.</p>
                 )}
               </div>
@@ -491,6 +531,145 @@ export default function Home() {
 
         </div>
       </div>
+
+      {/* Section: Incorporaciones Activas */}
+      {ciclos.some(c => c.estado_actual === "pre_incorporacion") && (
+        <section className="card">
+          <div className="card-header items-center border-b border-border pb-4 mb-4">
+            <h2 className="card-title flex items-center gap-2">
+              <Zap className="text-amber-500" size={22} strokeWidth={2.5} />
+              Incorporaciones en Proceso
+            </h2>
+            <span className="badge bg-amber-100 text-amber-900">
+              {ciclos.filter(c => c.estado_actual === "pre_incorporacion").length} en curso
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {ciclos
+              .filter(c => c.estado_actual === "pre_incorporacion")
+              .slice(0, 4)
+              .map((ciclo) => {
+                const t = trabajadores.find(tr => tr.id_trabajador === ciclo.id_trabajador);
+                if (!t) return null;
+                const progress = getProgressByTrabajador(ciclo.id_trabajador);
+
+                return (
+                  <Link
+                    key={ciclo.id_trabajador}
+                    href={`/trabajadores/${ciclo.id_trabajador}`}
+                    className="p-4 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-all group"
+                  >
+                    <div className="space-y-3">
+                      <div>
+                        <p className="font-bold text-text text-sm group-hover:text-amber-900 transition-colors">
+                          {t.nombre_1} {t.apellido_paterno}
+                        </p>
+                        <p className="text-xs text-text-muted mt-0.5">{t.cargo || "Sin asignar"}</p>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-amber-900">Progreso</span>
+                          <span className="text-xs font-bold text-amber-900">{progress.porcentaje_total}%</span>
+                        </div>
+                        <div className="w-full bg-amber-200 rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-amber-500 to-amber-600 h-2 rounded-full transition-all"
+                            style={{ width: `${progress.porcentaje_total}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-amber-900 font-semibold pt-2 border-t border-amber-200">
+                        {progress.tareas_completadas}/{progress.tareas_total} tareas
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+          </div>
+
+          {ciclos.filter(c => c.estado_actual === "pre_incorporacion").length > 4 && (
+            <Link
+              href="/trabajadores"
+              className="mt-4 text-sm font-bold text-amber-700 hover:text-amber-900 flex items-center gap-2 transition-colors"
+            >
+              Ver todas las incorporaciones
+              <ArrowRight size={16} />
+            </Link>
+          )}
+        </section>
+      )}
+
+      {/* Section: Resumen de Cumplimiento */}
+      {(ciclos.filter(c => c.estado_actual === "activo").length > 0 || 
+        ciclos.filter(c => c.estado_actual === "pre_incorporacion").length > 0) && (
+        <section className="card">
+          <div className="card-header border-b border-border pb-4 mb-4">
+            <h2 className="card-title flex items-center gap-2">
+              <TrendingUp className="text-brand-blue" size={22} strokeWidth={2.5} />
+              Resumen de Estado del Equipo
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              label="Total Trabajadores"
+              valor={trabajadores.length}
+              icono={<Users size={20} />}
+              color="bg-blue-100 text-blue-900"
+            />
+            <StatCard
+              label="Activos Operando"
+              valor={ciclos.filter(c => c.estado_actual === "activo").length}
+              icono={<CheckCircle2 size={20} />}
+              color="bg-emerald-100 text-emerald-900"
+            />
+            <StatCard
+              label="En Incorporación"
+              valor={ciclos.filter(c => c.estado_actual === "pre_incorporacion").length}
+              icono={<Clock size={20} />}
+              color="bg-amber-100 text-amber-900"
+            />
+            <StatCard
+              label="Completitud Promedio"
+              valor={
+                ciclos.filter(c => c.estado_actual === "pre_incorporacion").length > 0
+                  ? `${Math.round(
+                      ciclos
+                        .filter(c => c.estado_actual === "pre_incorporacion")
+                        .reduce((sum, c) => sum + getProgressByTrabajador(c.id_trabajador).porcentaje_total, 0) /
+                        ciclos.filter(c => c.estado_actual === "pre_incorporacion").length
+                    )}%`
+                  : "N/A"
+              }
+              icono={<TrendingUp size={20} />}
+              color="bg-purple-100 text-purple-900"
+            />
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  valor,
+  icono,
+  color,
+}: {
+  label: string;
+  valor: string | number;
+  icono: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <div className={`${color} rounded-xl p-3 text-center`}>
+      <div className="flex justify-center mb-2">{icono}</div>
+      <p className="text-xs font-bold opacity-75 mb-1">{label}</p>
+      <p className="text-2xl font-bold">{valor}</p>
     </div>
   );
 }

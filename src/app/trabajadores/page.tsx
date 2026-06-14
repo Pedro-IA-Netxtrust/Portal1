@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTrabajadoresStore, Trabajador } from "@/store/trabajadores-store";
+import { useCicloVidaStore } from "@/store/ciclo-vida-store";
+import { useOnboardingStore } from "@/store/onboarding-store";
 import TrabajadorForm from "@/components/custom/trabajador-form";
 import TrabajadorDetalle from "@/components/custom/trabajador-detalle";
+import CicloVidaIndicador from "@/components/custom/ciclo-vida-indicador";
+import OnboardingWizard from "@/components/custom/onboarding-wizard";
 import { 
   Plus, 
   Search, 
@@ -18,8 +23,10 @@ import {
   Mail, 
   Phone,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Zap
 } from "lucide-react";
+import Link from "next/link";
 
 // Helper: Identificar datos faltantes esenciales
 const getDatosFaltantes = (t: Trabajador): string[] => {
@@ -50,11 +57,21 @@ const getDatosFaltantes = (t: Trabajador): string[] => {
 };
 
 export default function TrabajadoresPage() {
-  const { trabajadores, deleteTrabajador, fetchTrabajadores } = useTrabajadoresStore();
+  // Selectores granulares: el listado sólo necesita `trabajadores` y un par de
+  // actions. Suscribirse al store completo causaba re-renders innecesarios.
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const deleteTrabajador = useTrabajadoresStore((s) => s.deleteTrabajador);
+  const fetchTrabajadores = useTrabajadoresStore((s) => s.fetchTrabajadores);
+  const fetchCiclos = useCicloVidaStore((s) => s.fetchCiclos);
+  const fetchTareas = useOnboardingStore((s) => s.fetchTareas);
+  const [wizardTrabajador, setWizardTrabajador] = useState<Trabajador | null>(null);
 
-  React.useEffect(() => {
-    fetchTrabajadores();
-  }, [fetchTrabajadores]);
+  useEffect(() => {
+    const cargarDatos = async () => {
+      await Promise.all([fetchTrabajadores(), fetchCiclos(), fetchTareas()]);
+    };
+    cargarDatos();
+  }, [fetchTrabajadores, fetchCiclos, fetchTareas]);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,9 +100,14 @@ export default function TrabajadoresPage() {
   };
 
   // Helper: Open Detailed Profile view
+  const router = useRouter();
   const handleViewDetails = (t: Trabajador) => {
-    setDetailTrabajador(t);
-    setDetailOpen(true);
+    router.push(`/trabajadores/${t.id_trabajador}`);
+  };
+
+  // Helper: Iniciar onboarding wizard
+  const handleInitiateOnboarding = (t: Trabajador) => {
+    setWizardTrabajador(t);
   };
 
   // Safe delete handler
@@ -366,30 +388,40 @@ export default function TrabajadoresPage() {
 
                   {/* Action Buttons */}
                   <div className="flex justify-between items-center mt-5 pt-4 border-t border-border">
-                    <span className={`badge ${
-                      trabajador.modalidad_trabajo === "Híbrido" 
-                        ? "badge-blue" 
-                        : trabajador.modalidad_trabajo === "Teletrabajo"
-                        ? "bg-purple-500/10 text-purple-400"
-                        : "badge-orange"
-                    }`}>
-                      {trabajador.modalidad_trabajo}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`badge ${
+                        trabajador.modalidad_trabajo === "Híbrido" 
+                          ? "badge-blue" 
+                          : trabajador.modalidad_trabajo === "Teletrabajo"
+                          ? "bg-purple-500/10 text-purple-400"
+                          : "badge-orange"
+                      }`}>
+                        {trabajador.modalidad_trabajo}
+                      </span>
+                      <CicloVidaIndicador idTrabajador={trabajador.id_trabajador} compact={true} />
+                    </div>
 
                     <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => handleViewDetails(trabajador)}
+                      <Link 
+                        href={`/trabajadores/${trabajador.id_trabajador}`}
                         title="Ver Ficha Completa"
-                        className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm"
+                        className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm inline-block"
                       >
                         <Eye size={14} />
-                      </button>
+                      </Link>
                       <button 
                         onClick={() => handleEdit(trabajador.id_trabajador)}
                         title="Editar Trabajador"
                         className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-text hover:bg-surface-2 transition-all shadow-sm"
                       >
                         <Edit3 size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleInitiateOnboarding(trabajador)}
+                        title="Iniciar Onboarding"
+                        className="p-1.5 rounded-lg bg-surface border border-border text-text-soft hover:text-brand-blue hover:bg-blue-50 transition-all shadow-sm"
+                      >
+                        <Zap size={14} />
                       </button>
                       <button 
                         onClick={() => handleDelete(trabajador.id_trabajador, `${trabajador.nombre_1} ${trabajador.apellido_paterno}`)}
@@ -514,6 +546,22 @@ export default function TrabajadoresPage() {
             setDetailTrabajador(null);
           }} 
         />
+      )}
+
+      {/* Onboarding Wizard Modal */}
+      {wizardTrabajador && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="w-full h-full max-w-5xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-hidden">
+            <OnboardingWizard
+              trabajador={wizardTrabajador}
+              onComplete={() => {
+                setWizardTrabajador(null);
+                fetchTrabajadores();
+              }}
+              onCancel={() => setWizardTrabajador(null)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

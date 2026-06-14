@@ -363,7 +363,7 @@ export default function EppPage() {
                     <div>
                       <h4 className="text-xs font-bold text-zinc-400">Sin historial de entregas</h4>
                       <p className="text-[10px] text-zinc-650 mt-1 leading-relaxed max-w-[240px] mx-auto">
-                        Este trabajador no registra entregas de EPP. Haz clic en "Registrar Nueva Entrega" para asignarle equipamiento disponible en bodega.
+                        Este trabajador no registra entregas de EPP. Haz clic en &ldquo;Registrar Nueva Entrega&rdquo; para asignarle equipamiento disponible en bodega.
                       </p>
                     </div>
                   </div>

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import type { TipoActivo, EstadoActivo } from "@/lib/enums";
 
 export interface LicenciaSoftware {
   id: string;
@@ -14,11 +15,11 @@ export interface LicenciaSoftware {
 
 export interface Activo {
   id_activo: string;
-  tipo: "Notebook" | "Vehículo";
+  tipo: TipoActivo;
   marca: string;
   modelo: string;
   identificador_unico: string; // Patente para vehículos, Nº Serie para notebooks
-  estado: "Disponible" | "Asignado" | "En Mantención" | "Baja";
+  estado: EstadoActivo;
   id_trabajador_asignado: string | null; // NULL if Disponible
   fecha_asignacion?: string;
   detalles_adicionales: {

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+import type { EstadoContrato } from "@/lib/enums";
 
 // ─────────────────────────────────────────────────────────────
 //  Sub-entities
@@ -72,7 +73,7 @@ export interface Contrato {
   codigo_contrato: string;
   nombre_contrato: string;
   id_mandante: string;
-  estado: "Activo" | "Cerrado" | "En Preparacion" | "Suspendido";
+  estado: EstadoContrato;
   fecha_inicio: string;
   fecha_termino: string;
   centros_costo: CentroCosto[];

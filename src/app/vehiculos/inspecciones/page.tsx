@@ -279,7 +279,7 @@ export default function InspeccionesPage() {
 
                   {i.observaciones && (
                     <p className="text-[11px] text-zinc-400 bg-zinc-950/20 p-2 rounded border border-zinc-900 italic">
-                      " {i.observaciones} "
+                      &ldquo; {i.observaciones} &rdquo;
                     </p>
                   )}
                 </div>
@@ -342,7 +342,7 @@ export default function InspeccionesPage() {
 
                   {a.observaciones && (
                     <p className="text-[11px] text-zinc-400 bg-zinc-950/20 p-2.5 rounded border border-zinc-900 italic">
-                      " {a.observaciones} "
+                      &ldquo; {a.observaciones} &rdquo;
                     </p>
                   )}
                 </div>
@@ -405,7 +405,7 @@ export default function InspeccionesPage() {
 
                   {v.observaciones && (
                     <p className="text-[11px] text-zinc-400 bg-zinc-950/20 p-2.5 rounded border border-zinc-900 italic">
-                      " {v.observaciones} "
+                      &ldquo; {v.observaciones} &rdquo;
                     </p>
                   )}
                 </div>
