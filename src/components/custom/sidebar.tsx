@@ -31,18 +31,28 @@ import {
   Warehouse
 } from "lucide-react";
 
+// Tipo minimo para los iconos de lucide-react. Aceptan { size, color, className,
+// strokeWidth }; modelarlo asi nos evita el `any` en cada NavItem.
+type LucideIconProps = {
+  size?: number | string;
+  color?: string;
+  strokeWidth?: number | string;
+  className?: string;
+};
+type LucideIcon = React.ComponentType<LucideIconProps>;
+
 interface NavItem {
   type: "item";
   name: string;
   href: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   badge: string | null;
 }
 
 interface NavSubItem {
   name: string;
   href: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   badge: string | null;
 }
 
@@ -50,7 +60,7 @@ interface NavGroup {
   type: "group";
   id: string;
   name: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   items: NavSubItem[];
 }
 
@@ -59,6 +69,56 @@ type NavConfigItem = NavItem | NavGroup;
 interface SidebarProps {
   className?: string;
 }
+
+// La nav es estatica: la elevamos al modulo para que no se recree en
+// cada render y para que `useEffect` pueda omitirla como dep sin warning.
+const NAV_CONFIG: NavConfigItem[] = [
+  { type: "item", name: "Dashboard", href: "/", icon: Activity, badge: null },
+  { type: "item", name: "Trabajadores", href: "/trabajadores", icon: Users, badge: "Activo" },
+  {
+    type: "group",
+    id: "administracion",
+    name: "Administración",
+    icon: UserCog,
+    items: [
+      { name: "Contratos", href: "/contratos", icon: FileText, badge: null },
+      { name: "Vehículos", href: "/vehiculos", icon: Car, badge: null },
+      { name: "Proveedores", href: "/proveedores", icon: Store, badge: "Nuevo" },
+      { name: "Busca Talento", href: "/talentos", icon: Star, badge: "Nuevo" },
+      { name: "Notebooks", href: "/notebooks", icon: Laptop, badge: null },
+      { name: "Auditoria", href: "/auditoria", icon: History, badge: null },
+      { name: "Flujos de Información", href: "/flujos", icon: GitBranch, badge: "Nuevo" },
+      { name: "Inventario de EPP", href: "/inventario", icon: Warehouse, badge: "Nuevo" },
+    ]
+  },
+  {
+    type: "group",
+    id: "utilidades",
+    name: "Utilidades",
+    icon: Settings,
+    items: [
+      { name: "Acceso SAP", href: "/sap", icon: Shield, badge: "Nuevo" },
+      { name: "Comunicaciones", href: "/comunicaciones", icon: Megaphone, badge: null },
+      { name: "Asistencia", href: "/asistencia", icon: CalendarDays, badge: null },
+      { name: "Reuniones", href: "/reuniones", icon: ClipboardCheck, badge: "Nuevo" },
+      { name: "Alimentación", href: "/alimentacion", icon: Utensils, badge: "Nuevo" },
+      { name: "Solicitudes", href: "/solicitudes", icon: ClipboardPen, badge: "New" },
+      { name: "Entrega de EPP", href: "/epp", icon: ShieldAlert, badge: "Nuevo" },
+    ]
+  },
+  {
+    type: "group",
+    id: "seguridad",
+    name: "Seguridad",
+    icon: Shield,
+    items: [
+      { name: "Inspección", href: "/vehiculos/inspecciones", icon: ClipboardCheck, badge: null },
+      { name: "Cursos y Exámenes", href: "/control", icon: GraduationCap, badge: null },
+    ]
+  },
+  { type: "item", name: "Tickets IT", href: "/tickets", icon: Ticket, badge: null },
+  { type: "item", name: "Usuarios", href: "/usuarios", icon: UserCog, badge: "Config" }
+];
 
 export default function Sidebar({ className = "" }: SidebarProps) {
   const pathname = usePathname();
@@ -75,57 +135,11 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const navConfig: NavConfigItem[] = [
-    { type: "item", name: "Dashboard", href: "/", icon: Activity, badge: null },
-    { type: "item", name: "Trabajadores", href: "/trabajadores", icon: Users, badge: "Activo" },
-    {
-      type: "group",
-      id: "administracion",
-      name: "Administración",
-      icon: UserCog,
-      items: [
-        { name: "Contratos", href: "/contratos", icon: FileText, badge: null },
-        { name: "Vehículos", href: "/vehiculos", icon: Car, badge: null },
-        { name: "Proveedores", href: "/proveedores", icon: Store, badge: "Nuevo" },
-        { name: "Busca Talento", href: "/talentos", icon: Star, badge: "Nuevo" },
-        { name: "Notebooks", href: "/notebooks", icon: Laptop, badge: null },
-        { name: "Auditoria", href: "/auditoria", icon: History, badge: null },
-        { name: "Flujos de Información", href: "/flujos", icon: GitBranch, badge: "Nuevo" },
-        { name: "Inventario de EPP", href: "/inventario", icon: Warehouse, badge: "Nuevo" },
-      ]
-    },
-    {
-      type: "group",
-      id: "utilidades",
-      name: "Utilidades",
-      icon: Settings,
-      items: [
-        { name: "Acceso SAP", href: "/sap", icon: Shield, badge: "Nuevo" },
-        { name: "Comunicaciones", href: "/comunicaciones", icon: Megaphone, badge: null },
-        { name: "Asistencia", href: "/asistencia", icon: CalendarDays, badge: null },
-        { name: "Reuniones", href: "/reuniones", icon: ClipboardCheck, badge: "Nuevo" },
-        { name: "Alimentación", href: "/alimentacion", icon: Utensils, badge: "Nuevo" },
-        { name: "Solicitudes", href: "/solicitudes", icon: ClipboardPen, badge: "New" },
-        { name: "Entrega de EPP", href: "/epp", icon: ShieldAlert, badge: "Nuevo" },
-      ]
-    },
-    {
-      type: "group",
-      id: "seguridad",
-      name: "Seguridad",
-      icon: Shield,
-      items: [
-        { name: "Inspección", href: "/vehiculos/inspecciones", icon: ClipboardCheck, badge: null },
-        { name: "Cursos y Exámenes", href: "/control", icon: GraduationCap, badge: null },
-      ]
-    },
-    { type: "item", name: "Tickets IT", href: "/tickets", icon: Ticket, badge: null },
-    { type: "item", name: "Usuarios", href: "/usuarios", icon: UserCog, badge: "Config" }
-  ];
+  const navConfig = NAV_CONFIG;
 
   // Auto-expand group if a subitem matches the active pathname on load/navigation
   useEffect(() => {
-    const activeGroup = navConfig.find(
+    const activeGroup = NAV_CONFIG.find(
       (item): item is NavGroup => 
         item.type === "group" && 
         item.items.some((sub) => pathname === sub.href || (sub.href !== "/" && pathname.startsWith(sub.href)))

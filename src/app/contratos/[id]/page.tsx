@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Building2, Users, GitBranch, Briefcase, History,
-  Calendar, CreditCard, ChevronDown, ChevronRight, Plus, Edit3,
+  Calendar, ChevronRight, Plus, Edit3,
   Trash2, UserMinus, UserCheck, UserPlus, X, Check, AlertTriangle,
-  TrendingUp, Clock, Activity, Layers, RefreshCw, Save, Mail
+  Clock, Activity, Layers, RefreshCw, Save, Mail
 } from "lucide-react";
-import { useContratosStore, type ContratoUnidad, type ContratoCargo, type ContratoTrabajador } from "@/store/contratos-store";
+import { useShallow } from "zustand/react/shallow";
+import { useContratosStore, type Contrato, type ContratoUnidad, type ContratoCargo, type ContratoTrabajador, type CentroCosto, type MovimientoHistorial } from "@/store/contratos-store";
 import { useMandantesStore } from "@/store/mandantes-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
-import { useWorkflowsStore } from "@/store/workflows-store";
+import { useWorkflowsStore, type RecipientType } from "@/store/workflows-store";
 
 // ─────────────────────────────────────────────────────────────
 //  Helpers & constants
@@ -91,9 +92,15 @@ function Badge({ label, color }: { label: string; color: string }) {
 //  TAB 1 — Información General
 // ─────────────────────────────────────────────────────────────
 
-function TabInfo({ contrato, id_contrato }: { contrato: any; id_contrato: string }) {
-  const { mandantes } = useMandantesStore();
-  const { updateContrato, addCentroCosto, removeCentroCosto } = useContratosStore();
+function TabInfo({ contrato, id_contrato }: { contrato: Contrato; id_contrato: string }) {
+  const mandantes = useMandantesStore((s) => s.mandantes);
+  const { updateContrato, addCentroCosto, removeCentroCosto } = useContratosStore(
+    useShallow((s) => ({
+      updateContrato: s.updateContrato,
+      addCentroCosto: s.addCentroCosto,
+      removeCentroCosto: s.removeCentroCosto,
+    }))
+  );
   const mandante = mandantes.find(m => m.id_mandante === contrato.id_mandante);
 
   const [editing, setEditing] = useState(false);
@@ -134,7 +141,7 @@ function TabInfo({ contrato, id_contrato }: { contrato: any; id_contrato: string
             <div className="space-y-1.5"><label className="text-xs text-zinc-500">Nombre del contrato</label><input className={inputClass} value={form.nombre_contrato} onChange={e => setForm(f => ({...f, nombre_contrato: e.target.value}))} /></div>
             <div className="space-y-1.5"><label className="text-xs text-zinc-500">Código</label><input className={inputClass} value={form.codigo_contrato} onChange={e => setForm(f => ({...f, codigo_contrato: e.target.value}))} /></div>
             <div className="space-y-1.5"><label className="text-xs text-zinc-500">Estado</label>
-              <select className={selectClass} value={form.estado} onChange={e => setForm(f => ({...f, estado: e.target.value as any}))}>
+              <select className={selectClass} value={form.estado} onChange={e => setForm(f => ({...f, estado: e.target.value as Contrato["estado"]}))}>
                 {["Activo","En Preparacion","Suspendido","Cerrado"].map(e => <option key={e}>{e}</option>)}
               </select>
             </div>
@@ -195,7 +202,7 @@ function TabInfo({ contrato, id_contrato }: { contrato: any; id_contrato: string
         }
       >
         <div className="space-y-2">
-          {contrato.centros_costo.map((cc: any) => (
+          {contrato.centros_costo.map((cc: CentroCosto) => (
             <div key={cc.id_cc} className="flex items-center justify-between p-2.5 bg-zinc-800/50 rounded-lg">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-mono text-blue-400">{cc.codigo_cc}</span>
@@ -225,9 +232,16 @@ function TabInfo({ contrato, id_contrato }: { contrato: any; id_contrato: string
 //  TAB 2 — Trabajadores asignados
 // ─────────────────────────────────────────────────────────────
 
-function TabTrabajadores({ contrato, id_contrato }: { contrato: any; id_contrato: string }) {
-  const { trabajadores } = useTrabajadoresStore();
-  const { asignarTrabajador, darBajaTrabajador, reasignarTrabajador, reactivarTrabajador } = useContratosStore();
+function TabTrabajadores({ contrato, id_contrato }: { contrato: Contrato; id_contrato: string }) {
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const { asignarTrabajador, darBajaTrabajador, reasignarTrabajador, reactivarTrabajador } = useContratosStore(
+    useShallow((s) => ({
+      asignarTrabajador: s.asignarTrabajador,
+      darBajaTrabajador: s.darBajaTrabajador,
+      reasignarTrabajador: s.reasignarTrabajador,
+      reactivarTrabajador: s.reactivarTrabajador,
+    }))
+  );
 
   const [showInactivos, setShowInactivos] = useState(false);
   const [modalAsignar, setModalAsignar] = useState(false);
@@ -251,8 +265,8 @@ function TabTrabajadores({ contrato, id_contrato }: { contrato: any; id_contrato
   const handleAsignar = () => {
     const t = trabajadores.find(w => w.id_trabajador === asignForm.id_trabajador);
     if (!t) return;
-    const cargo = contrato.cargos.find((c: any) => c.id_cargo === asignForm.id_cargo);
-    const unidad = contrato.unidades.find((u: any) => u.id_unidad === asignForm.id_unidad);
+    const cargo = contrato.cargos.find((c: ContratoCargo) => c.id_cargo === asignForm.id_cargo);
+    const unidad = contrato.unidades.find((u: ContratoUnidad) => u.id_unidad === asignForm.id_unidad);
     asignarTrabajador(id_contrato, {
       id_trabajador: t.id_trabajador,
       nombre: `${t.nombre_1} ${t.apellido_paterno}`,
@@ -277,8 +291,8 @@ function TabTrabajadores({ contrato, id_contrato }: { contrato: any; id_contrato
 
   const handleReasignar = () => {
     if (!modalReasignar) return;
-    const cargo = contrato.cargos.find((c: any) => c.id_cargo === reasignForm.id_cargo);
-    const unidad = contrato.unidades.find((u: any) => u.id_unidad === reasignForm.id_unidad);
+    const cargo = contrato.cargos.find((c: ContratoCargo) => c.id_cargo === reasignForm.id_cargo);
+    const unidad = contrato.unidades.find((u: ContratoUnidad) => u.id_unidad === reasignForm.id_unidad);
     reasignarTrabajador(id_contrato, modalReasignar.id_asignacion, {
       id_unidad: unidad?.id_unidad,
       nombre_unidad: unidad?.nombre,
@@ -382,13 +396,13 @@ function TabTrabajadores({ contrato, id_contrato }: { contrato: any; id_contrato
               <div className="space-y-1.5"><label className="text-xs text-zinc-500">Unidad</label>
                 <select className={selectClass} value={asignForm.id_unidad} onChange={e => setAsignForm(f => ({...f, id_unidad: e.target.value}))}>
                   <option value="">Sin unidad</option>
-                  {contrato.unidades.filter((u: any) => u.activa).map((u: any) => <option key={u.id_unidad} value={u.id_unidad}>{u.nombre}</option>)}
+                  {contrato.unidades.filter((u: ContratoUnidad) => u.activa).map((u: ContratoUnidad) => <option key={u.id_unidad} value={u.id_unidad}>{u.nombre}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5"><label className="text-xs text-zinc-500">Cargo</label>
                 <select className={selectClass} value={asignForm.id_cargo} onChange={e => setAsignForm(f => ({...f, id_cargo: e.target.value}))}>
                   <option value="">Sin cargo</option>
-                  {contrato.cargos.filter((c: any) => c.activo).map((c: any) => <option key={c.id_cargo} value={c.id_cargo}>{c.nombre} ({c.nivel})</option>)}
+                  {contrato.cargos.filter((c: ContratoCargo) => c.activo).map((c: ContratoCargo) => <option key={c.id_cargo} value={c.id_cargo}>{c.nombre} ({c.nivel})</option>)}
                 </select>
               </div>
               <div className="space-y-1.5"><label className="text-xs text-zinc-500">Fecha de ingreso *</label>
@@ -427,15 +441,15 @@ function TabTrabajadores({ contrato, id_contrato }: { contrato: any; id_contrato
             <h3 className="text-base font-bold text-white flex items-center gap-2"><RefreshCw size={16} className="text-blue-400" /> Reasignar — {modalReasignar.nombre}</h3>
             <div className="space-y-3">
               <div className="space-y-1.5"><label className="text-xs text-zinc-500">Nueva Unidad</label>
-                <select className={selectClass} value={reasignForm.id_unidad} onChange={e => setReasignForm(f => ({...f, id_unidad: e.target.value, nombre_unidad: contrato.unidades.find((u: any) => u.id_unidad === e.target.value)?.nombre ?? ""}))}>
+                <select className={selectClass} value={reasignForm.id_unidad} onChange={e => setReasignForm(f => ({...f, id_unidad: e.target.value, nombre_unidad: contrato.unidades.find((u: ContratoUnidad) => u.id_unidad === e.target.value)?.nombre ?? ""}))}>
                   <option value="">Sin unidad</option>
-                  {contrato.unidades.filter((u: any) => u.activa).map((u: any) => <option key={u.id_unidad} value={u.id_unidad}>{u.nombre}</option>)}
+                  {contrato.unidades.filter((u: ContratoUnidad) => u.activa).map((u: ContratoUnidad) => <option key={u.id_unidad} value={u.id_unidad}>{u.nombre}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5"><label className="text-xs text-zinc-500">Nuevo Cargo</label>
-                <select className={selectClass} value={reasignForm.id_cargo} onChange={e => setReasignForm(f => ({...f, id_cargo: e.target.value, nombre_cargo: contrato.cargos.find((c: any) => c.id_cargo === e.target.value)?.nombre ?? ""}))}>
+                <select className={selectClass} value={reasignForm.id_cargo} onChange={e => setReasignForm(f => ({...f, id_cargo: e.target.value, nombre_cargo: contrato.cargos.find((c: ContratoCargo) => c.id_cargo === e.target.value)?.nombre ?? ""}))}>
                   <option value="">Sin cargo</option>
-                  {contrato.cargos.filter((c: any) => c.activo).map((c: any) => <option key={c.id_cargo} value={c.id_cargo}>{c.nombre} ({c.nivel})</option>)}
+                  {contrato.cargos.filter((c: ContratoCargo) => c.activo).map((c: ContratoCargo) => <option key={c.id_cargo} value={c.id_cargo}>{c.nombre} ({c.nivel})</option>)}
                 </select>
               </div>
             </div>
@@ -454,8 +468,10 @@ function TabTrabajadores({ contrato, id_contrato }: { contrato: any; id_contrato
 //  TAB 3 — Jerarquía (árbol expandible)
 // ─────────────────────────────────────────────────────────────
 
-function TabJerarquia({ contrato, id_contrato }: { contrato: any; id_contrato: string }) {
-  const { addUnidad, removeUnidad } = useContratosStore();
+function TabJerarquia({ contrato, id_contrato }: { contrato: Contrato; id_contrato: string }) {
+  const { addUnidad, removeUnidad } = useContratosStore(
+    useShallow((s) => ({ addUnidad: s.addUnidad, removeUnidad: s.removeUnidad }))
+  );
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [addingUnidad, setAddingUnidad] = useState(false);
   const [newU, setNewU] = useState({ nombre: "", descripcion: "", activa: true });
@@ -563,8 +579,10 @@ function TabJerarquia({ contrato, id_contrato }: { contrato: any; id_contrato: s
 //  TAB 4 — Cargos y Roles
 // ─────────────────────────────────────────────────────────────
 
-function TabCargos({ contrato, id_contrato }: { contrato: any; id_contrato: string }) {
-  const { addCargo, updateCargo, removeCargo } = useContratosStore();
+function TabCargos({ contrato, id_contrato }: { contrato: Contrato; id_contrato: string }) {
+  const { addCargo, updateCargo, removeCargo } = useContratosStore(
+    useShallow((s) => ({ addCargo: s.addCargo, updateCargo: s.updateCargo, removeCargo: s.removeCargo }))
+  );
   const [addingCargo, setAddingCargo] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<ContratoCargo, "id_cargo">>({ nombre: "", nivel: "Operativo", activo: true });
@@ -594,7 +612,7 @@ function TabCargos({ contrato, id_contrato }: { contrato: any; id_contrato: stri
         {addingCargo && (
           <div className="p-3 bg-zinc-800 rounded-xl border border-blue-500/30 grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
             <input placeholder="Nombre del cargo *" className={inputClass} value={form.nombre} onChange={e => setForm(p => ({...p, nombre: e.target.value}))} />
-            <select className={selectClass} value={form.nivel} onChange={e => setForm(p => ({...p, nivel: e.target.value as any}))}>
+            <select className={selectClass} value={form.nivel} onChange={e => setForm(p => ({...p, nivel: e.target.value as ContratoCargo["nivel"]}))}>
               {NIVELES.map(n => <option key={n}>{n}</option>)}
             </select>
             <select className={selectClass} value={form.id_unidad ?? ""} onChange={e => setForm(p => ({...p, id_unidad: e.target.value || undefined}))}>
@@ -632,7 +650,7 @@ function TabCargos({ contrato, id_contrato }: { contrato: any; id_contrato: stri
                     </td>
                     <td className="py-2.5 pr-4">
                       {isEditing
-                        ? <select className={`${selectClass} py-1`} value={editForm.nivel ?? c.nivel} onChange={e => setEditForm(p => ({...p, nivel: e.target.value as any}))}>{NIVELES.map(n => <option key={n}>{n}</option>)}</select>
+                        ? <select className={`${selectClass} py-1`} value={editForm.nivel ?? c.nivel} onChange={e => setEditForm(p => ({...p, nivel: e.target.value as ContratoCargo["nivel"]}))}>{NIVELES.map(n => <option key={n}>{n}</option>)}</select>
                         : <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${NIVEL_COLOR[c.nivel]}`}>{c.nivel}</span>}
                     </td>
                     <td className="py-2.5 pr-4 text-xs text-zinc-500">{unidad?.nombre ?? "Sin unidad"}</td>
@@ -668,11 +686,11 @@ function TabCargos({ contrato, id_contrato }: { contrato: any; id_contrato: stri
 //  TAB 5 — Historial
 // ─────────────────────────────────────────────────────────────
 
-function TabHistorial({ contrato }: { contrato: any }) {
+function TabHistorial({ contrato }: { contrato: Contrato }) {
   const [filtroTipo, setFiltroTipo] = useState<string>("Todos");
-  const historial = [...(contrato.historial ?? [])].sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  const tipos = ["Todos", ...Array.from(new Set(historial.map((h: any) => h.tipo)))];
-  const filtered = filtroTipo === "Todos" ? historial : historial.filter((h: any) => h.tipo === filtroTipo);
+  const historial = [...(contrato.historial ?? [])].sort((a: MovimientoHistorial, b: MovimientoHistorial) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  const tipos = ["Todos", ...Array.from(new Set(historial.map((h: MovimientoHistorial) => h.tipo)))];
+  const filtered = filtroTipo === "Todos" ? historial : historial.filter((h: MovimientoHistorial) => h.tipo === filtroTipo);
 
   return (
     <div className="space-y-4">
@@ -687,7 +705,7 @@ function TabHistorial({ contrato }: { contrato: any }) {
 
       <div className="relative space-y-0">
         {filtered.length === 0 && <p className="text-sm text-zinc-600 text-center py-10">Sin movimientos registrados</p>}
-        {filtered.map((h: any, i: number) => {
+        {filtered.map((h: MovimientoHistorial, i: number) => {
           const colorClass = TIPO_HIST_COLOR[h.tipo] ?? "text-zinc-400 bg-zinc-400/10";
           return (
             <div key={h.id} className="flex gap-4 pb-4 relative">
@@ -719,7 +737,7 @@ function TabHistorial({ contrato }: { contrato: any }) {
 //  TAB 6 — Notificaciones y Flujos por Contrato
 // ─────────────────────────────────────────────────────────────
 
-function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contrato: string }) {
+function TabNotificaciones({ contrato, id_contrato }: { contrato: Contrato; id_contrato: string }) {
   const { 
     ticketTypes, 
     contractSettings, 
@@ -729,9 +747,22 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
     addCcRecipient, 
     removeCcRecipient, 
     updateContractManager 
-  } = useWorkflowsStore();
+  } = useWorkflowsStore(
+    useShallow((s) => ({
+      ticketTypes: s.ticketTypes,
+      contractSettings: s.contractSettings,
+      ccRecipients: s.ccRecipients,
+      fetchWorkflowsData: s.fetchWorkflowsData,
+      saveContractSetting: s.saveContractSetting,
+      addCcRecipient: s.addCcRecipient,
+      removeCcRecipient: s.removeCcRecipient,
+      updateContractManager: s.updateContractManager,
+    }))
+  );
 
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
 
   const [selectedManagerId, setSelectedManagerId] = useState<string>(contrato.manager_id || "");
   const [isManagerSaved, setIsManagerSaved] = useState(false);
@@ -739,7 +770,7 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
   const [activeTypeTab, setActiveTypeTab] = useState<string>("");
   
   // Form State for settings
-  const [primaryType, setPrimaryType] = useState<any>("jefatura");
+  const [primaryType, setPrimaryType] = useState<RecipientType>("jefatura");
   const [primaryId, setPrimaryId] = useState<string>("");
   const [slaHours, setSlaHours] = useState<number>(48);
   const [enableCc, setEnableCc] = useState<boolean>(false);
@@ -747,7 +778,7 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
   const [isSettingSaved, setIsSettingSaved] = useState(false);
 
   // CC state
-  const [ccType, setCcType] = useState<any>("rrhh");
+  const [ccType, setCcType] = useState<RecipientType>("rrhh");
   const [ccId, setCcId] = useState<string>("");
   const [ccLabel, setCcLabel] = useState<string>("");
   const [addingCc, setAddingCc] = useState(false);
@@ -757,30 +788,34 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
     fetchTrabajadores();
   }, [fetchWorkflowsData, fetchTrabajadores]);
 
-  // Autoselect first type
-  useEffect(() => {
-    if (ticketTypes.length > 0 && !activeTypeTab) {
-      setActiveTypeTab(ticketTypes[0].id);
-    }
-  }, [ticketTypes, activeTypeTab]);
+  // Autoselect first type — computed initializer avoids set-state-in-effect
+  const defaultTypeTab = ticketTypes.length > 0 ? ticketTypes[0].id : null;
+  const resolvedTypeTab = activeTypeTab || defaultTypeTab;
 
   const currentSetting = contractSettings.find(
-    s => s.contract_id === id_contrato && s.ticket_type_id === activeTypeTab
+    s => s.contract_id === id_contrato && s.ticket_type_id === (activeTypeTab || resolvedTypeTab)
   );
 
+  // Sync form fields when currentSetting changes — wrapping in startTransition
+  // defers the state updates so they don't run synchronously in the effect body
   useEffect(() => {
-    if (currentSetting) {
-      setPrimaryType(currentSetting.primary_recipient_type);
-      setPrimaryId(currentSetting.primary_recipient_id || "");
-      setSlaHours(currentSetting.sla_hours);
-      setEnableCc(currentSetting.enable_cc);
-      setNotes(currentSetting.notes || "");
+    const next = currentSetting;
+    if (next) {
+      startTransition(() => {
+        setPrimaryType(next.primary_recipient_type);
+        setPrimaryId(next.primary_recipient_id || "");
+        setSlaHours(next.sla_hours);
+        setEnableCc(next.enable_cc);
+        setNotes(next.notes || "");
+      });
     } else {
-      setPrimaryType("jefatura");
-      setPrimaryId("");
-      setSlaHours(48);
-      setEnableCc(false);
-      setNotes("");
+      startTransition(() => {
+        setPrimaryType("jefatura");
+        setPrimaryId("");
+        setSlaHours(48);
+        setEnableCc(false);
+        setNotes("");
+      });
     }
   }, [currentSetting, activeTypeTab]);
 
@@ -951,7 +986,7 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
                       <label className="text-xs text-zinc-400 font-semibold">Tipo de Destinatario</label>
                       <select 
                         value={primaryType} 
-                        onChange={e => setPrimaryType(e.target.value as any)}
+                        onChange={e => setPrimaryType(e.target.value as RecipientType)}
                         className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white rounded p-2 focus:outline-none focus:border-blue-500"
                       >
                         <option value="jefatura">Supervisor Directo / Jefe de Unidad</option>
@@ -1046,7 +1081,7 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
                         <label className="text-[9px] text-zinc-500 uppercase font-bold">Tipo</label>
                         <select 
                           value={ccType} 
-                          onChange={e => setCcType(e.target.value as any)}
+                          onChange={e => setCcType(e.target.value as RecipientType)}
                           className="w-full bg-zinc-900 border border-zinc-850 text-xs text-white rounded p-1.5 focus:outline-none"
                         >
                           <option value="rrhh">RRHH</option>
@@ -1162,8 +1197,8 @@ function TabNotificaciones({ contrato, id_contrato }: { contrato: any; id_contra
 export default function ContratoDetallePage() {
   const params = useParams();
   const router = useRouter();
-  const { contratos } = useContratosStore();
-  const { mandantes } = useMandantesStore();
+  const contratos = useContratosStore((s) => s.contratos);
+  const mandantes = useMandantesStore((s) => s.mandantes);
 
   const [activeTab, setActiveTab] = useState<TabId>("info");
 

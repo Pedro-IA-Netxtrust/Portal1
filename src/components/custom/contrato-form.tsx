@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useContratosStore, type CentroCosto, type ContratoUnidad } from "@/store/contratos-store";
+import { useShallow } from "zustand/react/shallow";
+import { useContratosStore, type CentroCosto, type ContratoUnidad, type ContratoCargo, type ContratoTrabajador, type MovimientoHistorial } from "@/store/contratos-store";
 import { useMandantesStore } from "@/store/mandantes-store";
 import { X, Save, Plus, Trash2, ShieldAlert } from "lucide-react";
 
@@ -11,8 +12,14 @@ interface ContratoFormProps {
 }
 
 export default function ContratoForm({ contratoId, onClose }: ContratoFormProps) {
-  const { contratos, addContrato, updateContrato } = useContratosStore();
-  const { mandantes } = useMandantesStore();
+  const { contratos, addContrato, updateContrato } = useContratosStore(
+    useShallow((s) => ({
+      contratos: s.contratos,
+      addContrato: s.addContrato,
+      updateContrato: s.updateContrato,
+    }))
+  );
+  const mandantes = useMandantesStore((s) => s.mandantes);
   const isEditing = !!contratoId;
 
   // Form State
@@ -25,10 +32,10 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
     estado: "Activo" as "Activo" | "Cerrado" | "En Preparacion" | "Suspendido",
     centros_costo: [] as CentroCosto[],
     unidades: [] as ContratoUnidad[],
-    cargos: [] as any[],
-    trabajadores_asignados: [] as any[],
-    proveedores_asignados: [] as any[],
-    historial: [] as any[]
+    cargos: [] as ContratoCargo[],
+    trabajadores_asignados: [] as ContratoTrabajador[],
+    proveedores_asignados: [] as { id_proveedor: string; categoria: string }[],
+    historial: [] as MovimientoHistorial[]
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -38,7 +45,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
     if (isEditing && contratoId) {
       const existing = contratos.find(c => c.id_contrato === contratoId);
       if (existing) {
-        const { id_contrato, ...rest } = existing;
+        const { id_contrato: _id_contrato, ...rest } = existing;
         setFormData(rest);
       }
     }
@@ -278,7 +285,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
             </div>
 
             <div className="space-y-3">
-              {formData.centros_costo.map((cc, idx) => (
+              {formData.centros_costo.map((cc) => (
                 <div 
                   key={cc.id_cc}
                   className="flex gap-3 items-center bg-zinc-900/30 p-3 rounded-lg border border-zinc-900 animate-slideIn"
@@ -340,7 +347,7 @@ export default function ContratoForm({ contratoId, onClose }: ContratoFormProps)
             </div>
 
             <div className="space-y-4">
-              {formData.unidades.map((u, idx) => (
+              {formData.unidades.map((u) => (
                 <div 
                   key={u.id_unidad}
                   className="bg-zinc-900/30 p-4 rounded-lg border border-zinc-900 space-y-3 relative animate-slideIn"

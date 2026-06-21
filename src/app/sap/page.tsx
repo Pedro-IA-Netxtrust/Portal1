@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useTrabajadoresSAPStore, TrabajadorSAP } from "@/store/trabajadores-sap-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useContratosStore } from "@/store/contratos-store";
@@ -8,7 +9,6 @@ import { useMandantesStore } from "@/store/mandantes-store";
 import {
   Shield,
   Search,
-  Filter,
   Download,
   RefreshCw,
   Mail,
@@ -17,13 +17,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  FileText,
-  Building2,
   Users,
   Pencil,
   X,
   Check,
-  ChevronRight
 } from "lucide-react";
 
 // Configuración de los 4 accesos principales para visualización en tabla/tarjetas
@@ -63,10 +60,19 @@ const PLATFORM_CONFIG = {
 };
 
 export default function SapAccesosPage() {
-  const { sapList, fetchSAPData, upsertSAPData, loading: loadingSAP } = useTrabajadoresSAPStore();
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { mandantes } = useMandantesStore();
+  const { sapList, fetchSAPData, upsertSAPData, loading: loadingSAP } = useTrabajadoresSAPStore(
+    useShallow((s) => ({
+      sapList: s.sapList,
+      fetchSAPData: s.fetchSAPData,
+      upsertSAPData: s.upsertSAPData,
+      loading: s.loading,
+    }))
+  );
+  const fetchTrabajadores = useTrabajadoresStore((s) => s.fetchTrabajadores);
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
+  const mandantes = useMandantesStore((s) => s.mandantes);
 
   // Estados de filtros
   const [busqueda, setBusqueda] = useState("");
@@ -92,8 +98,26 @@ export default function SapAccesosPage() {
   const activeMandantes = useMemo(() => mandantes.filter(m => m.activo), [mandantes]);
 
   // Cruzar listado de trabajadores activos asignados con sus registros de accesos SAP
+  type MappedWorker = {
+    id_trabajador: string;
+    nombre: string;
+    rut?: string;
+    contrato_id: string;
+    contrato_nombre: string;
+    mandante_id: string;
+    mandante_nombre: string;
+    sapRecord: TrabajadorSAP;
+    states: {
+      codelco: "active" | "pending" | "inactive" | "not_required";
+      sap: "active" | "pending" | "inactive" | "not_required";
+      perfiles: "active" | "pending" | "inactive" | "not_required";
+      datamart: "active" | "pending" | "inactive" | "not_required";
+    };
+    isComplete: boolean;
+    hasPending: boolean;
+  };
   const mappedWorkers = useMemo(() => {
-    const list: any[] = [];
+    const list: MappedWorker[] = [];
     
     contratos
       .filter(c => c.estado === "Activo")
@@ -274,7 +298,7 @@ export default function SapAccesosPage() {
   }, [filteredWorkers]);
 
   // Abrir modal de edición
-  const handleEditAccess = (worker: any) => {
+  const handleEditAccess = (worker: MappedWorker) => {
     setSelectedWorkerId(worker.id_trabajador);
     setFormValues(worker.sapRecord);
     setActiveTab("codelco");
@@ -672,7 +696,7 @@ export default function SapAccesosPage() {
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setActiveTab(t.id as any)}
+                    onClick={() => setActiveTab(t.id as "codelco" | "sap" | "perfiles" | "datamart")}
                     className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold border-b-2 transition-all ${
                       active
                         ? "border-primary text-primary"

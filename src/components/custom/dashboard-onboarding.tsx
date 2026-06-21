@@ -9,15 +9,22 @@ import { CheckCircle2, Clock, TrendingUp, Zap } from "lucide-react";
 export default function DashboardOnboarding() {
   const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
   const fetchTrabajadores = useTrabajadoresStore((s) => s.fetchTrabajadores);
+  const trabajadoresHydrated = useTrabajadoresStore((s) => s.hydrated);
 
   const ciclos = useCicloVidaStore((s) => s.ciclos);
   const fetchCiclos = useCicloVidaStore((s) => s.fetchCiclos);
+  const ciclosHydrated = useCicloVidaStore((s) => s.hydrated);
 
   const tareas = useOnboardingStore((s) => s.tareas);
   const fetchTareas = useOnboardingStore((s) => s.fetchTareas);
+  const tareasHydrated = useOnboardingStore((s) => s.hydrated);
   const getProgressByTrabajador = useOnboardingStore(
     (s) => s.getProgressByTrabajador
   );
+
+  // Una vez los 3 stores rehidrataron, podemos renderizar valores reales.
+  // Antes de eso mostramos un skeleton para evitar el flicker de "0%".
+  const hydrated = trabajadoresHydrated && ciclosHydrated && tareasHydrated;
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -85,6 +92,10 @@ export default function DashboardOnboarding() {
       })
       .slice(0, 5);
   }, [tareas]);
+
+  if (!hydrated) {
+    return <DashboardOnboardingSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -273,6 +284,53 @@ function KPICard({
         <div>{icono}</div>
       </div>
       <p className="text-2xl font-bold text-slate-900">{valor}</p>
+    </div>
+  );
+}
+
+function SkeletonBlock({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-md bg-slate-200/70 ${className}`} />
+  );
+}
+
+function DashboardOnboardingSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Cargando dashboard">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-slate-50 border border-slate-200 rounded-lg p-4"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <SkeletonBlock className="h-3 w-24" />
+              <SkeletonBlock className="h-6 w-6 rounded-full" />
+            </div>
+            <SkeletonBlock className="h-7 w-16" />
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-3">
+        <SkeletonBlock className="h-5 w-40" />
+        <SkeletonBlock className="h-4 w-full" />
+        <SkeletonBlock className="h-3 w-72" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="bg-white rounded-lg border border-slate-200 p-6 space-y-3"
+          >
+            <SkeletonBlock className="h-5 w-48" />
+            {Array.from({ length: 5 }).map((_, j) => (
+              <SkeletonBlock key={j} className="h-4 w-full" />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

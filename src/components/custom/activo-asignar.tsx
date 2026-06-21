@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Activo, useActivosStore } from "@/store/activos-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
-import { X, UserPlus, Undo2, Calendar, User, ArrowRight, CheckCircle } from "lucide-react";
+import { X, Undo2, Calendar, User, ArrowRight } from "lucide-react";
 
 interface ActivoAsignarProps {
   activo: Activo;
@@ -11,8 +11,9 @@ interface ActivoAsignarProps {
 }
 
 export default function ActivoAsignar({ activo, onClose }: ActivoAsignarProps) {
-  const { assignActivo, returnActivo } = useActivosStore();
-  const { trabajadores } = useTrabajadoresStore();
+  const assignActivo = useActivosStore((s) => s.assignActivo);
+  const returnActivo = useActivosStore((s) => s.returnActivo);
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
 
   const isAssigned = activo.estado === "Asignado";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useActivosStore, Activo } from "@/store/activos-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import ActivoForm from "@/components/custom/activo-form";
@@ -20,8 +21,10 @@ import {
 } from "lucide-react";
 
 export default function VehiculosPage() {
-  const { activos, deleteActivo } = useActivosStore();
-  const { trabajadores } = useTrabajadoresStore();
+  const { activos, deleteActivo } = useActivosStore(
+    useShallow((s) => ({ activos: s.activos, deleteActivo: s.deleteActivo }))
+  );
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
 
   const [searchTerm, setSearchTerm] = useState("");
 

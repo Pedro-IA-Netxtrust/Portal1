@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/custom/sidebar";
-import { Bell, CloudLightning, ShieldAlert } from "lucide-react";
+import NotificationsCenter from "@/components/custom/notifications-center";
+import { CloudLightning, ShieldAlert } from "lucide-react";
+import LoggerInit from "@/components/custom/logger-init";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -26,6 +28,7 @@ export default function RootLayout({
       className={`${montserrat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex text-text font-sans">
+        <LoggerInit />
         {/* Main Panel */}
         <div className="flex w-full min-h-screen">
           {/* Sidebar */}
@@ -52,11 +55,8 @@ export default function RootLayout({
                   <span>Conexión Estable</span>
                 </div>
 
-                {/* Notifications Button */}
-                <button className="relative p-2 rounded-lg hover:bg-bg-alt text-text-soft hover:text-primary transition-all">
-                  <Bell size={20} />
-                  <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-accent border-2 border-white"></span>
-                </button>
+                {/* Notifications Center */}
+                <NotificationsCenter />
 
                 {/* System Alerts */}
                 <button className="p-2 rounded-lg hover:bg-bg-alt text-text-soft hover:text-primary transition-all">

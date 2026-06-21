@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("reuniones-store");
 
 export interface Reunion {
   id_reunion: string;
@@ -32,6 +35,8 @@ export interface ReunionAsistencia {
 interface ReunionesState {
   reuniones: Reunion[];
   loading: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchReuniones: () => Promise<void>;
   fetchAsistencias: (idReunion: string) => Promise<ReunionAsistencia[]>;
   crearReunion: (reunion: Omit<Reunion, "id_reunion">, asistencias: Omit<ReunionAsistencia, "id_reunion">[]) => Promise<string | null>;
@@ -44,6 +49,7 @@ export const useReunionesStore = create<ReunionesState>()(
     (set, get) => ({
       reuniones: [],
       loading: false,
+      hydrated: false,
 
       fetchReuniones: async () => {
         set({ loading: true });
@@ -56,7 +62,7 @@ export const useReunionesStore = create<ReunionesState>()(
           if (error) throw error;
           set({ reuniones: data || [] });
         } catch (err) {
-          console.error("Error fetching reuniones:", err);
+          log.error("Error fetching reuniones", err);
         } finally {
           set({ loading: false });
         }
@@ -72,7 +78,7 @@ export const useReunionesStore = create<ReunionesState>()(
           if (error) throw error;
           return data || [];
         } catch (err) {
-          console.error(`Error fetching asistencias for reunion ${idReunion}:`, err);
+          log.error(`Error fetching asistencias for reunion ${idReunion}`, err);
           return [];
         }
       },
@@ -109,7 +115,7 @@ export const useReunionesStore = create<ReunionesState>()(
 
           return newReunionId;
         } catch (err) {
-          console.error("Error creating reunion and asistencias:", err);
+          log.error("Error creating reunion and asistencias", err);
           return null;
         }
       },
@@ -141,7 +147,7 @@ export const useReunionesStore = create<ReunionesState>()(
 
           return true;
         } catch (err) {
-          console.error("Error registering attendance for scheduled meeting:", err);
+          log.error("Error registering attendance for scheduled meeting", err);
           return false;
         }
       },
@@ -158,10 +164,15 @@ export const useReunionesStore = create<ReunionesState>()(
             reuniones: state.reuniones.filter(r => r.id_reunion !== idReunion)
           }));
         } catch (err) {
-          console.error("Error deleting reunion:", err);
+          log.error("Error deleting reunion", err);
         }
       }
     }),
-    { name: "monitoring-reuniones-storage" }
+    {
+      name: "monitoring-reuniones-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

@@ -1,25 +1,43 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useInventarioStore, type Producto, type Bodega, type Compra, type InventarioLote } from "@/store/inventario-store";
+import { useShallow } from "zustand/react/shallow";
+import { useInventarioStore, type InventarioLote } from "@/store/inventario-store";
 import { useProveedoresStore } from "@/store/proveedores-store";
 import { useContratosStore } from "@/store/contratos-store";
 import { useEppStore } from "@/store/epp-store";
 import { 
-  Package, Plus, Settings2, ShieldAlert, History, Library, 
-  Warehouse, FileText, Check, AlertTriangle, HelpCircle, ArrowRight,
-  TrendingUp, CircleDollarSign, PlusCircle, Trash2, Calendar, Search
+  Package, Plus, History, Library, 
+  Warehouse, Check, AlertTriangle,
+  CircleDollarSign, PlusCircle, Trash2,
 } from "lucide-react";
 
 export default function InventarioPage() {
   // Stores
   const { 
-    productos, bodegas, compras, lotes, loading,
+    productos, bodegas, lotes,
     fetchInventarioData, addProducto, addBodega, addCompra, getProductosBajoStockCritico 
-  } = useInventarioStore();
-  const { proveedores, fetchProveedores } = useProveedoresStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { entregas, fetchEntregas } = useEppStore();
+  } = useInventarioStore(
+    useShallow((s) => ({
+      productos: s.productos,
+      bodegas: s.bodegas,
+      lotes: s.lotes,
+      fetchInventarioData: s.fetchInventarioData,
+      addProducto: s.addProducto,
+      addBodega: s.addBodega,
+      addCompra: s.addCompra,
+      getProductosBajoStockCritico: s.getProductosBajoStockCritico,
+    }))
+  );
+  const { proveedores, fetchProveedores } = useProveedoresStore(
+    useShallow((s) => ({ proveedores: s.proveedores, fetchProveedores: s.fetchProveedores }))
+  );
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
+  const { entregas, fetchEntregas } = useEppStore(
+    useShallow((s) => ({ entregas: s.entregas, fetchEntregas: s.fetchEntregas }))
+  );
 
   // Estados de control
   const [activeTab, setActiveTab] = useState<"stock" | "compras" | "catalogo" | "bodegas" | "historial">("stock");
@@ -77,7 +95,7 @@ export default function InventarioPage() {
     setCompRows(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  const updateRow = (index: number, field: string, value: any) => {
+  const updateRow = (index: number, field: string, value: string | number) => {
     setCompRows(prev => prev.map((row, idx) => {
       if (idx !== index) return row;
       return { ...row, [field]: value };
@@ -266,7 +284,7 @@ export default function InventarioPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as "stock" | "compras" | "catalogo" | "bodegas" | "historial")}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-violet-600 text-white shadow-lg shadow-violet-900/30"

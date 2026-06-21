@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Activo, useActivosStore, LicenciaSoftware } from "@/store/activos-store";
 import { X, Save, ShieldAlert, Plus, Trash2, Key, Calendar } from "lucide-react";
 
@@ -11,7 +12,13 @@ interface ActivoFormProps {
 }
 
 export default function ActivoForm({ activoId, defaultTipo, onClose }: ActivoFormProps) {
-  const { activos, addActivo, updateActivo } = useActivosStore();
+  const { activos, addActivo, updateActivo } = useActivosStore(
+    useShallow((s) => ({
+      activos: s.activos,
+      addActivo: s.addActivo,
+      updateActivo: s.updateActivo,
+    }))
+  );
   const isEditing = !!activoId;
 
   // Form State
@@ -47,7 +54,7 @@ export default function ActivoForm({ activoId, defaultTipo, onClose }: ActivoFor
     if (isEditing && activoId) {
       const existing = activos.find(a => a.id_activo === activoId);
       if (existing) {
-        const { id_activo, ...rest } = existing;
+        const { id_activo: _id_activo, ...rest } = existing;
         setFormData(rest);
       }
     }
@@ -70,7 +77,7 @@ export default function ActivoForm({ activoId, defaultTipo, onClose }: ActivoFor
   const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    let finalValue: any = value;
+    let finalValue: string | number = value;
     if (name === "ram_gb" || name === "almacenamiento_gb" || name === "kilometraje_actual" || name === "valor_compra") {
       finalValue = Number(value) || 0;
     }
@@ -114,7 +121,7 @@ export default function ActivoForm({ activoId, defaultTipo, onClose }: ActivoFor
     }));
   };
 
-  const updateLicenciaField = (id: string, field: keyof LicenciaSoftware, value: any) => {
+  const updateLicenciaField = (id: string, field: keyof LicenciaSoftware, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       detalles_adicionales: {
@@ -150,7 +157,7 @@ export default function ActivoForm({ activoId, defaultTipo, onClose }: ActivoFor
     if (!validateForm()) return;
 
     // Filter sub-fields so we don't save vehicle details on notebooks and vice-versa
-    const cleanDetails: any = {};
+    const cleanDetails: Activo["detalles_adicionales"] = {};
     if (formData.tipo === "Notebook") {
       cleanDetails.procesador = formData.detalles_adicionales.procesador || "";
       cleanDetails.ram_gb = formData.detalles_adicionales.ram_gb || 8;

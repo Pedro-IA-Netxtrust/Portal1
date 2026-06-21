@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
 import type {
   ModalidadTrabajo,
@@ -8,6 +9,8 @@ import type {
   TipoContrato,
   SistemaSalud,
 } from "@/lib/enums";
+
+const log = createLogger("trabajadores-store");
 
 export interface Trabajador {
   id_trabajador: string;
@@ -99,6 +102,8 @@ export interface Trabajador {
 
 interface TrabajadoresState {
   trabajadores: Trabajador[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchTrabajadores: () => Promise<void>;
   addTrabajador: (t: Omit<Trabajador, "id_trabajador">) => Promise<Trabajador | null>;
   updateTrabajador: (id: string, updatedFields: Partial<Trabajador>) => Promise<void>;
@@ -207,6 +212,7 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
   persist(
     (set, get) => ({
       trabajadores: [],
+      hydrated: false,
       
       fetchTrabajadores: async () => {
         try {
@@ -230,7 +236,7 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
             if (seeded) set({ trabajadores: seeded });
           }
         } catch (err) {
-          console.error("Failed to load workers from Supabase, using localStorage cache:", err instanceof Error ? err.message : err);
+          log.error("Failed to load workers from Supabase, using localStorage cache", err instanceof Error ? err.message : err);
           // LocalStorage fallback takes care of keeping the old offline list active
         }
       },
@@ -268,7 +274,7 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
           }
           return null;
         } catch (err) {
-          console.error("Failed to persist new worker to Supabase:", err);
+          log.error("Failed to persist new worker to Supabase", err);
           return null;
         }
       },
@@ -301,7 +307,7 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to update worker ${id} in Supabase:`, err);
+          log.error(`Failed to update worker ${id} in Supabase`, err);
         }
       },
 
@@ -331,12 +337,15 @@ export const useTrabajadoresStore = create<TrabajadoresState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to delete worker ${id} from Supabase:`, err);
+          log.error(`Failed to delete worker ${id} from Supabase`, err);
         }
       }
     }),
     {
-      name: "monitoring-trabajadores-storage"
+      name: "monitoring-trabajadores-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

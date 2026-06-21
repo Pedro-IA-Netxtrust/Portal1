@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("proveedores-store");
 
 export interface ProveedorCategoria {
   id: string;
@@ -23,6 +26,8 @@ export interface Proveedor {
 interface ProveedoresState {
   proveedores: Proveedor[];
   categorias: ProveedorCategoria[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchProveedores: () => Promise<void>;
   fetchCategorias: () => Promise<void>;
   addProveedor: (proveedor: Omit<Proveedor, "id_proveedor" | "fecha_creacion">) => Promise<void>;
@@ -85,6 +90,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
     (set) => ({
       proveedores: mockProveedores,
       categorias: mockCategorias,
+      hydrated: false,
 
       fetchProveedores: async () => {
         try {
@@ -116,7 +122,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
             if (seeded) set({ proveedores: seeded });
           }
         } catch (err) {
-          console.warn("Failed to load providers from Supabase, using cache/mock:", err);
+          log.warn("Failed to load providers from Supabase, using cache/mock", err);
         }
       },
 
@@ -144,7 +150,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
             if (seeded) set({ categorias: seeded });
           }
         } catch (err) {
-          console.warn("Failed to load provider categories from Supabase, using cache/mock:", err);
+          log.warn("Failed to load provider categories from Supabase, using cache/mock", err);
         }
       },
 
@@ -172,7 +178,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
             }));
           }
         } catch (err) {
-          console.error("Failed to persist new provider to Supabase:", err);
+          log.error("Failed to persist new provider to Supabase", err);
         }
       },
 
@@ -189,7 +195,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to update provider ${id} in Supabase:`, err);
+          log.error(`Failed to update provider ${id} in Supabase`, err);
         }
       },
 
@@ -206,7 +212,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to delete provider ${id} from Supabase:`, err);
+          log.error(`Failed to delete provider ${id} from Supabase`, err);
         }
       },
 
@@ -234,7 +240,7 @@ export const useProveedoresStore = create<ProveedoresState>()(
             }));
           }
         } catch (err) {
-          console.error("Failed to persist new provider category to Supabase:", err);
+          log.error("Failed to persist new provider category to Supabase", err);
         }
       },
 
@@ -251,12 +257,15 @@ export const useProveedoresStore = create<ProveedoresState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to delete provider category ${id} from Supabase:`, err);
+          log.error(`Failed to delete provider category ${id} from Supabase`, err);
         }
       }
     }),
     {
-      name: "monitoring-proveedores-storage"
+      name: "monitoring-proveedores-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

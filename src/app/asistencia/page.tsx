@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useAsistenciaStore,
   ESTADO_CONFIG,
@@ -14,13 +15,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  TrendingUp,
   AlertTriangle,
   ArrowLeft,
   BarChart2,
   FileText,
   Filter,
-  Clock,
   CheckCircle2,
   XCircle,
   Activity,
@@ -48,10 +47,6 @@ function getTodayStr(): string {
 
 function dateStr(anio: number, mes: number, dia: number): string {
   return `${anio}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
-}
-
-function getDayOfWeek(anio: number, mes: number, dia: number): number {
-  return new Date(anio, mes - 1, dia).getDay();
 }
 
 function getDiasDelMes(anio: number, mes: number): number[] {
@@ -175,9 +170,24 @@ export default function AsistenciaPage() {
     calcularDiasHabiles,
     fetchAsistencia,
     fetchMetasFTE,
-  } = useAsistenciaStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
+  } = useAsistenciaStore(
+    useShallow((s) => ({
+      registros: s.registros,
+      auditoria: s.auditoria,
+      setEstado: s.setEstado,
+      getMetaFTE: s.getMetaFTE,
+      calcularFTEReal: s.calcularFTEReal,
+      calcularDiasHabiles: s.calcularDiasHabiles,
+      fetchAsistencia: s.fetchAsistencia,
+      fetchMetasFTE: s.fetchMetasFTE,
+    }))
+  );
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
 
   React.useEffect(() => {
     fetchContratos();
@@ -201,13 +211,8 @@ export default function AsistenciaPage() {
 
   // ── Dashboard stats ─────────────────────────────────────────────────────────
   const dashStats = useMemo(() => {
-    let totalDotacion = 0;
-    let globalPresente = 0;
-    let globalAusente = 0;
-
     const contratoCards = activeContratos.map((c) => {
       const activos = c.trabajadores_asignados.filter((a) => a.activo);
-      totalDotacion += activos.length;
 
       // Counts for today
       const todayCounts: Record<string, number> = {};
@@ -219,8 +224,6 @@ export default function AsistenciaPage() {
           if (ESTADO_CONFIG[est].contabiliza) presente++; else ausente++;
         }
       }
-      globalPresente += presente;
-      globalAusente += ausente;
 
       // FTE
       const diasH = calcularDiasHabiles(anio, mes);
@@ -247,6 +250,10 @@ export default function AsistenciaPage() {
         monthTrend,
       };
     });
+
+    const totalDotacion = contratoCards.reduce((s, c) => s + c.activos, 0);
+    const globalPresente = contratoCards.reduce((s, c) => s + c.presente, 0);
+    const globalAusente = contratoCards.reduce((s, c) => s + c.ausente, 0);
 
     // Global state distribution for today
     const globalCounts: Record<string, number> = {};
@@ -279,7 +286,7 @@ export default function AsistenciaPage() {
       const start = new Date(fechaInicioRango + "T00:00:00");
       const end = new Date(fechaFinRango + "T00:00:00");
       if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
-        let current = new Date(start);
+        const current = new Date(start);
         let count = 0;
         while (current <= end && count < 45) { // max 45 days
           arr.push(new Date(current));
@@ -287,7 +294,8 @@ export default function AsistenciaPage() {
           count++;
         }
       } else {
-        arr.push(today);
+        // Fallback cuando el rango es invalido: mostrar solo el dia actual.
+        arr.push(new Date());
       }
     }
     return arr;
@@ -750,7 +758,7 @@ export default function AsistenciaPage() {
               <thead>
                 <tr className="border-b border-border bg-surface-2">
                   <th className="px-4 py-3 text-left text-[11px] font-bold text-text-muted uppercase sticky left-0 bg-surface-2 z-10 min-w-[150px] shadow-[1px_0_0_0_var(--color-border)]">Trabajador</th>
-                  {MESES_ES.map((m, i) => (
+                  {MESES_ES.map((m) => (
                     <th key={m} className="px-2 py-3 text-center text-[10px] font-bold text-text-muted uppercase min-w-[60px]">{m.slice(0,3)}</th>
                   ))}
                 </tr>
@@ -803,7 +811,7 @@ export default function AsistenciaPage() {
             {/* View Mode & Date Navigators */}
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-3">
-                <select value={modoFechas} onChange={(e) => setModoFechas(e.target.value as any)} className="input py-1.5 px-3 min-h-0 text-xs w-auto border-dashed border-primary/50 text-text">
+                <select value={modoFechas} onChange={(e) => setModoFechas(e.target.value as "semana" | "mes" | "rango")} className="input py-1.5 px-3 min-h-0 text-xs w-auto border-dashed border-primary/50 text-text">
                   <option value="semana">Semana (Mié - Mié)</option>
                   <option value="mes">Mes Completo</option>
                   <option value="rango">Rango Específico</option>
@@ -863,7 +871,7 @@ export default function AsistenciaPage() {
                 <option value="sexo">Agrupar por Sexo</option>
                 <option value="modalidad">Agrupar por Modalidad</option>
               </select>
-              <select value={filtroSexo} onChange={(e) => setFiltroSexo(e.target.value as any)}
+              <select value={filtroSexo} onChange={(e) => setFiltroSexo(e.target.value as "Todos" | "M" | "F")}
                 className="input py-1.5 px-3 min-h-0 text-xs w-auto">
                 <option value="Todos">Todos los Sexos</option>
                 <option value="M">Masculino</option>

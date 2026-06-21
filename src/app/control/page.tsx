@@ -10,10 +10,8 @@ import {
   CheckCircle2, 
   XCircle,
   Search,
-  FileText,
   User,
   Calendar,
-  Building2,
   Stethoscope,
   BookOpen,
   UploadCloud,
@@ -23,13 +21,18 @@ import {
   Save,
   Edit2
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useContratosStore } from "@/store/contratos-store";
-import { useControlStore, AlertaControl, ControlExamen, ControlCurso } from "@/store/control-store";
+import { useControlStore, type CatalogoCurso, type ResultadoExamen, type EstadoCurso, type EstadoDocumento } from "@/store/control-store";
 
 export default function ControlPage() {
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { contratos, fetchContratos } = useContratosStore();
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
   const { 
     examenes, 
     cursos, 
@@ -50,7 +53,29 @@ export default function ControlPage() {
     deleteExamenCatalogo,
     addDocumentoCatalogo,
     deleteDocumentoCatalogo
-  } = useControlStore();
+  } = useControlStore(
+    useShallow((s) => ({
+      examenes: s.examenes,
+      cursos: s.cursos,
+      documentos: s.documentos,
+      catalogoExamenes: s.catalogoExamenes,
+      catalogoCursos: s.catalogoCursos,
+      catalogoDocumentos: s.catalogoDocumentos,
+      fetchControlData: s.fetchControlData,
+      getAllAlertas: s.getAllAlertas,
+      getAlertasByTrabajador: s.getAlertasByTrabajador,
+      addExamen: s.addExamen,
+      addCurso: s.addCurso,
+      addDocumento: s.addDocumento,
+      addCursoCatalogo: s.addCursoCatalogo,
+      deleteCursoCatalogo: s.deleteCursoCatalogo,
+      updateCursoCatalogo: s.updateCursoCatalogo,
+      addExamenCatalogo: s.addExamenCatalogo,
+      deleteExamenCatalogo: s.deleteExamenCatalogo,
+      addDocumentoCatalogo: s.addDocumentoCatalogo,
+      deleteDocumentoCatalogo: s.deleteDocumentoCatalogo,
+    }))
+  );
 
   const [activeTab, setActiveTab] = useState<"dashboard" | "trabajadores" | "catalogos">("dashboard");
   const [selectedContratoDashboard, setSelectedContratoDashboard] = useState<string>("Todos");
@@ -66,7 +91,24 @@ export default function ControlPage() {
   const [showMassAssignDocumento, setShowMassAssignDocumento] = useState(false);
   const [selectedWorkersForMass, setSelectedWorkersForMass] = useState<string[]>([]);
   
-  const [formData, setFormData] = useState<any>({});
+  // formData es el shape del modal "agregar registro de control"; cambia
+  // segun el tipo (curso/examen/documento). Definimos todos los campos
+  // posibles como opcionales y validamos en cada handler de submit.
+  type ControlFormData = {
+    id_examen_catalogo?: string;
+    id_curso_catalogo?: string;
+    id_documento_catalogo?: string;
+    fecha_realizacion?: string;
+    fecha_emision?: string;
+    fecha_vencimiento?: string;
+    resultado?: ResultadoExamen;
+    estado?: EstadoCurso | EstadoDocumento;
+    observaciones?: string;
+    numero_documento?: string;
+    institucion?: string;
+    modalidad?: string;
+  };
+  const [formData, setFormData] = useState<ControlFormData>({});
 
   // Catálogos search states
   const [searchCurso, setSearchCurso] = useState("");
@@ -91,14 +133,14 @@ export default function ControlPage() {
     e.preventDefault();
     if (!newCursoName.trim() || !newCursoCat.trim()) return;
     const months = newCursoValidez.trim() ? parseInt(newCursoValidez.trim(), 10) : null;
-    await addCursoCatalogo(newCursoName.trim(), newCursoCat.trim(), isNaN(months as any) ? null : months);
+    await addCursoCatalogo(newCursoName.trim(), newCursoCat.trim(), months !== null && isNaN(months) ? null : months);
     setNewCursoName("");
     setNewCursoCat("");
     setNewCursoValidez("");
     setShowAddCursoForm(false);
   };
 
-  const handleEditCurso = async (c: any) => {
+  const handleEditCurso = async (c: CatalogoCurso) => {
     const newName = prompt("Editar nombre del curso:", c.nombre);
     if (newName === null) return;
     const newCat = prompt("Editar categoría del curso:", c.categoria);
@@ -110,7 +152,7 @@ export default function ControlPage() {
     await updateCursoCatalogo(c.id, {
       nombre: newName.trim() || c.nombre,
       categoria: newCat.trim() || c.categoria,
-      validez_meses: (validezStr.trim() === "" || isNaN(validez as any)) ? null : validez
+      validez_meses: (validezStr.trim() === "" || (validez !== null && isNaN(validez))) ? null : validez
     });
   };
 
@@ -130,12 +172,14 @@ export default function ControlPage() {
           const fechaStr = `${yyyy}-${mm}-${dd}`;
           
           if (formData.fecha_vencimiento !== fechaStr) {
-            setFormData((prev: any) => ({ ...prev, fecha_vencimiento: fechaStr }));
+            setFormData((prev) => ({ ...prev, fecha_vencimiento: fechaStr }));
           }
         }
       }
     }
-  }, [formData.id_curso_catalogo, formData.fecha_realizacion, catalogoCursos]);
+    // El guard `formData.fecha_vencimiento !== fechaStr` evita el loop al
+    // re-ejecutar el effect con `fecha_vencimiento` como dep.
+  }, [formData.id_curso_catalogo, formData.fecha_realizacion, formData.fecha_vencimiento, catalogoCursos]);
 
   const handleCreateExamen = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,15 +243,17 @@ export default function ControlPage() {
     return trabajadores.find(t => t.id_trabajador === selectedUserId) || null;
   }, [selectedUserId, trabajadores]);
 
-  // Handlers para formularios
+  // Handlers para formularios. La validacion HTML (`required` en cada
+  // <select> / <input>) garantiza que los campos obligatorios estan
+  // presentes antes de invocar los addX; usamos `!` para confirmar a TS.
   const handleAddExamenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) return;
     
     await addExamen({
       id_trabajador: selectedUserId,
-      id_examen_catalogo: formData.id_examen_catalogo,
-      fecha_realizacion: formData.fecha_realizacion,
+      id_examen_catalogo: formData.id_examen_catalogo!,
+      fecha_realizacion: formData.fecha_realizacion!,
       fecha_vencimiento: formData.fecha_vencimiento || null,
       resultado: formData.resultado || "Pendiente",
       observaciones: formData.observaciones || null,
@@ -223,12 +269,12 @@ export default function ControlPage() {
     
     await addCurso({
       id_trabajador: selectedUserId,
-      id_curso_catalogo: formData.id_curso_catalogo,
+      id_curso_catalogo: formData.id_curso_catalogo!,
       institucion: formData.institucion || null,
       modalidad: formData.modalidad || null,
-      fecha_realizacion: formData.fecha_realizacion,
+      fecha_realizacion: formData.fecha_realizacion!,
       fecha_vencimiento: formData.fecha_vencimiento || null,
-      estado: formData.estado || "Pendiente",
+      estado: (formData.estado as EstadoCurso) || "Pendiente",
       observaciones: formData.observaciones || null,
       certificado_url: null
     });
@@ -241,12 +287,12 @@ export default function ControlPage() {
     if (selectedWorkersForMass.length === 0) return alert("Selecciona al menos un trabajador.");
 
     await useControlStore.getState().addCursoMasivo(selectedWorkersForMass, {
-      id_curso_catalogo: formData.id_curso_catalogo,
+      id_curso_catalogo: formData.id_curso_catalogo!,
       institucion: formData.institucion || null,
       modalidad: formData.modalidad || null,
-      fecha_realizacion: formData.fecha_realizacion,
+      fecha_realizacion: formData.fecha_realizacion!,
       fecha_vencimiento: formData.fecha_vencimiento || null,
-      estado: formData.estado || "Pendiente",
+      estado: (formData.estado as EstadoCurso) || "Pendiente",
       observaciones: formData.observaciones || null,
       certificado_url: null
     });
@@ -262,11 +308,11 @@ export default function ControlPage() {
     
     await addDocumento({
       id_trabajador: selectedUserId,
-      id_documento_catalogo: formData.id_documento_catalogo,
+      id_documento_catalogo: formData.id_documento_catalogo!,
       numero_documento: formData.numero_documento || null,
-      fecha_emision: formData.fecha_emision,
+      fecha_emision: formData.fecha_emision!,
       fecha_vencimiento: formData.fecha_vencimiento || null,
-      estado: formData.estado || "Vigente",
+      estado: (formData.estado as EstadoDocumento) || "Vigente",
       observaciones: formData.observaciones || null,
       adjunto_url: null
     });
@@ -279,11 +325,11 @@ export default function ControlPage() {
     if (selectedWorkersForMass.length === 0) return alert("Selecciona al menos un trabajador.");
 
     await useControlStore.getState().addDocumentoMasivo(selectedWorkersForMass, {
-      id_documento_catalogo: formData.id_documento_catalogo,
+      id_documento_catalogo: formData.id_documento_catalogo!,
       numero_documento: null, // No se puede asignar número masivamente
-      fecha_emision: formData.fecha_emision,
+      fecha_emision: formData.fecha_emision!,
       fecha_vencimiento: formData.fecha_vencimiento || null,
-      estado: formData.estado || "Vigente",
+      estado: (formData.estado as EstadoDocumento) || "Vigente",
       observaciones: formData.observaciones || null,
       adjunto_url: null
     });
@@ -412,7 +458,7 @@ export default function ControlPage() {
                   <div className="col-span-2 space-y-1.5">
                     <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Resultado *</label>
                     <select required className="input"
-                      onChange={e => setFormData({...formData, resultado: e.target.value})}>
+                      onChange={e => setFormData({...formData, resultado: e.target.value as ResultadoExamen})}>
                       <option value="">Seleccionar...</option>
                       <option value="Aprobado">Aprobado</option>
                       <option value="Aprobado con Observaciones">Aprobado con Observaciones</option>
@@ -501,7 +547,7 @@ export default function ControlPage() {
                           const validezStr = prompt("Tiempo de validez en meses (vacío para sin vencimiento):", "");
                           if (validezStr === null) return;
                           const valMeses = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
-                          await addCursoCatalogo(name, cat, isNaN(valMeses as any) ? null : valMeses);
+                          await addCursoCatalogo(name, cat, valMeses !== null && isNaN(valMeses) ? null : valMeses);
                         }}
                         className="text-[10px] text-purple-400 font-bold hover:underline"
                       >
@@ -535,7 +581,7 @@ export default function ControlPage() {
                   <div className="col-span-2 space-y-1.5">
                     <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Estado *</label>
                     <select required className="input"
-                      onChange={e => setFormData({...formData, estado: e.target.value})}>
+                      onChange={e => setFormData({...formData, estado: e.target.value as EstadoCurso})}>
                       <option value="">Seleccionar...</option>
                       <option value="Aprobado">Aprobado</option>
                       <option value="Reprobado">Reprobado</option>
@@ -647,7 +693,7 @@ export default function ControlPage() {
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Estado *</label>
                     <select required className="input"
-                      onChange={e => setFormData({...formData, estado: e.target.value})}>
+                      onChange={e => setFormData({...formData, estado: e.target.value as EstadoDocumento})}>
                       <option value="Vigente">Vigente</option>
                       <option value="Vencido">Vencido</option>
                       <option value="Retenido">Retenido</option>
@@ -793,7 +839,7 @@ export default function ControlPage() {
                         const validezStr = prompt("Tiempo de validez en meses (vacío para sin vencimiento):", "");
                         if (validezStr === null) return;
                         const valMeses = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
-                        await addCursoCatalogo(name, cat, isNaN(valMeses as any) ? null : valMeses);
+                        await addCursoCatalogo(name, cat, valMeses !== null && isNaN(valMeses) ? null : valMeses);
                       }}
                       className="text-[10px] text-purple-400 font-bold hover:underline"
                     >
@@ -813,7 +859,7 @@ export default function ControlPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">Estado *</label>
-                  <select required className="input bg-surface" onChange={e => setFormData({...formData, estado: e.target.value})}>
+                  <select required className="input bg-surface" onChange={e => setFormData({...formData, estado: e.target.value as EstadoCurso})}>
                     <option value="">Seleccionar...</option>
                     <option value="Aprobado">Aprobado</option>
                     <option value="Reprobado">Reprobado</option>

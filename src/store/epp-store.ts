@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
 import { useInventarioStore } from "@/store/inventario-store";
+
+const log = createLogger("epp-store");
 
 export interface EppItem {
   id_item: string;
@@ -28,6 +31,8 @@ export interface EppEntrega {
 interface EppState {
   entregas: EppEntrega[];
   loading: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   
   fetchEntregas: () => Promise<void>;
   addEntrega: (
@@ -75,6 +80,7 @@ export const useEppStore = create<EppState>()(
     (set, get) => ({
       entregas: mockEntregas,
       loading: false,
+      hydrated: false,
 
       fetchEntregas: async () => {
         set({ loading: true });
@@ -95,7 +101,7 @@ export const useEppStore = create<EppState>()(
             set({ entregas: [] });
           }
         } catch (err) {
-          console.warn("[epp-store] Offline o error al cargar de Supabase, usando caché:", err);
+          log.warn("Offline o error al cargar de Supabase, usando cache", err);
         } finally {
           set({ loading: false });
         }
@@ -118,10 +124,9 @@ export const useEppStore = create<EppState>()(
           items: itemsLocales
         };
 
-        // Guardar estado actual por si falla la transacción
-        const prevEntregas = get().entregas;
-
-        // 1. Añadir localmente optimista
+        // 1. Añadir localmente optimista (sin rollback: el catch externo
+        //    deja la entrega local; la consistencia con Supabase se reconcilia
+        //    en el siguiente fetchEntregas).
         set(state => ({ entregas: [nuevaEntregaLocal, ...state.entregas] }));
 
         try {
@@ -171,7 +176,7 @@ export const useEppStore = create<EppState>()(
               dbItem.id_item
             );
             if (!resultDescuento.exito) {
-              console.warn(`[epp-store] Alerta de descuento stock incompleta para producto ID ${dbItem.id_producto}`);
+              log.warn("Alerta de descuento stock incompleta", { id_producto: dbItem.id_producto });
             }
           }
 
@@ -202,7 +207,7 @@ export const useEppStore = create<EppState>()(
 
           return true;
         } catch (err) {
-          console.error("[epp-store] Error en la transacción de entrega:", err);
+          log.error("Error en la transaccion de entrega", err);
           
           // Revertir estado si falló en Supabase (o dejar local si estamos forzando modo simulación local)
           // Para robustez y soporte local completo, permitimos descuento offline en los stores locales:
@@ -257,14 +262,17 @@ export const useEppStore = create<EppState>()(
 
           return true;
         } catch (err) {
-          console.error("[epp-store] Error al borrar entrega:", err);
+          log.error("Error al borrar entrega", err);
           set({ entregas: anterior });
           return false;
         }
       }
     }),
     {
-      name: "monitoring-epp-storage"
+      name: "monitoring-epp-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

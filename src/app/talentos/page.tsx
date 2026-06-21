@@ -1,14 +1,23 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useTrabajadoresStore, Trabajador } from "@/store/trabajadores-store";
+import { useShallow } from "zustand/react/shallow";
+import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useControlStore } from "@/store/control-store";
-import { Search, Filter, BookOpen, GraduationCap, Award, Briefcase, Star, MapPin, ChevronRight, Download } from "lucide-react";
+import { Search, Filter, BookOpen, GraduationCap, Briefcase, Star, MapPin, ChevronRight, Download } from "lucide-react";
 import TrabajadorDetalle from "@/components/custom/trabajador-detalle";
 
 export default function TalentosPage() {
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { cursos, catalogoCursos, fetchControlData } = useControlStore();
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
+  const { cursos, catalogoCursos, fetchControlData } = useControlStore(
+    useShallow((s) => ({
+      cursos: s.cursos,
+      catalogoCursos: s.catalogoCursos,
+      fetchControlData: s.fetchControlData,
+    }))
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterExperiencia, setFilterExperiencia] = useState<"Todos" | "0-2" | "3-5" | "5+">("Todos");
@@ -67,7 +76,7 @@ export default function TalentosPage() {
 
       return true;
     });
-  }, [trabajadores, searchQuery, filterExperiencia, filterIdioma]);
+  }, [trabajadores, searchQuery, filterExperiencia, filterIdioma, cursos, catalogoCursos]);
 
   // Get initial letters for avatar
   const getInitials = (nombre: string, apellido: string) => {
@@ -114,7 +123,7 @@ export default function TalentosPage() {
           
           <select 
             value={filterExperiencia}
-            onChange={(e) => setFilterExperiencia(e.target.value as any)}
+            onChange={(e) => setFilterExperiencia(e.target.value as "Todos" | "0-2" | "3-5" | "5+")}
             className="input py-2 text-xs min-h-0 w-auto bg-surface"
           >
             <option value="Todos">Experiencia: Todas</option>

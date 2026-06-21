@@ -16,6 +16,8 @@ export interface Mandante {
 
 interface MandantesState {
   mandantes: Mandante[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   addMandante: (m: Omit<Mandante, "id_mandante" | "created_at">) => void;
   updateMandante: (id: string, fields: Partial<Mandante>) => void;
   deleteMandante: (id: string) => void;
@@ -99,6 +101,7 @@ export const useMandantesStore = create<MandantesState>()(
   persist(
     (set) => ({
       mandantes: mockMandantes,
+      hydrated: false,
 
       addMandante: (m) =>
         set((state) => ({
@@ -124,6 +127,11 @@ export const useMandantesStore = create<MandantesState>()(
           mandantes: state.mandantes.filter((m) => m.id_mandante !== id)
         }))
     }),
-    { name: "monitoring-mandantes-v2-storage" }
+    {
+      name: "monitoring-mandantes-v2-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

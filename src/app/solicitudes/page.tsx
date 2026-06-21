@@ -126,7 +126,8 @@ function SolicitudCard({ solicitud }: { solicitud: Solicitud }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SolicitudesPage() {
-  const { solicitudes, fetchSolicitudes } = useSolicitudesStore();
+  const solicitudes = useSolicitudesStore((s) => s.solicitudes);
+  const fetchSolicitudes = useSolicitudesStore((s) => s.fetchSolicitudes);
   const [filtroEstado, setFiltroEstado] = useState<EstadoSolicitud | "Todos">("Todos");
   const [filtroTipo, setFiltroTipo] = useState<TipoSolicitud | "Todos">("Todos");
   const [busqueda, setBusqueda] = useState("");

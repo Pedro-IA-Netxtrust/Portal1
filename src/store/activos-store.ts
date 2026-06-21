@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import type { TipoActivo, EstadoActivo } from "@/lib/enums";
+
+const log = createLogger("activos-store");
 
 export interface LicenciaSoftware {
   id: string;
@@ -45,6 +48,8 @@ export interface Activo {
 
 interface ActivosState {
   activos: Activo[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchActivos: () => Promise<void>;
   addActivo: (a: Omit<Activo, "id_activo">) => Promise<void>;
   updateActivo: (id: string, updatedFields: Partial<Activo>) => Promise<void>;
@@ -160,6 +165,7 @@ export const useActivosStore = create<ActivosState>()(
   persist(
     (set) => ({
       activos: mockActivos,
+      hydrated: false,
 
       fetchActivos: async () => {
         try {
@@ -194,7 +200,7 @@ export const useActivosStore = create<ActivosState>()(
             if (seeded) set({ activos: seeded });
           }
         } catch (err) {
-          console.error("Failed to load assets from Supabase:", err);
+          log.error("Failed to load assets from Supabase", err);
         }
       },
 
@@ -218,7 +224,7 @@ export const useActivosStore = create<ActivosState>()(
             }));
           }
         } catch (err) {
-          console.error("Failed to persist new asset to Supabase:", err);
+          log.error("Failed to persist new asset to Supabase", err);
         }
       },
 
@@ -237,7 +243,7 @@ export const useActivosStore = create<ActivosState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to update asset ${id} in Supabase:`, err);
+          log.error(`Failed to update asset ${id} in Supabase`, err);
         }
       },
 
@@ -254,7 +260,7 @@ export const useActivosStore = create<ActivosState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to delete asset ${id} from Supabase:`, err);
+          log.error(`Failed to delete asset ${id} from Supabase`, err);
         }
       },
 
@@ -282,7 +288,7 @@ export const useActivosStore = create<ActivosState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to assign asset ${id} in Supabase:`, err);
+          log.error(`Failed to assign asset ${id} in Supabase`, err);
         }
       },
 
@@ -310,12 +316,15 @@ export const useActivosStore = create<ActivosState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to return asset ${id} in Supabase:`, err);
+          log.error(`Failed to return asset ${id} in Supabase`, err);
         }
       }
     }),
     {
-      name: "monitoring-activos-storage"
+      name: "monitoring-activos-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

@@ -1,23 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { Ticket, useTicketsStore, ComentarioTicket } from "@/store/tickets-store";
+import { useShallow } from "zustand/react/shallow";
+import { Ticket, useTicketsStore } from "@/store/tickets-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useActivosStore } from "@/store/activos-store";
 import { 
   X, 
-  User, 
   UserPlus,
   Cpu, 
-  Clock, 
   Send, 
-  ShieldAlert, 
   CheckCircle, 
-  Info,
-  Calendar,
   Lock,
-  MessageSquare,
-  Activity
 } from "lucide-react";
 
 interface TicketDetalleProps {
@@ -26,9 +20,16 @@ interface TicketDetalleProps {
 }
 
 export default function TicketDetalle({ ticket, onClose }: TicketDetalleProps) {
-  const { assignTicket, closeTicket, comentarios, addComentario } = useTicketsStore();
-  const { trabajadores } = useTrabajadoresStore();
-  const { activos } = useActivosStore();
+  const { assignTicket, closeTicket, comentarios, addComentario } = useTicketsStore(
+    useShallow((s) => ({
+      assignTicket: s.assignTicket,
+      closeTicket: s.closeTicket,
+      comentarios: s.comentarios,
+      addComentario: s.addComentario,
+    }))
+  );
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const activos = useActivosStore((s) => s.activos);
 
   // New comment state
   const [comentarioTexto, setComentarioTexto] = useState("");
@@ -61,8 +62,8 @@ export default function TicketDetalle({ ticket, onClose }: TicketDetalleProps) {
   // Helper: SLA Semaphores
   const getSlaIndicator = (limitStr: string, completed: boolean, closedDate?: string) => {
     const limit = new Date(limitStr).getTime();
-    const target = closedDate ? new Date(closedDate).getTime() : Date.now();
-    const remainingMs = limit - target;
+    const now = closedDate ? new Date(closedDate).getTime() : new Date().getTime();
+    const remainingMs = limit - now;
     const remainingHrs = Math.round(remainingMs / (1000 * 60 * 60));
 
     if (!completed || remainingMs < 0) {

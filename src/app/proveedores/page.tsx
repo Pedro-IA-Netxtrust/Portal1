@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useProveedoresStore, Proveedor } from "@/store/proveedores-store";
 import { Store, Plus, Search, Filter, Edit, Trash2, Mail, Phone, CheckCircle2, XCircle } from "lucide-react";
 
@@ -14,7 +15,18 @@ export default function ProveedoresPage() {
     updateProveedor, 
     deleteProveedor,
     addCategoria
-  } = useProveedoresStore();
+  } = useProveedoresStore(
+    useShallow((s) => ({
+      proveedores: s.proveedores,
+      categorias: s.categorias,
+      fetchProveedores: s.fetchProveedores,
+      fetchCategorias: s.fetchCategorias,
+      addProveedor: s.addProveedor,
+      updateProveedor: s.updateProveedor,
+      deleteProveedor: s.deleteProveedor,
+      addCategoria: s.addCategoria,
+    }))
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoria, setFilterCategoria] = useState<string>("Todas");
@@ -286,7 +298,7 @@ export default function ProveedoresPage() {
 
               <div className="pt-2">
                 <label className="label">Estado</label>
-                <select className="input" value={formData.estado} onChange={e => setFormData({...formData, estado: e.target.value as any})}>
+                <select className="input" value={formData.estado} onChange={e => setFormData({...formData, estado: e.target.value as "Activo" | "Inactivo"})}>
                   <option value="Activo">Activo</option>
                   <option value="Inactivo">Inactivo</option>
                 </select>

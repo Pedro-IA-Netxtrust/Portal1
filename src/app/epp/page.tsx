@@ -1,24 +1,44 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useEppStore, type EppItem } from "@/store/epp-store";
+import { useShallow } from "zustand/react/shallow";
+import { useEppStore } from "@/store/epp-store";
 import { useInventarioStore } from "@/store/inventario-store";
 import { useMandantesStore } from "@/store/mandantes-store";
 import { useContratosStore } from "@/store/contratos-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { 
-  Shield, Plus, Search, Calendar, User, Eye, Trash2, 
-  Check, X, FileText, Info, ShieldAlert, Award, Package, ClipboardCheck, Sparkles,
+  Shield, Plus, Search, Calendar, Trash2, 
+  Check, X, FileText, Info, ShieldAlert, Sparkles,
   Building2, ChevronDown, ChevronRight, UserCheck, AlertCircle
 } from "lucide-react";
 
 export default function EppPage() {
   // Stores
-  const { mandantes } = useMandantesStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { entregas, fetchEntregas, addEntrega, deleteEntrega } = useEppStore();
-  const { productos, bodegas, lotes, fetchInventarioData, getStockDisponible } = useInventarioStore();
+  const mandantes = useMandantesStore((s) => s.mandantes);
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
+  const { entregas, fetchEntregas, addEntrega, deleteEntrega } = useEppStore(
+    useShallow((s) => ({
+      entregas: s.entregas,
+      fetchEntregas: s.fetchEntregas,
+      addEntrega: s.addEntrega,
+      deleteEntrega: s.deleteEntrega,
+    }))
+  );
+  const { productos, bodegas, lotes, fetchInventarioData, getStockDisponible } = useInventarioStore(
+    useShallow((s) => ({
+      productos: s.productos,
+      bodegas: s.bodegas,
+      lotes: s.lotes,
+      fetchInventarioData: s.fetchInventarioData,
+      getStockDisponible: s.getStockDisponible,
+    }))
+  );
 
   // Estados de control
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,7 +109,9 @@ export default function EppPage() {
       setFormFecha(new Date().toISOString().split("T")[0]);
       setFormObservaciones("");
     }
-  }, [showNewDeliveryModal, selectedTrabajadorId, productos, lotes, bodegas, trabajadores]);
+    // `formBodegaId` solo se setea cuando aun no hay bodega seleccionada;
+    // incluirlo como dep no causa loop por el guard `!formBodegaId`.
+  }, [showNewDeliveryModal, selectedTrabajadorId, productos, lotes, bodegas, trabajadores, formBodegaId]);
 
   const toggleMandante = (id: string) => {
     setExpandedMandantes(prev => ({ ...prev, [id]: !prev[id] }));
@@ -109,7 +131,7 @@ export default function EppPage() {
     }));
   };
 
-  const handleItemValueChange = (id_producto: string, field: "cantidad" | "talla" | "opcion", value: any) => {
+  const handleItemValueChange = (id_producto: string, field: "cantidad" | "talla" | "opcion", value: string | number) => {
     setSelectedItems(prev => ({
       ...prev,
       [id_producto]: {
@@ -124,7 +146,7 @@ export default function EppPage() {
     if (!selectedTrabajadorId || !formBodegaId) return;
 
     const itemsToSave = Object.entries(selectedItems)
-      .filter(([_, data]) => data.checked)
+      .filter(([, data]) => data.checked)
       .map(([id_producto, data]) => ({
         id_producto,
         cantidad: data.cantidad,
@@ -176,10 +198,6 @@ export default function EppPage() {
   const activeContrato = contratos.find(c => c.id_contrato === selectedContratoId);
   const activeMandante = activeContrato ? mandantes.find(m => m.id_mandante === activeContrato.id_mandante) : null;
   const activeDeliveries = entregas.filter(e => e.id_trabajador === selectedTrabajadorId);
-
-  // Estadísticas EPP
-  const totalDeliveries = entregas.length;
-  const uniqueWorkers = new Set(entregas.map(e => e.id_trabajador)).size;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn pb-12">

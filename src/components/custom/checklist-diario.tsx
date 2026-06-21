@@ -1,19 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { useInspeccionesStore, InspeccionDiaria } from "@/store/inspecciones-store";
+import { useInspeccionesStore } from "@/store/inspecciones-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useActivosStore } from "@/store/activos-store";
-import { X, Save, AlertTriangle, Sparkles, ChevronRight, ChevronLeft, ShieldCheck } from "lucide-react";
+import { X, Save, AlertTriangle, ChevronRight, ChevronLeft } from "lucide-react";
 
 interface ChecklistDiarioProps {
   onClose: () => void;
 }
 
 export default function ChecklistDiario({ onClose }: ChecklistDiarioProps) {
-  const { addInspeccionDiaria } = useInspeccionesStore();
-  const { trabajadores } = useTrabajadoresStore();
-  const { activos } = useActivosStore();
+  const addInspeccionDiaria = useInspeccionesStore((s) => s.addInspeccionDiaria);
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const activos = useActivosStore((s) => s.activos);
 
   const vehiculos = activos.filter(a => a.tipo === "Vehículo");
   const today = new Date().toISOString().split("T")[0];
@@ -120,7 +120,7 @@ export default function ChecklistDiario({ onClose }: ChecklistDiarioProps) {
   };
 
   const renderRadioRow = (label: string, fieldName: string, options: string[]) => {
-    const currentValue = (formData as any)[fieldName];
+    const currentValue = (formData as Record<string, unknown>)[fieldName];
     return (
       <div className="flex justify-between items-center py-2 border-b border-zinc-900 text-xs">
         <span className="text-zinc-300 font-semibold">{label}</span>

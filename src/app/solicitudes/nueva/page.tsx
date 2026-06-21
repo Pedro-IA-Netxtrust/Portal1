@@ -86,7 +86,7 @@ function FormVacaciones({ onChange }: { onChange: (p: PayloadVacaciones) => void
   );
 }
 
-function FormPermiso({ tipo, onChange }: { tipo: "Permiso con Goce" | "Permiso sin Goce"; onChange: (p: PayloadPermisoConGoce | PayloadPermisoSinGoce) => void }) {
+function FormPermiso({ tipo: _tipo, onChange }: { tipo: "Permiso con Goce" | "Permiso sin Goce"; onChange: (p: PayloadPermisoConGoce | PayloadPermisoSinGoce) => void }) {
   const [data, setData] = useState({ fecha_inicio: "", fecha_fin: "", dias_habiles: 0, motivo: "" });
 
   const update = (patch: Partial<typeof data>) => {
@@ -291,11 +291,24 @@ function FormOtro({ onChange }: { onChange: (p: PayloadOtro) => void }) {
 
 export default function NuevaSolicitudPage() {
   const router = useRouter();
-  const { addSolicitud } = useSolicitudesStore();
+  const addSolicitud = useSolicitudesStore((s) => s.addSolicitud);
 
   const [step, setStep] = useState<"select" | "form">("select");
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoSolicitud | null>(null);
-  const [payload, setPayload] = useState<any>(null);
+  // Payload se construye dinamicamente segun el tipo seleccionado.
+  // Cada FormXxx invoca `setPayload` con su shape concreto; aqui solo
+  // se reenvia a `addSolicitud` que acepta union de payloads.
+  const [payload, setPayload] = useState<
+    | PayloadVacaciones
+    | PayloadPermisoConGoce
+    | PayloadPermisoSinGoce
+    | PayloadCambioEquipo
+    | PayloadCambioTurno
+    | PayloadTeletrabajo
+    | PayloadLicenciaMedica
+    | PayloadOtro
+    | null
+  >(null);
   const [asunto, setAsunto] = useState("");
   const [prioridad, setPrioridad] = useState<"Normal" | "Urgente">("Normal");
   const [enviando, setEnviando] = useState(false);
@@ -365,7 +378,7 @@ export default function NuevaSolicitudPage() {
           <div className="space-y-3">
             <p className="text-sm text-zinc-400 mb-5">¿Qué tipo de solicitud deseas crear?</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {TIPOS_CONFIG.map(({ tipo, emoji, descripcion, icon: Icon }) => (
+              {TIPOS_CONFIG.map(({ tipo, emoji, descripcion }) => (
                 <button
                   key={tipo}
                   onClick={() => { setTipoSeleccionado(tipo); setStep("form"); }}

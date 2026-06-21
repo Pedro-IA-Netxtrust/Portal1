@@ -9,9 +9,6 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  User,
-  Calendar,
-  Briefcase,
   MessageSquare,
   ShieldCheck,
   Ban,
@@ -19,15 +16,16 @@ import {
   Send,
   Lock
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useSolicitudesStore,
   type EstadoSolicitud,
   type PayloadVacaciones,
-  type PayloadPermisoConGoce,
   type PayloadCambioEquipo,
   type PayloadCambioTurno,
   type PayloadTeletrabajo,
-  type PayloadLicenciaMedica
+  type PayloadLicenciaMedica,
+  type PayloadSolicitud
 } from "@/store/solicitudes-store";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -123,14 +121,15 @@ function PayloadLicenciaView({ p }: { p: PayloadLicenciaMedica }) {
   );
 }
 
-function PayloadRenderer({ tipo, payload }: { tipo: string; payload: any }) {
-  if (tipo === "Vacaciones")         return <PayloadVacacionesView   p={payload} />;
-  if (tipo === "Permiso con Goce" || tipo === "Permiso sin Goce") return <PayloadVacacionesView p={payload} />;
-  if (tipo === "Cambio de Equipo")   return <PayloadCambioEquipoView p={payload} />;
-  if (tipo === "Cambio de Turno")    return <PayloadCambioTurnoView  p={payload} />;
-  if (tipo === "Teletrabajo")        return <PayloadTeletrabajoView  p={payload} />;
-  if (tipo === "Licencia Médica")    return <PayloadLicenciaView     p={payload} />;
-  return <p className="text-sm text-zinc-300">{payload?.descripcion ?? "Sin detalles."}</p>;
+function PayloadRenderer({ tipo, payload }: { tipo: string; payload: PayloadSolicitud }) {
+  if (tipo === "Vacaciones")         return <PayloadVacacionesView   p={payload as PayloadVacaciones} />;
+  if (tipo === "Permiso con Goce" || tipo === "Permiso sin Goce") return <PayloadVacacionesView p={payload as PayloadVacaciones} />;
+  if (tipo === "Cambio de Equipo")   return <PayloadCambioEquipoView p={payload as PayloadCambioEquipo} />;
+  if (tipo === "Cambio de Turno")    return <PayloadCambioTurnoView  p={payload as PayloadCambioTurno} />;
+  if (tipo === "Teletrabajo")        return <PayloadTeletrabajoView  p={payload as PayloadTeletrabajo} />;
+  if (tipo === "Licencia Médica")    return <PayloadLicenciaView     p={payload as PayloadLicenciaMedica} />;
+  const fallback = payload as { descripcion?: string };
+  return <p className="text-sm text-zinc-300">{fallback?.descripcion ?? "Sin detalles."}</p>;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -138,7 +137,15 @@ function PayloadRenderer({ tipo, payload }: { tipo: string; payload: any }) {
 export default function DetalleSolicitudPage() {
   const params = useParams();
   const router = useRouter();
-  const { solicitudes, comentarios, updateEstado, cancelarSolicitud, addComentario } = useSolicitudesStore();
+  const { solicitudes, comentarios, updateEstado, cancelarSolicitud, addComentario } = useSolicitudesStore(
+    useShallow((s) => ({
+      solicitudes: s.solicitudes,
+      comentarios: s.comentarios,
+      updateEstado: s.updateEstado,
+      cancelarSolicitud: s.cancelarSolicitud,
+      addComentario: s.addComentario,
+    }))
+  );
 
   const solicitud = solicitudes.find(s => s.id_solicitud === params.id);
   const solComentarios = comentarios.filter(c => c.id_solicitud === params.id)

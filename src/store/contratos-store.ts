@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
 import type { EstadoContrato } from "@/lib/enums";
+
+const log = createLogger("contratos-store");
 
 // ─────────────────────────────────────────────────────────────
 //  Sub-entities
@@ -89,7 +92,6 @@ export interface Contrato {
 //  Helpers de fecha
 // ─────────────────────────────────────────────────────────────
 
-const d = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString();
 const ds = (y: number, m: number, day: number) => new Date(y, m - 1, day).toISOString();
 
 // ─────────────────────────────────────────────────────────────
@@ -446,6 +448,8 @@ const ACTOR = "Operador General";
 
 interface ContratosState {
   contratos: Contrato[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchContratos: () => Promise<void>;
   addContrato: (c: Omit<Contrato, "id_contrato" | "trabajadores_asignados" | "historial">) => Promise<void>;
   updateContrato: (id: string, fields: Partial<Omit<Contrato, "trabajadores_asignados" | "historial">>) => Promise<void>;
@@ -481,6 +485,7 @@ export const useContratosStore = create<ContratosState>()(
   persist(
     (set) => ({
       contratos: mockContratos,
+      hydrated: false,
 
       fetchContratos: async () => {
         try {
@@ -549,7 +554,7 @@ export const useContratosStore = create<ContratosState>()(
             }
           }
         } catch (err) {
-          console.error("Failed to load contracts from Supabase:", err instanceof Error ? err.message : err);
+          log.error("Failed to load contracts from Supabase", err instanceof Error ? err.message : err);
         }
       },
 
@@ -601,7 +606,7 @@ export const useContratosStore = create<ContratosState>()(
             });
           }
         } catch (err) {
-          console.error("Failed to persist new contract to Supabase:", err);
+          log.error("Failed to persist new contract to Supabase", err);
         }
       },
 
@@ -640,7 +645,7 @@ export const useContratosStore = create<ContratosState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to update contract ${id} in Supabase:`, err);
+          log.error(`Failed to update contract ${id} in Supabase`, err);
         }
       },
 
@@ -666,7 +671,7 @@ export const useContratosStore = create<ContratosState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to delete contract ${id} from Supabase:`, err);
+          log.error(`Failed to delete contract ${id} from Supabase`, err);
         }
       },
 
@@ -791,6 +796,11 @@ export const useContratosStore = create<ContratosState>()(
           return { contratos: addHist(contratos, id_contrato, { tipo: "Activación", id_trabajador: asig?.id_trabajador, nombre_trabajador: asig?.nombre, detalle: `${asig?.nombre} reactivado/a en el contrato.` }) };
         })
     }),
-    { name: "monitoring-contratos-v2-storage" }  // v2 = fuerza datos frescos
+    {
+      name: "monitoring-contratos-v2-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

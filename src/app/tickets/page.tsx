@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useTicketsStore, Ticket } from "@/store/tickets-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import TicketForm from "@/components/custom/ticket-form";
@@ -9,9 +10,6 @@ import {
   Plus, 
   Search, 
   Ticket as TicketIcon, 
-  Activity, 
-  Clock, 
-  AlertTriangle, 
   CheckCircle,
   Eye,
   Inbox,
@@ -19,8 +17,12 @@ import {
 } from "lucide-react";
 
 export default function TicketsPage() {
-  const { tickets, fetchTickets } = useTicketsStore();
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
+  const { tickets, fetchTickets } = useTicketsStore(
+    useShallow((s) => ({ tickets: s.tickets, fetchTickets: s.fetchTickets }))
+  );
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
 
   useEffect(() => {
     fetchTickets();
@@ -51,8 +53,8 @@ export default function TicketsPage() {
   // Helper: Calculate remaining SLA hours
   const getSlaHoursLeft = (limitStr: string, completed: boolean, closedDate?: string) => {
     const limit = new Date(limitStr).getTime();
-    const target = closedDate ? new Date(closedDate).getTime() : Date.now();
-    const remainingMs = limit - target;
+    const now = closedDate ? new Date(closedDate).getTime() : new Date().getTime();
+    const remainingMs = limit - now;
     return Math.round(remainingMs / (1000 * 60 * 60));
   };
 
@@ -65,7 +67,6 @@ export default function TicketsPage() {
   });
 
   // Stats
-  const totalCount = tickets.length;
   const openCount = tickets.filter(t => t.estado === "Abierto").length;
   const inAttentionCount = tickets.filter(t => t.estado === "En Atencion").length;
   const closedCount = tickets.filter(t => t.estado === "Cerrado").length;

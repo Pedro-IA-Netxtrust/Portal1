@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useWorkflowsStore, type WorkflowStage, type WorkflowTemplate } from "@/store/workflows-store";
+import { useShallow } from "zustand/react/shallow";
+import { useWorkflowsStore, type WorkflowStage, type SentMailEntry } from "@/store/workflows-store";
 import { 
-  GitBranch, Mail, Send, Check, X, Info, Settings2, Sparkles, 
-  Trash2, FileText, AlertCircle, Terminal, HelpCircle 
+  GitBranch, Mail, Send, Check, X, Info, Sparkles, 
+  AlertCircle, Terminal,
 } from "lucide-react";
 
 const STAGES: WorkflowStage[] = ["Pendiente", "En Revisión", "Aprobada", "Rechazada", "Cancelada"];
@@ -25,11 +26,20 @@ export default function FlujosPage() {
     saveTemplate, 
     sentMailLog, 
     clearMailLog 
-  } = useWorkflowsStore();
+  } = useWorkflowsStore(
+    useShallow((s) => ({
+      ticketTypes: s.ticketTypes,
+      templates: s.templates,
+      fetchWorkflowsData: s.fetchWorkflowsData,
+      saveTemplate: s.saveTemplate,
+      sentMailLog: s.sentMailLog,
+      clearMailLog: s.clearMailLog,
+    }))
+  );
 
   const [activeTypeTab, setActiveTypeTab] = useState<string>("");
   const [activeStageTab, setActiveStageTab] = useState<WorkflowStage>("Pendiente");
-  const [selectedMail, setSelectedMail] = useState<any | null>(null);
+  const [selectedMail, setSelectedMail] = useState<SentMailEntry | null>(null);
 
   // Carga inicial
   useEffect(() => {

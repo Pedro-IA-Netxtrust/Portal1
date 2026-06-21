@@ -18,6 +18,8 @@ export interface CursoMaestro {
 interface MaestrosState {
   examenesMaestros: ExamenMaestro[];
   cursosMaestros: CursoMaestro[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   addExamenMaestro: (em: Omit<ExamenMaestro, "id_examen_maestro">) => void;
   deleteExamenMaestro: (id: string) => void;
   addCursoMaestro: (cm: Omit<CursoMaestro, "id_curso_maestro">) => void;
@@ -77,6 +79,7 @@ export const useMaestrosStore = create<MaestrosState>()(
     (set) => ({
       examenesMaestros: mockExamenesMaestros,
       cursosMaestros: mockCursosMaestros,
+      hydrated: false,
       addExamenMaestro: (em) => set((state) => ({
         examenesMaestros: [
           ...state.examenesMaestros,
@@ -97,7 +100,10 @@ export const useMaestrosStore = create<MaestrosState>()(
       }))
     }),
     {
-      name: "monitoring-maestros-storage"
+      name: "monitoring-maestros-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

@@ -50,7 +50,7 @@ Build limpio al inicio, pero con riesgos latentes que se materializaban tras nav
 | 🟢 — | **Cálculo de alertas O(N²) sin memo.** `Array.some` para dedupe + dentro del cuerpo de render. | `src/app/page.tsx` | `useMemo` con `Map<id, alerta>` para dedupe O(1). |
 | 🟢 — | **`getProgressByTrabajador` recorría todas las tareas en cada llamada (en loops).** | `src/store/onboarding-store.ts` | Dos `WeakMap` indexadas por la referencia del array `tareas`: `TAREAS_POR_TRABAJADOR_CACHE` y `PROGRESS_CACHE`. Como Zustand siempre genera nuevo array en `set`, la invalidación es automática. Lookup O(1). |
 | 🟢 B10 | **Comparaciones de fecha sin normalizar hora.** Mezcla de `new Date(x) < new Date()` con y sin `setHours(0,0,0,0)`. | `src/lib/fechas.ts` (nuevo), `src/app/page.tsx`, `src/lib/bloqueos-contextuales.ts` | Utilidad central: `diasRestantes`, `estaVencido`, `venceEn`. Constante `SIN_VENCIMIENTO = 999`. Todos los consumidores migrados. |
-| 🟢 B11 | **Selectores Zustand "tontos"** (`const { trabajadores } = useStore()` se suscribe a todo el store). | `src/app/page.tsx`, `src/app/trabajadores/page.tsx`, `src/components/custom/dashboard-onboarding.tsx` | Migrado a `useStore(s => s.field)` por slice. Memoizados `topTrabajadores`, `tareasPendientes`, `promedioCompletitudOnboarding` en dashboard-onboarding. |
+| 🟢 B11 | **Selectores Zustand "tontos"** (`const { trabajadores } = useStore()` se suscribe a todo el store). | 22 páginas + 16 componentes (ver §2.1 P1-9 ext) | Migrado a selectores granulares / `useShallow`. Memoizados derivados pesados en dashboard-onboarding. |
 
 ### 1.3 Higiene de código (P2)
 
@@ -71,8 +71,10 @@ Build limpio al inicio, pero con riesgos latentes que se materializaban tras nav
 
 - `src/lib/fechas.ts` — utilidades de fecha centralizadas.
 - `src/lib/enums.ts` — enums de dominio centralizados.
+- `src/lib/logger.ts` — logger estructurado con `createLogger(scope)`.
 - `src/app/error.tsx` — boundary de segmento raíz.
 - `src/app/global-error.tsx` — fallback de último recurso.
+- `vitest.config.ts` + `src/__tests__/` — suite Vitest (6 archivos, 78 tests).
 
 ### 1.6 Verificación final aplicada
 
@@ -80,49 +82,86 @@ Build limpio al inicio, pero con riesgos latentes que se materializaban tras nav
 - `npx eslint <archivos modificados>` → 0 errores nuevos (solo warnings preexistentes ya degradados por la config del proyecto).
 - `npx next build` → exitoso, 26 estáticas + 3 dinámicas.
 
+### 1.7 Iteración 2026-06-14: cierre de prioridad alta y media
+
+Resumen de la pasada que cerró todos los items 🔴 + 🟡 del roadmap previo (ver detalle en §2):
+
+- **Selectores granulares (P1-9 ext):** 22 páginas + 16 componentes migrados a `useShallow`/selectores individuales.
+- **Tests unitarios (P3-18):** Vitest configurado (`vitest.config.ts` con `resolve.tsconfigPaths`), 70 tests verdes en 4 archivos cubriendo `fechas`, `validadores`, `bloqueos-contextuales` y el cache de `onboarding-store`.
+- **Logger central:** `src/lib/logger.ts` con `createLogger(scope)` y sink swappable; 18 stores migrados de `console.*`.
+- **Flag `hydrated`:** 23 stores con `persist` + dashboards (`/`, `dashboard-onboarding`) consumen el flag para evitar flicker de "0%".
+- **Side-effects aislados:** `createTareasForTrabajador` ya no aborta el alta de tareas si falla notificación o auditoría.
+- **Invariante de cache documentada:** comentario inline + convención #9.
+
+Verificación final tras la iteración: `tsc --noEmit` ✅, `next build` ✅, `npm run lint` ✅ (0 errors, warnings preexistentes), `npm test` ✅ (70/70).
+
+### 1.8 Iteración 2026-06-20: limpieza progresiva de warnings ESLint
+
+Reducción de **237 → 16 warnings** (0 errors). Cuatro fases; las tres primeras completadas y verificadas:
+
+| Fase | Regla | Antes | Después | Enfoque |
+|------|-------|-------|---------|---------|
+| 🟢 1 | `@typescript-eslint/no-unused-vars` | ~128 | 1 | Eliminar imports/vars muertos; prefijo `_` en parámetros de signatura obligatoria; regla en `eslint.config.mjs` con `argsIgnorePattern: "^_"`. |
+| 🟢 2 | `@typescript-eslint/no-explicit-any` | ~86 | 0 | Tipos explícitos por archivo (`ControlFormData`, `MappedWorker`, `Solicitud`, uniones de payload, etc.); `import type` entre stores para evitar ciclos. |
+| 🟢 3 | `react-hooks/exhaustive-deps` | 8 | 0 | Deps faltantes añadidas; datos estáticos extraídos (`NAV_CONFIG` en sidebar); guards documentados donde evitan loops. |
+| 🟡 4 | `react-hooks/set-state-in-effect` | ~15 | 15 | Pendiente — form-sync intencional; migrar a derivación en render o `useSyncExternalStore`. |
+
+**Único warning restante de Fase 1:** import sin usar en `trabajador-form.tsx:15`.
+
+**Archivos con `set-state-in-effect` pendientes (15):** `control/page`, `epp/page`, `flujos/page` ×2, `inventario/page`, `page.tsx`, `reuniones/page`, `vehiculos/inspecciones/page`, `activo-form`, `comunicaciones/generador-clima`, `contrato-form`, `control/asignar-control-modal`, `sidebar`, `ticket-form`, `trabajador-form`.
+
+Verificación 2026-06-20: `tsc --noEmit` ✅, `npm test` ✅ (78/78), `next build` ✅, `eslint .` ✅ (0 errors, 16 warnings).
+
 ---
 
 ## 2. 📋 Plan pendiente (roadmap)
 
 ### 2.1 🔴 Alta prioridad
 
-#### P1-9 ext — Aplicar selectores granulares al resto de páginas
-- **Estado:** Solo 3 páginas migradas (home, trabajadores, dashboard-onboarding).
-- **Pendiente:** `asistencia/page.tsx`, `comunicaciones/page.tsx`, `contratos/page.tsx`, `contratos/[id]/page.tsx`, `control/page.tsx`, `epp/page.tsx`, `inventario/page.tsx`, `tickets/page.tsx`, `vehiculos/page.tsx`, `vehiculos/inspecciones/page.tsx`, `solicitudes/*`, `usuarios/page.tsx`, `auditoria/page.tsx`, `proveedores/page.tsx`, `reuniones/page.tsx`, `sap/page.tsx`, `notebooks/page.tsx`, `talentos/page.tsx`, `flujos/page.tsx`.
-- **Patrón:** reemplazar `const { x, y } = useStore()` por `const x = useStore(s => s.x); const y = useStore(s => s.y);`.
-- **Criterio de aceptación:** sin regresiones de comportamiento; React DevTools profiler muestra menos renders en navegación.
+#### 🟢 P1-9 ext — Aplicar selectores granulares al resto de páginas (COMPLETADO 2026-06-14)
+- **Estado:** todas las páginas y componentes migrados. Se eligió `useShallow` (zustand/react/shallow) para conservar la ergonomía del destructuring sin re-renders extra.
+- **Páginas migradas:** `asistencia`, `comunicaciones`, `contratos`, `contratos/[id]`, `control`, `epp`, `inventario`, `tickets`, `vehiculos`, `vehiculos/inspecciones`, `solicitudes/*`, `usuarios`, `auditoria`, `proveedores`, `reuniones`, `sap`, `notebooks`, `talentos`, `flujos`, `onboarding`, `alimentacion`, `trabajadores/[id]`.
+- **Componentes migrados:** `onboarding-wizard`, `trabajador-form`, `contrato-form`, `ticket-form`, `ticket-detalle`, `activo-form`, `activo-asignar`, `checklist-board`, `checklist-express`, `checklist-auditoria`, `checklist-diario`, `trabajador-detalle`, `alertas-trabajador`, `ciclo-vida-indicador`, `mi-perfil`, `comunicaciones/generador-tarjetas`.
+- **Verificación:** `tsc --noEmit` y `next build` OK.
 
-#### P3-18 — Tests unitarios de funciones puras
-- **Pendiente:** `src/lib/validadores.ts`, `src/lib/bloqueos-contextuales.ts`, `src/lib/fechas.ts`, cache de `onboarding-store` (`progressMapFor`, `indexarTareasPorTrabajador`).
-- **Por qué:** estas funciones tienen lógica de negocio (cálculo de porcentajes, días, completitud) sin side effects; son el target ideal para empezar la suite de tests.
-- **Stack sugerido:** Vitest (compatible con Next.js 16 + Turbopack).
+#### 🟢 P3-18 — Tests unitarios de funciones puras (COMPLETADO 2026-06-14)
+- **Stack:** Vitest 4.x + happy-dom + `vite-tsconfig-paths` (vía `resolve.tsconfigPaths`). Scripts `npm test`, `npm run test:watch`, `npm run test:ui`.
+- **Cobertura:**
+  - `src/__tests__/lib/fechas.test.ts` — 14 tests (`diasRestantes`, `estaVencido`, `venceEn`).
+  - `src/__tests__/lib/validadores.test.ts` — 16 tests, incluida regresión explícita de B9 (vacío → 0%, completo → 100%, escalera intermedia).
+  - `src/__tests__/lib/bloqueos-contextuales.test.ts` — 30 tests para los 5 helpers de bloqueo + `getEstadoLaboralDerivado` + `getAlertasUrgencia`.
+  - `src/__tests__/store/onboarding-store.test.ts` — 10 tests del cache (memoización por referencia, invalidación por nuevo array, anti-patrón de mutación in-place documentado como regresión).
+- **Resultado:** **78 tests pasando** (6 archivos; añadidos `notificaciones-store.test.ts` y `ciclo-vida-store.test.ts` en iteración posterior).
 
 ### 2.2 🟡 Prioridad media
 
-#### Logging estructurado centralizado
-- **Estado:** `console.error` / `console.warn` repartidos en stores.
-- **Pendiente:** crear `src/lib/logger.ts` con niveles (`info`, `warn`, `error`) y un sink configurable (consola en dev, Sentry/Logflare en prod).
-- **Migración:** reemplazar los `console.*` en los stores y boundaries con el logger.
+#### 🟢 Logging estructurado centralizado (COMPLETADO 2026-06-14)
+- **Implementación:** `src/lib/logger.ts` expone `createLogger(scope)` con niveles `debug | info | warn | error`, sink swappable (`setSink`) y nivel mínimo configurable (`setMinLevel`). El sink default usa `console.*` con prefijo `[scope]`. En tests/prod se puede inyectar Sentry/Logflare con `setSink`.
+- **Migración:** los 18 stores con logging activo migrados de `console.*` al logger (`onboarding-store`, `ciclo-vida-store`, `trabajadores-store`, `contratos-store`, `activos-store`, `inventario-store`, `proveedores-store`, `tickets-store`, `epp-store`, `control-store`, `workflows-store`, `solicitudes-store`, `reuniones-store`, `trabajadores-sap-store`, `asistencia-store`, `comunicaciones-store`, `auditoria-store`, `usuarios-store`, `alimentacion-store`, `mandantes-store`, `inspecciones-store`, `notificaciones-store`).
 
-#### Estado `hydrated` por store
-- **Por qué:** el dashboard muestra "0%" parpadeantes durante la hidratación de `persist` + el `fetchX` inicial. Un flag `hydrated: boolean` permitiría mostrar skeletons hasta tener datos sólidos.
-- **Patrón:** zustand `onRehydrateStorage` → `set({ hydrated: true })`.
+#### 🟢 Estado `hydrated` por store (COMPLETADO 2026-06-14)
+- **Implementación:** flag manual `hydrated: boolean` en cada store con `persist` (23 stores). Inicial `false`; `onRehydrateStorage: () => (state) => { if (state) state.hydrated = true; }` lo lleva a `true` al terminar la rehidratación.
+- **Consumo en UI:**
+  - `src/app/page.tsx` (dashboard home): combina `trabajadoresHydrated && contratosHydrated && activosHydrated && ciclosHydrated && tareasHydrated` antes de renderizar KPIs reales; muestra el banner "Cargando Tablero Operativo Unificado..." mientras tanto.
+  - `src/components/custom/dashboard-onboarding.tsx`: añade `DashboardOnboardingSkeleton` que se muestra hasta que `useTrabajadoresStore`, `useCicloVidaStore` y `useOnboardingStore` reportan `hydrated`.
 
-#### Refactor de mutaciones en `onboarding-store.createTareasForTrabajador`
-- **Estado:** secuencia "insert → audit → schedule" sin transacción. Si falla el schedule, el audit ya quedó hecho.
-- **Pendiente:** envolver en una secuencia "persist → if ok → schedule + audit" con rollback ante fallo intermedio.
+#### 🟢 Refactor de `onboarding-store.createTareasForTrabajador` (COMPLETADO 2026-06-14)
+- **Estado anterior:** secuencia "insert → set → notify → schedule → audit" en un único try/catch. Si la programación de recordatorios o la auditoría fallaba, el método retornaba `false` aunque las tareas ya estaban persistidas en Supabase y en el store.
+- **Refactor aplicado:** se separa en dos fases:
+  1. **Camino crítico** (insert + actualización del store) en su propio try/catch; si falla, no hay side-effects.
+  2. **Side-effects** (notificación de creación, scheduling de recordatorios, auditoría) cada uno en su propio try/catch independiente. Una falla aquí queda en `log.warn` pero no aborta el éxito ya consolidado en (1).
+- **Por qué este enfoque:** rollback de las tareas insertadas no es viable sin transacciones reales en Supabase y los side-effects son secundarios al estado canónico (las tareas). Documentado en el código.
 
-#### Documentación inline de las invariantes del cache
-- **Por qué:** el cache de `onboarding-store` depende de que Zustand SIEMPRE genere arrays nuevos en `set`. Si alguien hace `set({ tareas: state.tareas })` (misma referencia) el cache no se invalidará.
-- **Acción:** comentario claro en el store + invariante documentada en este plan.
+#### 🟢 Documentación inline de las invariantes del cache (COMPLETADO 2026-06-14)
+- **Implementación:** comentario extenso en `src/store/onboarding-store.ts` justo antes de `PROGRESS_CACHE` y `TAREAS_POR_TRABAJADOR_CACHE`, listando ejemplos OK/BUG. Convención #9 añadida en este documento.
 
 ### 2.3 🟢 Baja prioridad / mejoras futuras
 
-#### Warnings preexistentes degradados
-Estos están como `warn` en `eslint.config.mjs` por decisión histórica. Plan progresivo:
-- `react-hooks/set-state-in-effect` (≈8 ocurrencias) — patrón intencional en form-sync, pero ideal migrar a `useSyncExternalStore` o derivar estado en render.
-- `@typescript-eslint/no-explicit-any` (≈10 ocurrencias) — formularios dinámicos. Refactor por archivo.
-- `@typescript-eslint/no-unused-vars` (≈30 ocurrencias, principalmente imports de íconos sin usar) — `eslint --fix` puede limpiar la mayoría.
+#### 🟡 Warnings ESLint — Fase 4 pendiente (16 restantes, ver §1.8)
+- 🟢 `@typescript-eslint/no-explicit-any` — **0 warnings** (completado 2026-06-20).
+- 🟢 `react-hooks/exhaustive-deps` — **0 warnings** (completado 2026-06-20).
+- 🟡 `@typescript-eslint/no-unused-vars` — **1 warning** (`trabajador-form.tsx:15`, import sin usar).
+- 🟡 `react-hooks/set-state-in-effect` — **15 warnings** en 14 archivos (form-sync al montar/editar). Estrategias: derivar en render, key de reset, o supresión documentada caso a caso.
 
 #### `useShallow` para selectores con objeto
 Si en el futuro algún componente necesita 4+ campos del mismo store, considerar `useShallow` para evitar overhead de selectores individuales. Actualmente no es necesario.
@@ -150,7 +189,7 @@ Snapshot del audit del 2026-06-14 antes de cualquier cambio. Útil para entender
 | B8 | Wizard usaba mismo campo para 2 exámenes | ✅ Resuelto |
 | B9 | `validadores.ts` siempre 0% completitud | ✅ Resuelto |
 | B10 | Comparaciones de fecha sin normalizar | ✅ Resuelto |
-| B11 | Selectores Zustand "tontos" | ✅ Parcial (3 páginas hot; resto pendiente) |
+| B11 | Selectores Zustand "tontos" | ✅ Resuelto (22 páginas + 16 componentes) |
 | B12 | 16 lint errors | ✅ Resuelto |
 | B13 | `getTareasByFase` llamado 2× por render en wizard | ✅ Resuelto (vía cache de B1.10) |
 | B14 | Recordatorios huérfanos al recargar | ✅ Resuelto (vía persist + rehydrate de B5) |
@@ -162,7 +201,8 @@ Snapshot del audit del 2026-06-14 antes de cualquier cambio. Útil para entender
 - **Notificaciones duplicadas:** ocurría en cada re-render del dashboard → eliminado por idempotencia.
 - **`getProgressByTrabajador` por trabajador:** O(N) en cada llamada → O(1) después del primer cómputo.
 - **Build:** 0 errores antes, 0 errores después. Mantenido.
-- **Lint:** 16 errores antes, 0 errores después.
+- **Lint errors:** 16 antes → 0 después (2026-06-14).
+- **Lint warnings:** 237 antes → 16 después (2026-06-20; ver §1.8).
 
 ---
 
@@ -178,6 +218,7 @@ Reglas implícitas del codebase descubiertas durante el refactor. Documentar par
 6. **Notificaciones con id semántico:** usar prefijos estables (`venc-${idTrabajador}-${label}`, `rem-${idTarea}`, etc.) para que la idempotencia funcione.
 7. **`window`/`localStorage`:** envolver en `typeof window !== "undefined"` para tolerancia SSR.
 8. **Next.js 16.2+ error boundaries:** API es `unstable_retry`, NO `reset` (cambio breaking introducido en 16.2).
+9. **Cache de `onboarding-store` (WeakMap por identidad de array):** las llaves de `PROGRESS_CACHE` y `TAREAS_POR_TRABAJADOR_CACHE` son la referencia del array `tareas`. Cualquier `set({ tareas: ... })` debe producir una **nueva referencia** (`[...]`, `.map`, `.filter`); nunca reasignar la misma referencia ni mutar in-place (`push`, `splice`), porque el cache depende de identidad para invalidarse.
 
 ---
 
@@ -185,12 +226,12 @@ Reglas implícitas del codebase descubiertas durante el refactor. Documentar par
 
 Orden sugerido para la próxima iteración:
 
-1. **Tests unitarios** (P3-18) — barrera de regresión para todo lo arreglado. Empezar con `validadores.ts` y `fechas.ts`.
-2. **Logger central** — preparación para producción. Pequeño y aislado.
-3. **Selectores granulares en páginas restantes** — mecánico, alto valor acumulado.
-4. **Estado `hydrated` por store** — UX (eliminar parpadeos del dashboard).
+1. **🔴 Fase 4 lint — `set-state-in-effect` (15 warnings)** — único bloque grande pendiente de la limpieza ESLint. Archivos listados en §1.8. Priorizar formularios de alta frecuencia (`trabajador-form`, `ticket-form`, `contrato-form`) y el auto-expand del sidebar.
+2. **Cerrar Fase 1 residual** — eliminar el import sin usar en `trabajador-form.tsx:15` (1 warning).
+3. **Wire del logger en producción** — el sink default es `console.*`. Falta un adaptador real (Sentry / Logflare / Datadog) y un punto único de inicialización (probablemente `src/app/layout.tsx` o `logger-init.tsx`).
+4. **Optimizar fetch redundante (B6)** — varias páginas siguen disparando `fetchX()` al montar aunque persist ya hidrató. Con el flag `hydrated` ya disponible, gatear el fetch a "si está hidratado y han pasado N minutos desde el último fetch".
+5. **Ampliar cobertura de tests** — 78 tests en lib + 3 stores; queda la mayoría de stores sin test. Patrón de mocks ya establecido en `onboarding-store.test.ts`.
 
 Sin urgencia inmediata:
-- Server Components migration.
-- `useShallow` cuando aplique.
-- Limpieza de warnings preexistentes.
+- Migración progresiva a Server Components (toda la app es `"use client"`).
+- Cobertura E2E con Playwright para los flujos críticos (alta de trabajador, asignación de activos, completado de checklist).

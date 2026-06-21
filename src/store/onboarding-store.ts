@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
 import { useNotificacionesStore } from "@/store/notificaciones-store";
+
+const log = createLogger("onboarding-store");
 
 // ─────────────────────────────────────────────────────────────
 //  Types
@@ -267,6 +270,8 @@ const TAREAS_TEMPLATE: Record<FaseOnboarding, Omit<TareaOnboarding, "id" | "id_t
 interface OnboardingState {
   tareas: TareaOnboarding[];
   loading: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
 
   // Fetch y CRUD
   fetchTareas: () => Promise<void>;
@@ -285,6 +290,24 @@ interface OnboardingState {
 
 // ─────────────────────────────────────────────────────────────
 //  Cache de cómputos derivados
+//
+//  INVARIANTE CRÍTICA: las dos WeakMaps usan la *referencia* del
+//  array `tareas` como llave. La invalidación es automática SOLO
+//  si todo mutator del store produce un array nuevo. Ejemplos:
+//
+//      OK   →  set({ tareas: [...state.tareas, nueva] })
+//      OK   →  set({ tareas: state.tareas.map(fn) })
+//      BUG  →  set({ tareas: state.tareas })
+//                (misma referencia → cache nunca se invalida)
+//      BUG  →  state.tareas.push(x); set({ tareas: state.tareas })
+//                (mutación in-place → cache stale)
+//
+//  Si en el futuro se introduce Immer / `produce`, esta
+//  invariante se satisface automáticamente. Mientras NO se use
+//  Immer, todo `set` que toque `tareas` debe construir una nueva
+//  referencia (spread, map, filter, etc.).
+//
+//  Ver convenciones #2 y #9 en `plan_refactor_tecnico.md`.
 // ─────────────────────────────────────────────────────────────
 
 const PROGRESS_CACHE = new WeakMap<
@@ -374,6 +397,7 @@ export const useOnboardingStore = create<OnboardingState>()(
     (set, get) => ({
       tareas: [],
       loading: false,
+      hydrated: false,
 
       fetchTareas: async () => {
         set({ loading: true });
@@ -386,10 +410,10 @@ export const useOnboardingStore = create<OnboardingState>()(
           if (!error && data && data.length > 0) {
             set({ tareas: data as TareaOnboarding[] });
           } else if (error && process.env.NODE_ENV === "development") {
-            console.warn("[onboarding-store] fetchTareas error:", error.message);
+            log.warn("fetchTareas error", error.message);
           }
         } catch (err) {
-          console.error("Error fetching tareas:", err);
+          log.error("Error fetching tareas", err);
         } finally {
           set({ loading: false });
         }
@@ -398,13 +422,16 @@ export const useOnboardingStore = create<OnboardingState>()(
       createTareasForTrabajador: async (idTrabajador: string) => {
         const tareasExistentes = get().getTareasByTrabajador(idTrabajador);
         if (tareasExistentes.length > 0) {
-          console.warn("Trabajador ya tiene tareas de onboarding");
+          log.warn("Trabajador ya tiene tareas de onboarding", { idTrabajador });
           return false;
         }
 
+        // 1. Construccion + persistencia de las tareas (camino critico).
+        //    Si esto falla, NO modificamos el store ni hacemos side-effects.
+        let nuevasTareas: TareaOnboarding[];
         try {
           const ahora = new Date().toISOString();
-          const nuevasTareas: TareaOnboarding[] = [];
+          nuevasTareas = [];
 
           Object.values(TAREAS_TEMPLATE).forEach((tareas) => {
             tareas.forEach((tarea) => {
@@ -422,13 +449,22 @@ export const useOnboardingStore = create<OnboardingState>()(
             .insert(nuevasTareas);
 
           if (error) {
-            console.error("Error al crear tareas:", error);
+            log.error("Error al crear tareas", error);
             return false;
           }
 
           set({ tareas: [...get().tareas, ...nuevasTareas] });
+        } catch (err) {
+          log.error("Error al crear tareas para trabajador", err);
+          return false;
+        }
 
-          // Crear notificación y programar recordatorios para tareas con fecha límite
+        // 2. Side-effects (notificaciones + auditoria). Cada uno se aisla
+        //    en su propio try/catch: una falla aqui NO debe revertir las
+        //    tareas ya persistidas en (1). Lo importante es que el
+        //    onboarding del trabajador exista; las notificaciones y la
+        //    auditoria son secundarias.
+        try {
           const notifStore = useNotificacionesStore.getState();
           notifStore.addNotification({
             id: `onb-created-${idTrabajador}`,
@@ -436,23 +472,32 @@ export const useOnboardingStore = create<OnboardingState>()(
             mensaje: `Se generaron ${nuevasTareas.length} tareas para el trabajador ${idTrabajador}`,
             nivel: "info",
           });
+        } catch (err) {
+          log.warn("No se pudo emitir notificacion de checklist creado", err);
+        }
 
+        try {
+          const notifStore = useNotificacionesStore.getState();
           nuevasTareas.forEach((t) => {
-            if (t.fecha_limite) {
-              // Programar recordatorio a las 09:00 del día de vencimiento
-              const at = new Date(`${t.fecha_limite}T09:00:00`);
-              notifStore.scheduleReminder(
-                {
-                  id: `rem-${t.id}`,
-                  titulo: `Tarea próxima a vencer: ${t.nombre}`,
-                  mensaje: `La tarea '${t.nombre}' vence el ${t.fecha_limite}`,
-                  nivel: "advertencia",
-                  meta: { tareaId: t.id, id_trabajador: idTrabajador },
-                },
-                at.toISOString()
-              );
-            }
+            if (!t.fecha_limite) return;
+            // Programar recordatorio a las 09:00 del dia de vencimiento.
+            const at = new Date(`${t.fecha_limite}T09:00:00`);
+            notifStore.scheduleReminder(
+              {
+                id: `rem-${t.id}`,
+                titulo: `Tarea próxima a vencer: ${t.nombre}`,
+                mensaje: `La tarea '${t.nombre}' vence el ${t.fecha_limite}`,
+                nivel: "advertencia",
+                meta: { tareaId: t.id, id_trabajador: idTrabajador },
+              },
+              at.toISOString()
+            );
           });
+        } catch (err) {
+          log.warn("No se pudieron programar recordatorios de onboarding", err);
+        }
+
+        try {
           useAuditoriaStore.getState().registrar({
             modulo: "Trabajadores",
             id_entidad: idTrabajador,
@@ -460,12 +505,11 @@ export const useOnboardingStore = create<OnboardingState>()(
             accion: "Alta",
             detalle: `Creación de checklist onboarding: ${nuevasTareas.length} tareas creadas`,
           });
-
-          return true;
         } catch (err) {
-          console.error("Error al crear tareas para trabajador:", err);
-          return false;
+          log.warn("No se pudo registrar auditoria de checklist creado", err);
         }
+
+        return true;
       },
 
       getTareasByTrabajador: (idTrabajador: string) => {
@@ -490,7 +534,7 @@ export const useOnboardingStore = create<OnboardingState>()(
             .eq("id", idTarea);
 
           if (error) {
-            console.error("Error al actualizar tarea:", error);
+            log.error("Error al actualizar tarea", error);
             return false;
           }
 
@@ -510,7 +554,7 @@ export const useOnboardingStore = create<OnboardingState>()(
 
           return true;
         } catch (err) {
-          console.error("Error al completar tarea:", err);
+          log.error("Error al completar tarea", err);
           return false;
         }
       },
@@ -523,7 +567,7 @@ export const useOnboardingStore = create<OnboardingState>()(
             .eq("id", idTarea);
 
           if (error) {
-            console.error("Error al actualizar tarea:", error);
+            log.error("Error al actualizar tarea", error);
             return false;
           }
 
@@ -535,7 +579,7 @@ export const useOnboardingStore = create<OnboardingState>()(
 
           return true;
         } catch (err) {
-          console.error("Error al actualizar tarea:", err);
+          log.error("Error al actualizar tarea", err);
           return false;
         }
       },
@@ -570,6 +614,9 @@ export const useOnboardingStore = create<OnboardingState>()(
     {
       name: "onboarding-store",
       version: 1,
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

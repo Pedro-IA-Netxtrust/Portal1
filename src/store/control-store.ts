@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+
+const log = createLogger("control-store");
 
 export type ResultadoExamen = "Aprobado" | "Aprobado con Observaciones" | "Rechazado" | "Pendiente";
 export type EstadoCurso = "Aprobado" | "Reprobado" | "Pendiente" | "No Asiste";
@@ -83,7 +86,10 @@ interface ControlState {
   catalogoExamenes: CatalogoExamen[];
   catalogoCursos: CatalogoCurso[];
   catalogoDocumentos: CatalogoDocumento[];
-  
+
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
+
   fetchControlData: () => Promise<void>;
   
   addExamen: (e: Omit<ControlExamen, "id">) => Promise<void>;
@@ -253,6 +259,7 @@ export const useControlStore = create<ControlState>()(
       catalogoExamenes: mockCatalogoExamenes,
       catalogoCursos: mockCatalogoCursos,
       catalogoDocumentos: mockCatalogoDocumentos,
+      hydrated: false,
 
       fetchControlData: async () => {
         try {
@@ -263,7 +270,7 @@ export const useControlStore = create<ControlState>()(
 
           // Fallback silencioso si la tabla no existe
           if (exError) {
-            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_examenes, usando mock");
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene control_examenes, usando mock");
             const { examenes } = get();
             if (examenes.length === 0) set({ examenes: mockExamenes });
           } else if (exData) {
@@ -276,7 +283,7 @@ export const useControlStore = create<ControlState>()(
             .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
 
           if (cuError) {
-            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_cursos, usando mock");
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene control_cursos, usando mock");
             const { cursos } = get();
             if (cursos.length === 0) set({ cursos: mockCursos });
           } else if (cuData) {
@@ -289,7 +296,7 @@ export const useControlStore = create<ControlState>()(
             .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
 
           if (docError) {
-            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_documentos, usando mock");
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene control_documentos, usando mock");
             const { documentos } = get();
             if (documentos.length === 0) set({ documentos: mockDocumentos });
           } else if (docData) {
@@ -303,7 +310,7 @@ export const useControlStore = create<ControlState>()(
             .order("nombre", { ascending: true });
 
           if (catCuError) {
-            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_catalogo_cursos, usando mock");
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene control_catalogo_cursos, usando mock");
             const { catalogoCursos } = get();
             if (catalogoCursos.length === 0) set({ catalogoCursos: mockCatalogoCursos });
           } else if (catCuData) {
@@ -317,7 +324,7 @@ export const useControlStore = create<ControlState>()(
             .order("nombre", { ascending: true });
 
           if (catExError) {
-            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_catalogo_examenes, usando mock");
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene control_catalogo_examenes, usando mock");
             const { catalogoExamenes } = get();
             if (catalogoExamenes.length === 0) set({ catalogoExamenes: mockCatalogoExamenes });
           } else if (catExData) {
@@ -331,7 +338,7 @@ export const useControlStore = create<ControlState>()(
             .order("nombre", { ascending: true });
 
           if (catDocError) {
-            if (process.env.NODE_ENV === "development") console.warn("Supabase no tiene control_catalogo_documentos, usando mock");
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene control_catalogo_documentos, usando mock");
             const { catalogoDocumentos } = get();
             if (catalogoDocumentos.length === 0) set({ catalogoDocumentos: mockCatalogoDocumentos });
           } else if (catDocData) {
@@ -339,7 +346,7 @@ export const useControlStore = create<ControlState>()(
           }
 
         } catch (err) {
-          if (process.env.NODE_ENV === "development") console.warn("Error red control-store", err);
+          if (process.env.NODE_ENV === "development") log.warn("Error red control-store", err);
           const { examenes, cursos, documentos, catalogoCursos, catalogoExamenes, catalogoDocumentos } = get();
           if (examenes.length === 0 && cursos.length === 0 && documentos.length === 0) {
             set({ 
@@ -369,7 +376,7 @@ export const useControlStore = create<ControlState>()(
             }));
           }
         } catch (err) {
-          console.warn("Error persistiendo examen", err);
+          log.warn("Error persistiendo examen", err);
         }
       },
 
@@ -417,7 +424,7 @@ export const useControlStore = create<ControlState>()(
           set((state) => ({
             examenes: state.examenes.filter((ex) => !tempIds.includes(ex.id))
           }));
-          console.warn("Error insert masivo examenes — rollback aplicado", err);
+          log.warn("Error insert masivo examenes - rollback aplicado", err);
         }
       },
 
@@ -434,7 +441,7 @@ export const useControlStore = create<ControlState>()(
               .eq("id", id);
             if (error) throw error;
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       deleteExamen: async (id) => {
@@ -443,7 +450,7 @@ export const useControlStore = create<ControlState>()(
           if (!id.startsWith('temp-')) {
             await supabase.from("control_examenes").delete().eq("id", id);
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       addCurso: async (c) => {
@@ -459,7 +466,7 @@ export const useControlStore = create<ControlState>()(
               cursos: state.cursos.map((item) => item.id === tempId ? data[0] : item)
             }));
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       addCursoMasivo: async (trabajadoresIds, c) => {
@@ -497,7 +504,7 @@ export const useControlStore = create<ControlState>()(
           set((state) => ({
             cursos: state.cursos.filter((cu) => !tempIds.includes(cu.id))
           }));
-          console.warn("Error insert masivo cursos — rollback aplicado", err);
+          log.warn("Error insert masivo cursos - rollback aplicado", err);
         }
       },
 
@@ -509,7 +516,7 @@ export const useControlStore = create<ControlState>()(
           if (!id.startsWith('temp-')) {
             await supabase.from("control_cursos").update(updates).eq("id", id);
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       deleteCurso: async (id) => {
@@ -518,7 +525,7 @@ export const useControlStore = create<ControlState>()(
           if (!id.startsWith('temp-')) {
             await supabase.from("control_cursos").delete().eq("id", id);
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       addDocumento: async (d) => {
@@ -534,7 +541,7 @@ export const useControlStore = create<ControlState>()(
               documentos: state.documentos.map((item) => item.id === tempId ? data[0] : item)
             }));
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       addDocumentoMasivo: async (trabajadoresIds, d) => {
@@ -572,7 +579,7 @@ export const useControlStore = create<ControlState>()(
           set((state) => ({
             documentos: state.documentos.filter((doc) => !tempIds.includes(doc.id))
           }));
-          console.warn("Error insert masivo documentos — rollback aplicado", err);
+          log.warn("Error insert masivo documentos - rollback aplicado", err);
         }
       },
 
@@ -584,7 +591,7 @@ export const useControlStore = create<ControlState>()(
           if (!id.startsWith('temp-')) {
             await supabase.from("control_documentos").update(updates).eq("id", id);
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       deleteDocumento: async (id) => {
@@ -593,7 +600,7 @@ export const useControlStore = create<ControlState>()(
           if (!id.startsWith('temp-')) {
             await supabase.from("control_documentos").delete().eq("id", id);
           }
-        } catch (err) { console.warn(err); }
+        } catch (err) { log.warn("error", err); }
       },
 
       getAlertasByTrabajador: (id_trabajador) => {
@@ -704,7 +711,7 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_cursos").insert([{ id, nombre, categoria, validez_meses }]);
         } catch (err) {
-          console.warn("Error persistiendo curso en catálogo", err);
+          log.warn("Error persistiendo curso en catalogo", err);
         }
       },
 
@@ -727,7 +734,7 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_cursos").update(updates).eq("id", id);
         } catch (err) {
-          console.warn("Error modificando curso en catálogo", err);
+          log.warn("Error modificando curso en catalogo", err);
         }
       },
 
@@ -754,7 +761,7 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_cursos").delete().eq("id", id);
         } catch (err) {
-          console.warn("Error eliminando curso del catálogo", err);
+          log.warn("Error eliminando curso del catalogo", err);
         }
 
         return { success: true };
@@ -776,7 +783,7 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_examenes").insert([{ id, nombre, categoria }]);
         } catch (err) {
-          console.warn("Error persistiendo examen en catálogo", err);
+          log.warn("Error persistiendo examen en catalogo", err);
         }
       },
 
@@ -803,7 +810,7 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_examenes").delete().eq("id", id);
         } catch (err) {
-          console.warn("Error eliminando examen del catálogo", err);
+          log.warn("Error eliminando examen del catalogo", err);
         }
 
         return { success: true };
@@ -825,7 +832,7 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_documentos").insert([{ id, nombre, categoria }]);
         } catch (err) {
-          console.warn("Error persistiendo documento en catálogo", err);
+          log.warn("Error persistiendo documento en catalogo", err);
         }
       },
 
@@ -852,14 +859,17 @@ export const useControlStore = create<ControlState>()(
         try {
           await supabase.from("control_catalogo_documentos").delete().eq("id", id);
         } catch (err) {
-          console.warn("Error eliminando documento del catálogo", err);
+          log.warn("Error eliminando documento del catalogo", err);
         }
 
         return { success: true };
       }
     }),
     {
-      name: "monitoring-control-storage"
+      name: "monitoring-control-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

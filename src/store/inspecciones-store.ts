@@ -72,6 +72,8 @@ interface InspeccionesState {
   inspeccionesDiarias: InspeccionDiaria[];
   auditorias: AuditoriaECF4[];
   verificacionesExpress: VerificacionExpress[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   addInspeccionDiaria: (i: Omit<InspeccionDiaria, "id_inspeccion" | "resultado">) => void;
   deleteInspeccionDiaria: (id: string) => void;
   addAuditoria: (a: Omit<AuditoriaECF4, "id_auditoria">) => void;
@@ -216,6 +218,7 @@ export const useInspeccionesStore = create<InspeccionesState>()(
       inspeccionesDiarias: mockInspeccionesDiarias,
       auditorias: mockAuditorias,
       verificacionesExpress: mockVerificacionesExpress,
+      hydrated: false,
 
       addInspeccionDiaria: (i) => set((state) => {
         const resultado = evaluateInspectionResult(i);
@@ -262,7 +265,10 @@ export const useInspeccionesStore = create<InspeccionesState>()(
       }))
     }),
     {
-      name: "monitoring-inspecciones-storage"
+      name: "monitoring-inspecciones-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

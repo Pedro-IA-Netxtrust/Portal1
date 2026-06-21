@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Trabajador, useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useTrabajadoresSAPStore } from "@/store/trabajadores-sap-store";
-import { X, Save, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { X, Save, AlertCircle, Info } from "lucide-react";
 
 interface TrabajadorFormProps {
   trabajadorId?: string; // If provided, we are editing
@@ -11,13 +12,24 @@ interface TrabajadorFormProps {
 }
 
 export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorFormProps) {
-  const { trabajadores, addTrabajador, updateTrabajador } = useTrabajadoresStore();
+  const { addTrabajador, updateTrabajador } = useTrabajadoresStore(
+    useShallow((s) => ({
+      addTrabajador: s.addTrabajador,
+      updateTrabajador: s.updateTrabajador,
+    }))
+  );
   const isEditing = !!trabajadorId;
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<"personal" | "laboral" | "prevision" | "operativo" | "talento" | "sap">("personal");
 
-  const { sapList, fetchSAPData, upsertSAPData } = useTrabajadoresSAPStore();
+  const { sapList, fetchSAPData, upsertSAPData } = useTrabajadoresSAPStore(
+    useShallow((s) => ({
+      sapList: s.sapList,
+      fetchSAPData: s.fetchSAPData,
+      upsertSAPData: s.upsertSAPData,
+    }))
+  );
 
   const [sapData, setSapData] = useState({
     correo_adc_codelco: "",
@@ -109,35 +121,6 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
     cert_ti: false
   });
 
-  // Tag Inputs State
-  const [tagInputs, setTagInputs] = useState({
-    certificaciones_especificas: "",
-    idiomas: "",
-    otras_habilidades: ""
-  });
-
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: keyof typeof tagInputs) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const value = tagInputs[field].trim();
-      if (value) {
-        setFormData(prev => ({
-          ...prev,
-          [field]: [...(prev[field as keyof typeof formData] as string[] || []), value]
-        }));
-        setTagInputs(prev => ({ ...prev, [field]: "" }));
-      }
-    }
-  };
-
-  const removeTag = (field: keyof typeof tagInputs, index: number) => {
-    setFormData(prev => {
-      const arr = [...(prev[field as keyof typeof formData] as string[] || [])];
-      arr.splice(index, 1);
-      return { ...prev, [field]: arr };
-    });
-  };
-
   // Validation States
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -147,47 +130,35 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
   }, [fetchSAPData]);
 
   useEffect(() => {
-    if (isEditing && trabajadorId) {
-      const existing = trabajadores.find(t => t.id_trabajador === trabajadorId);
-      if (existing) {
-        const { id_trabajador, ...rest } = existing;
-        setFormData({
-          ...rest,
-          certificaciones_especificas: rest.certificaciones_especificas || [],
-          idiomas: rest.idiomas || [],
-          otras_habilidades: rest.otras_habilidades || [],
-          anos_experiencia: rest.anos_experiencia || 0,
-        });
-      }
-      
-      const existingSap = sapList.find(s => s.id_trabajador === trabajadorId);
-      if (existingSap) {
-        setSapData({
-          correo_adc_codelco: existingSap.correo_adc_codelco || "",
-          aprobacion_correo_adc_codelco: existingSap.aprobacion_correo_adc_codelco || "",
-          solicitud_cuenta_realizada_codelco: existingSap.solicitud_cuenta_realizada_codelco || "",
-          cuenta_correo_activa_codelco: !!existingSap.cuenta_correo_activa_codelco,
-          ticket_codelco: existingSap.ticket_codelco || "",
-          correo_adc_sap: existingSap.correo_adc_sap || "",
-          aprobacion_correo_adc_sap: existingSap.aprobacion_correo_adc_sap || "",
-          solicitud_cuenta_sap: existingSap.solicitud_cuenta_sap || "",
-          cuenta_sap_activa: !!existingSap.cuenta_sap_activa,
-          ticket_sap: existingSap.ticket_sap || "",
-          correo_adc_perfiles_sap: existingSap.correo_adc_perfiles_sap || "",
-          aprobacion_correo_adc_perfiles_sap: existingSap.aprobacion_correo_adc_perfiles_sap || "",
-          solicitud_perfiles_roles_sap: existingSap.solicitud_perfiles_roles_sap || "",
-          ticket_perfiles_sap: existingSap.ticket_perfiles_sap || "",
-          perfiles_sap_activos: !!existingSap.perfiles_sap_activos,
-          requiere_datamart: !!existingSap.requiere_datamart,
-          correo_adc_datamart: existingSap.correo_adc_datamart || "",
-          aprobacion_correo_adc_datamart: existingSap.aprobacion_correo_adc_datamart || "",
-          solicitud_datamart: existingSap.solicitud_datamart || "",
-          datamart_activo: !!existingSap.datamart_activo,
-          ticket_datamart: existingSap.ticket_datamart || "",
-        });
-      }
-    }
-  }, [isEditing, trabajadorId, trabajadores, sapList]);
+    if (!isEditing || !trabajadorId) return;
+
+    const existingSap = sapList.find((s) => s.id_trabajador === trabajadorId);
+    if (!existingSap) return;
+
+    setSapData({
+      correo_adc_codelco: existingSap.correo_adc_codelco || "",
+      aprobacion_correo_adc_codelco: existingSap.aprobacion_correo_adc_codelco || "",
+      solicitud_cuenta_realizada_codelco: existingSap.solicitud_cuenta_realizada_codelco || "",
+      cuenta_correo_activa_codelco: !!existingSap.cuenta_correo_activa_codelco,
+      ticket_codelco: existingSap.ticket_codelco || "",
+      correo_adc_sap: existingSap.correo_adc_sap || "",
+      aprobacion_correo_adc_sap: existingSap.aprobacion_correo_adc_sap || "",
+      solicitud_cuenta_sap: existingSap.solicitud_cuenta_sap || "",
+      cuenta_sap_activa: !!existingSap.cuenta_sap_activa,
+      ticket_sap: existingSap.ticket_sap || "",
+      correo_adc_perfiles_sap: existingSap.correo_adc_perfiles_sap || "",
+      aprobacion_correo_adc_perfiles_sap: existingSap.aprobacion_correo_adc_perfiles_sap || "",
+      solicitud_perfiles_roles_sap: existingSap.solicitud_perfiles_roles_sap || "",
+      ticket_perfiles_sap: existingSap.ticket_perfiles_sap || "",
+      perfiles_sap_activos: !!existingSap.perfiles_sap_activos,
+      requiere_datamart: !!existingSap.requiere_datamart,
+      correo_adc_datamart: existingSap.correo_adc_datamart || "",
+      aprobacion_correo_adc_datamart: existingSap.aprobacion_correo_adc_datamart || "",
+      solicitud_datamart: existingSap.solicitud_datamart || "",
+      datamart_activo: !!existingSap.datamart_activo,
+      ticket_datamart: existingSap.ticket_datamart || "",
+    });
+  }, [isEditing, trabajadorId, sapList]);
 
   // Helper: Validar RUT Chileno
   const validarRutChileno = (rut: string): boolean => {
@@ -255,7 +226,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
   ) => {
     const { name, value, type } = e.target;
     
-    let finalValue: any = value;
+    let finalValue: string | number | boolean = value;
     if (type === "checkbox") {
       finalValue = (e.target as HTMLInputElement).checked;
     } else if (name === "numero_identificacion" && formData.tipo_identificacion === "RUT") {
@@ -416,7 +387,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as "personal" | "laboral" | "prevision" | "operativo" | "talento" | "sap")}
                 className={`py-4 text-[11px] whitespace-nowrap font-bold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
                   activeTab === tab.id 
                     ? "border-primary text-primary" 
@@ -544,7 +515,7 @@ export default function TrabajadorForm({ trabajadorId, onClose }: TrabajadorForm
                         onChange={(e) => {
                           handleChange(e);
                           // Clear ID number on change to reset formatters
-                          setFormData(prev => ({ ...prev, numero_identificacion: "", tipo_identificacion: e.target.value as any }));
+                          setFormData(prev => ({ ...prev, numero_identificacion: "", tipo_identificacion: e.target.value as Trabajador["tipo_identificacion"] }));
                         }}
                         className="w-full bg-zinc-900/60 border border-zinc-800 text-sm text-white rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors"
                       >

@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("trabajadores-sap-store");
 
 export interface TrabajadorSAP {
   id_trabajador: string;
@@ -32,6 +35,8 @@ export interface TrabajadorSAP {
 interface TrabajadoresSAPState {
   sapList: TrabajadorSAP[];
   loading: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchSAPData: () => Promise<void>;
   upsertSAPData: (id_trabajador: string, fields: Partial<Omit<TrabajadorSAP, "id_trabajador">>) => Promise<void>;
 }
@@ -41,6 +46,7 @@ export const useTrabajadoresSAPStore = create<TrabajadoresSAPState>()(
     (set, get) => ({
       sapList: [],
       loading: false,
+      hydrated: false,
 
       fetchSAPData: async () => {
         set({ loading: true });
@@ -52,7 +58,7 @@ export const useTrabajadoresSAPStore = create<TrabajadoresSAPState>()(
           if (error) throw error;
           set({ sapList: data || [] });
         } catch (err) {
-          console.error("Error fetching trabajadores SAP:", err);
+          log.error("Error fetching trabajadores SAP", err);
         } finally {
           set({ loading: false });
         }
@@ -108,10 +114,15 @@ export const useTrabajadoresSAPStore = create<TrabajadoresSAPState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Error upserting trabajadores SAP for worker ${id_trabajador}:`, err);
+          log.error(`Error upserting trabajadores SAP for worker ${id_trabajador}`, err);
         }
       }
     }),
-    { name: "monitoring-trabajadores-sap-storage" }
+    {
+      name: "monitoring-trabajadores-sap-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

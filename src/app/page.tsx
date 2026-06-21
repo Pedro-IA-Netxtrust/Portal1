@@ -49,12 +49,15 @@ export default function Home() {
   // evitando re-renders por cambios en campos no relacionados del store.
   const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
   const fetchTrabajadores = useTrabajadoresStore((s) => s.fetchTrabajadores);
+  const trabajadoresHydrated = useTrabajadoresStore((s) => s.hydrated);
 
   const contratos = useContratosStore((s) => s.contratos);
   const fetchContratos = useContratosStore((s) => s.fetchContratos);
+  const contratosHydrated = useContratosStore((s) => s.hydrated);
 
   const activos = useActivosStore((s) => s.activos);
   const fetchActivos = useActivosStore((s) => s.fetchActivos);
+  const activosHydrated = useActivosStore((s) => s.hydrated);
 
   const examenes = useControlStore((s) => s.examenes);
   const cursos = useControlStore((s) => s.cursos);
@@ -68,13 +71,25 @@ export default function Home() {
 
   const ciclos = useCicloVidaStore((s) => s.ciclos);
   const fetchCiclos = useCicloVidaStore((s) => s.fetchCiclos);
+  const ciclosHydrated = useCicloVidaStore((s) => s.hydrated);
 
   const fetchTareas = useOnboardingStore((s) => s.fetchTareas);
+  const tareasHydrated = useOnboardingStore((s) => s.hydrated);
   const getProgressByTrabajador = useOnboardingStore(
     (s) => s.getProgressByTrabajador
   );
 
   const addNotification = useNotificacionesStore((s) => s.addNotification);
+
+  // Mostramos skeletons de KPI hasta que los stores principales estén
+  // rehidratados. Antes de eso los contadores y barras saldrían en cero
+  // por una fracción de segundo y luego saltarían a su valor real.
+  const dashboardHydrated =
+    trabajadoresHydrated &&
+    contratosHydrated &&
+    activosHydrated &&
+    ciclosHydrated &&
+    tareasHydrated;
 
   useEffect(() => {
     setIsClient(true);
@@ -239,7 +254,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabajadores, activos, examenes, cursos, catalogoExamenes, catalogoCursos]);
 
-  if (!isClient) {
+  if (!isClient || !dashboardHydrated) {
     return (
       <div className="max-w-7xl mx-auto p-8 text-center space-y-4">
         <Activity className="mx-auto text-brand-blue animate-pulse" size={48} />
@@ -251,7 +266,6 @@ export default function Home() {
   // Statistics calculation
   const totalTrabajadores = trabajadores.length;
   const contratosActivos = contratos.filter(c => c.estado === "Activo").length;
-  const activosAsignados = activos.filter(a => a.estado === "Asignado").length;
   const ticketsAbiertos = tickets.filter(t => esTicketAbierto(t.estado)).length;
   
   const alertasCriticasCount = alertas.filter(a => a.urgencia === "CRITICA").length;

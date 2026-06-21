@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useReunionesStore, Reunion, ReunionAsistencia } from "@/store/reuniones-store";
 import { useContratosStore } from "@/store/contratos-store";
 import { useMandantesStore } from "@/store/mandantes-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
-import { supabase } from "@/lib/supabase";
 import {
   Users,
   Calendar,
@@ -14,7 +14,6 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Clock,
   Search,
   Building2,
@@ -39,10 +38,23 @@ const ESTADO_CONFIG = {
 type ViewMode = "list" | "create" | "detail" | "take_attendance";
 
 export default function ReunionesPage() {
-  const { reuniones, fetchReuniones, crearReunion, eliminarReunion, fetchAsistencias, registrarAsistenciaProgramada } = useReunionesStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { mandantes } = useMandantesStore();
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
+  const { reuniones, fetchReuniones, crearReunion, eliminarReunion, fetchAsistencias, registrarAsistenciaProgramada } = useReunionesStore(
+    useShallow((s) => ({
+      reuniones: s.reuniones,
+      fetchReuniones: s.fetchReuniones,
+      crearReunion: s.crearReunion,
+      eliminarReunion: s.eliminarReunion,
+      fetchAsistencias: s.fetchAsistencias,
+      registrarAsistenciaProgramada: s.registrarAsistenciaProgramada,
+    }))
+  );
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
+  const mandantes = useMandantesStore((s) => s.mandantes);
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
 
   const [view, setView] = useState<ViewMode>("list");
   const [selectedReunion, setSelectedReunion] = useState<Reunion | null>(null);

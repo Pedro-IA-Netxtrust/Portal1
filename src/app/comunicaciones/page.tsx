@@ -1,26 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Megaphone, CalendarHeart, Gift, History } from "lucide-react";
-import { useTrabajadoresStore } from "@/store/trabajadores-store";
+import { useShallow } from "zustand/react/shallow";
+import { Megaphone, CalendarHeart, Gift } from "lucide-react";
+import { useTrabajadoresStore, Trabajador } from "@/store/trabajadores-store";
 import { useComunicacionesStore } from "@/store/comunicaciones-store";
 import { GeneradorTarjetas } from "@/components/custom/comunicaciones/generador-tarjetas";
 import { GeneradorClima } from "@/components/custom/comunicaciones/generador-clima";
 
-function calcularProximosEventos(trabajadores: any[]) {
+function calcularProximosEventos(trabajadores: Trabajador[]) {
   const hoy = new Date();
-  const mesActual = hoy.getMonth();
-  const diaActual = hoy.getDate();
 
   const eventos = trabajadores.map(t => {
     // Calcular cumpleaños
-    const [yearN, mesN, diaN] = t.fecha_nacimiento.split("-").map(Number);
-    let proxCumple = new Date(hoy.getFullYear(), mesN - 1, diaN);
+    const [, mesN, diaN] = t.fecha_nacimiento.split("-").map(Number);
+    const proxCumple = new Date(hoy.getFullYear(), mesN - 1, diaN);
     if (proxCumple < hoy) proxCumple.setFullYear(hoy.getFullYear() + 1);
 
     // Calcular aniversario
     const [yearI, mesI, diaI] = t.fecha_ingreso.split("-").map(Number);
-    let proxAniversario = new Date(hoy.getFullYear(), mesI - 1, diaI);
+    const proxAniversario = new Date(hoy.getFullYear(), mesI - 1, diaI);
     if (proxAniversario < hoy) proxAniversario.setFullYear(hoy.getFullYear() + 1);
     
     const añosCumplidos = proxAniversario.getFullYear() - yearI;
@@ -47,8 +46,12 @@ function calcularProximosEventos(trabajadores: any[]) {
 }
 
 export default function ComunicacionesPage() {
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { historial, fetchHistorial } = useComunicacionesStore();
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
+  const { historial, fetchHistorial } = useComunicacionesStore(
+    useShallow((s) => ({ historial: s.historial, fetchHistorial: s.fetchHistorial }))
+  );
   const [activeTab, setActiveTab] = useState<"generador" | "dashboard" | "historial" | "clima">("dashboard");
 
   useEffect(() => {

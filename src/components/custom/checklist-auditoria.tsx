@@ -10,8 +10,8 @@ interface ChecklistAuditoriaProps {
 }
 
 export default function ChecklistAuditoria({ onClose }: ChecklistAuditoriaProps) {
-  const { addAuditoria } = useInspeccionesStore();
-  const { activos } = useActivosStore();
+  const addAuditoria = useInspeccionesStore((s) => s.addAuditoria);
+  const activos = useActivosStore((s) => s.activos);
 
   const vehiculos = activos.filter(a => a.tipo === "Vehículo");
   const today = new Date().toISOString().split("T")[0];

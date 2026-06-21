@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useOnboardingStore,
   FaseOnboarding,
@@ -15,7 +16,13 @@ interface ChecklistBoardProps {
 }
 
 export default function ChecklistBoard({ idTrabajador, editable = true }: ChecklistBoardProps) {
-  const { getTareasByFase, getFasesProgress, completarTarea } = useOnboardingStore();
+  const { getTareasByFase, getFasesProgress, completarTarea } = useOnboardingStore(
+    useShallow((s) => ({
+      getTareasByFase: s.getTareasByFase,
+      getFasesProgress: s.getFasesProgress,
+      completarTarea: s.completarTarea,
+    }))
+  );
   const fasesProgress = getFasesProgress(idTrabajador);
 
   const FASES: FaseOnboarding[] = [

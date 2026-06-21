@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+
+const log = createLogger("ciclo-vida-store");
 
 // ─────────────────────────────────────────────────────────────
 //  Types
@@ -64,6 +67,10 @@ const TRANSICIONES_PERMITIDAS: TransicionPermitida[] = [
 interface CicloVidaState {
   ciclos: CicloVidaTrabajador[];
   loading: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
+  /** Timestamp (ms) del último fetch exitoso para gatear refetch redundante. */
+  lastFetchAt: number | null;
 
   // CRUD
   fetchCiclos: () => Promise<void>;
@@ -92,8 +99,18 @@ export const useCicloVidaStore = create<CicloVidaState>()(
     (set, get) => ({
       ciclos: [],
       loading: false,
+      hydrated: false,
+      lastFetchAt: null,
 
       fetchCiclos: async () => {
+        const now = Date.now();
+        const TTL_MS = 5 * 60 * 1000; // 5 minutos
+        const { lastFetchAt } = get();
+
+        if (lastFetchAt && now - lastFetchAt < TTL_MS) {
+          return;
+        }
+
         set({ loading: true });
         try {
           const { data, error } = await supabase
@@ -103,12 +120,16 @@ export const useCicloVidaStore = create<CicloVidaState>()(
           // respuesta vacía (RLS, tabla aún no creada en dev, etc.) NO debe
           // borrar los ciclos persistidos en localStorage.
           if (!error && data && data.length > 0) {
-            set({ ciclos: data as CicloVidaTrabajador[] });
+            set({ ciclos: data as CicloVidaTrabajador[], lastFetchAt: Date.now() });
+          } else if (!error && data && data.length === 0) {
+            // También consideramos fetch exitoso vacío como reciente para evitar
+            // martillar la red durante la ventana TTL.
+            set({ lastFetchAt: Date.now() });
           } else if (error && process.env.NODE_ENV === "development") {
-            console.warn("[ciclo-vida-store] fetchCiclos error:", error.message);
+            log.warn("fetchCiclos error", error.message);
           }
         } catch (err) {
-          console.error("Error fetching ciclos:", err);
+          log.error("Error fetching ciclos", err);
         } finally {
           set({ loading: false });
         }
@@ -149,14 +170,11 @@ export const useCicloVidaStore = create<CicloVidaState>()(
             .from("ciclo_vida_trabajador")
             .insert([nuevoCiclo]);
           if (error && process.env.NODE_ENV === "development") {
-            console.warn(
-              "[ciclo-vida-store] No se pudo persistir el ciclo en Supabase:",
-              error.message
-            );
+            log.warn("No se pudo persistir el ciclo en Supabase", error.message);
           }
         } catch (err) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[ciclo-vida-store] Error de red al inicializar ciclo:", err);
+            log.warn("Error de red al inicializar ciclo", err);
           }
         }
 
@@ -196,9 +214,10 @@ export const useCicloVidaStore = create<CicloVidaState>()(
 
         // Validar transición
         if (!get().validarTransicion(ciclo.estado_actual, estadoNuevo)) {
-          console.error(
-            `Transición no permitida: ${ciclo.estado_actual} → ${estadoNuevo}`
-          );
+          log.error("Transición no permitida", {
+            desde: ciclo.estado_actual,
+            hacia: estadoNuevo,
+          });
           return false;
         }
 
@@ -232,7 +251,7 @@ export const useCicloVidaStore = create<CicloVidaState>()(
             .upsert([cicloActualizado], { onConflict: "id" });
 
           if (error) {
-            console.error("Error al guardar ciclo:", error);
+            log.error("Error al guardar ciclo", error);
             return false;
           }
 
@@ -254,7 +273,7 @@ export const useCicloVidaStore = create<CicloVidaState>()(
 
           return true;
         } catch (err) {
-          console.error("Error al transicionar estado:", err);
+          log.error("Error al transicionar estado", err);
           return false;
         }
       },
@@ -267,6 +286,9 @@ export const useCicloVidaStore = create<CicloVidaState>()(
     {
       name: "ciclo-vida-store",
       version: 1,
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

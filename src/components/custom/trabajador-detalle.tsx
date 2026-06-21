@@ -8,9 +8,7 @@ import {
   Phone, 
   MapPin, 
   Briefcase, 
-  AlertTriangle, 
   CheckCircle2, 
-  Clock, 
   Calendar,
   FileText,
   User,
@@ -21,6 +19,7 @@ import {
   GraduationCap
 } from "lucide-react";
 import TrabajadorForm from "./trabajador-form";
+import { useShallow } from "zustand/react/shallow";
 import { useTrabajadoresStore, Trabajador } from "@/store/trabajadores-store";
 import { useTrabajadoresSAPStore } from "@/store/trabajadores-sap-store";
 import { useControlStore } from "@/store/control-store";
@@ -32,14 +31,29 @@ interface TrabajadorDetalleProps {
 }
 
 export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDetalleProps) {
-  const { updateTrabajador } = useTrabajadoresStore();
-  const { documentos, examenes, cursos, catalogoDocumentos, catalogoExamenes, catalogoCursos } = useControlStore();
+  const updateTrabajador = useTrabajadoresStore((s) => s.updateTrabajador);
+  const { documentos, examenes, cursos, catalogoDocumentos, catalogoExamenes, catalogoCursos } = useControlStore(
+    useShallow((s) => ({
+      documentos: s.documentos,
+      examenes: s.examenes,
+      cursos: s.cursos,
+      catalogoDocumentos: s.catalogoDocumentos,
+      catalogoExamenes: s.catalogoExamenes,
+      catalogoCursos: s.catalogoCursos,
+    }))
+  );
   const [activeTab, setActiveTab] = useState<"resumen" | "completo" | "epp" | "control" | "sap">("resumen");
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingSap, setIsEditingSap] = useState(false);
   const [modalControl, setModalControl] = useState<{ isOpen: boolean, type: "documento"|"curso"|"examen" }>({ isOpen: false, type: "documento" });
 
-  const { sapList, fetchSAPData, upsertSAPData } = useTrabajadoresSAPStore();
+  const { sapList, fetchSAPData, upsertSAPData } = useTrabajadoresSAPStore(
+    useShallow((s) => ({
+      sapList: s.sapList,
+      fetchSAPData: s.fetchSAPData,
+      upsertSAPData: s.upsertSAPData,
+    }))
+  );
 
   React.useEffect(() => {
     fetchSAPData();
@@ -296,7 +310,7 @@ export default function TrabajadorDetalle({ trabajador, onClose }: TrabajadorDet
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as "resumen" | "completo" | "epp" | "control" | "sap")}
               className={`py-3.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
                 activeTab === tab.id 
                   ? "border-blue-500 text-blue-400" 

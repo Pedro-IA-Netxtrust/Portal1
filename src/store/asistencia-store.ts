@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+
+const log = createLogger("asistencia-store");
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -202,6 +205,8 @@ interface AsistenciaState {
   registros: RegistroAsistencia[];
   auditoria: AuditoriaEntry[];
   metas: MetaFTE[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
 
   fetchAsistencia: () => Promise<void>;
   fetchMetasFTE: () => Promise<void>;
@@ -234,6 +239,7 @@ export const useAsistenciaStore = create<AsistenciaState>()(
       registros: generateMockRegistros(),
       auditoria: [],
       metas: INITIAL_METAS,
+      hydrated: false,
 
       fetchAsistencia: async () => {
         try {
@@ -291,7 +297,7 @@ export const useAsistenciaStore = create<AsistenciaState>()(
             }
           }
         } catch (err) {
-          console.error("Failed to load assistance from Supabase:", err instanceof Error ? err.message : err);
+          log.error("Failed to load assistance from Supabase", err instanceof Error ? err.message : err);
         }
       },
 
@@ -330,7 +336,7 @@ export const useAsistenciaStore = create<AsistenciaState>()(
             }
           }
         } catch (err) {
-          console.error("Failed to load metas_fte from Supabase:", err instanceof Error ? err.message : err);
+          log.error("Failed to load metas_fte from Supabase", err instanceof Error ? err.message : err);
         }
       },
 
@@ -434,7 +440,7 @@ export const useAsistenciaStore = create<AsistenciaState>()(
             },
           });
         } catch (err) {
-          console.error("Failed to persist attendance update on Supabase:", err);
+          log.error("Failed to persist attendance update on Supabase", err);
           // Rollback local state
           set((state) => {
             let restoredRegistros = [...state.registros];
@@ -492,7 +498,7 @@ export const useAsistenciaStore = create<AsistenciaState>()(
             meta: { meta_fte },
           });
         } catch (err) {
-          console.error(`Failed to update meta_fte for ${id_contrato} in Supabase:`, err);
+          log.error(`Failed to update meta_fte for ${id_contrato} in Supabase`, err);
         }
       },
 
@@ -515,6 +521,11 @@ export const useAsistenciaStore = create<AsistenciaState>()(
         return total / diasHabiles;
       },
     }),
-    { name: "monitoring-asistencia-v1" }
+    {
+      name: "monitoring-asistencia-v1",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

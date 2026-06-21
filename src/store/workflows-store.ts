@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+import type { Solicitud } from "@/store/solicitudes-store";
+
+const log = createLogger("workflows-store");
 
 // ─────────────────────────────────────────────────────────────
 //  Interfaces & Types
@@ -75,6 +79,8 @@ interface WorkflowsState {
   contractSettings: ContractSetting[];
   ccRecipients: CcRecipient[];
   sentMailLog: SentMailEntry[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   
   fetchWorkflowsData: () => Promise<void>;
   saveTemplate: (template: Omit<WorkflowTemplate, "id"> & { id?: string }) => Promise<void>;
@@ -83,12 +89,17 @@ interface WorkflowsState {
   removeCcRecipient: (id: string) => Promise<void>;
   updateContractManager: (contractId: string, managerId: string | null) => Promise<void>;
   
-  // Despachador de notificaciones (Simulación)
-  dispararNotificacion: (solicitud: any, stage: WorkflowStage, extraData?: {
-    observaciones?: string;
-    motivo_rechazo?: string;
-    nombre_revisor?: string;
-  }) => Promise<void>;
+  // Despachador de notificaciones (Simulación). Usamos `Solicitud` con
+  // `import type` para evitar ciclo runtime entre stores.
+  dispararNotificacion: (
+    solicitud: Solicitud,
+    stage: WorkflowStage,
+    extraData?: {
+      observaciones?: string;
+      motivo_rechazo?: string;
+      nombre_revisor?: string;
+    }
+  ) => Promise<void>;
   
   clearMailLog: () => void;
 }
@@ -188,6 +199,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
       contractSettings: [],
       ccRecipients: [],
       sentMailLog: [],
+      hydrated: false,
 
       fetchWorkflowsData: async () => {
         try {
@@ -198,18 +210,18 @@ export const useWorkflowsStore = create<WorkflowsState>()(
 
           if (errorTypes) throw errorTypes;
 
-          // 2. Cargar plantillas
-          const { data: tTemplates, error: errorTemplates } = await supabase
+          // 2. Cargar plantillas (ignoramos error: si falla usamos mocks)
+          const { data: tTemplates } = await supabase
             .from("ticket_workflow_templates")
             .select("*");
 
           // 3. Cargar configuraciones de contratos
-          const { data: tSettings, error: errorSettings } = await supabase
+          const { data: tSettings } = await supabase
             .from("ticket_type_contract_settings")
             .select("*");
 
           // 4. Cargar destinatarios CC
-          const { data: tCc, error: errorCc } = await supabase
+          const { data: tCc } = await supabase
             .from("ticket_type_cc_recipients")
             .select("*");
 
@@ -222,7 +234,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
 
         } catch (err) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[workflows-store] Fallback a datos locales/caché:", err);
+            log.warn("Fallback a datos locales/cache", err);
           }
           // El middleware persist se encarga de rehidratar el estado guardado en LocalStorage
         }
@@ -275,7 +287,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
             }
           }
         } catch (err) {
-          console.error("[workflows-store] Falló al persistir plantilla en Supabase:", err);
+          log.error("Fallo al persistir plantilla en Supabase", err);
         }
       },
 
@@ -322,7 +334,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
             }
           }
         } catch (err) {
-          console.error("[workflows-store] Falló al persistir configuración de contrato:", err);
+          log.error("Fallo al persistir configuracion de contrato", err);
         }
       },
 
@@ -354,7 +366,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
             }));
           }
         } catch (err) {
-          console.error("[workflows-store] Falló al guardar destinatario CC:", err);
+          log.error("Fallo al guardar destinatario CC", err);
         }
       },
 
@@ -370,7 +382,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
             if (error) throw error;
           }
         } catch (err) {
-          console.error("[workflows-store] Falló al borrar destinatario CC:", err);
+          log.error("Fallo al borrar destinatario CC", err);
         }
       },
 
@@ -379,12 +391,16 @@ export const useWorkflowsStore = create<WorkflowsState>()(
         try {
           const { useContratosStore } = await import("@/store/contratos-store");
           const contratos = useContratosStore.getState().contratos;
-          const updatedContratos = contratos.map(c => 
-            c.id_contrato === contractId ? { ...c, manager_id: managerId } : c
-          ) as any;
-          useContratosStore.setState({ contratos: updatedContratos });
+          // `manager_id` no esta en el tipo Contrato pero la API de Supabase lo
+          // expone; respetamos el shape del objeto sin castear todo el array a any.
+          const updatedContratos = contratos.map((c) =>
+            c.id_contrato === contractId
+              ? ({ ...c, manager_id: managerId } as typeof c & { manager_id: string | null })
+              : c
+          );
+          useContratosStore.setState({ contratos: updatedContratos as typeof contratos });
         } catch (localErr) {
-          console.warn("[workflows-store] No se pudo actualizar el store de contratos local:", localErr);
+          log.warn("No se pudo actualizar el store de contratos local", localErr);
         }
 
         try {
@@ -395,7 +411,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error("[workflows-store] Falló al actualizar manager del contrato en Supabase:", err);
+          log.error("Fallo al actualizar manager del contrato en Supabase", err);
         }
       },
 
@@ -428,7 +444,7 @@ export const useWorkflowsStore = create<WorkflowsState>()(
 
         if (!contratoActivo) {
           if (process.env.NODE_ENV === "development") {
-            console.warn(`[workflows-store] No se encontró contrato activo para el trabajador ${solicitud.nombre_solicitante}`);
+            log.warn("No se encontro contrato activo para el trabajador", { nombre: solicitud.nombre_solicitante });
           }
         }
 
@@ -543,16 +559,21 @@ export const useWorkflowsStore = create<WorkflowsState>()(
         set(state => ({ sentMailLog: [logEntry, ...state.sentMailLog].slice(0, 100) })); // Cap log at 100 entries
 
         if (process.env.NODE_ENV === "development") {
-          console.log(`[workflows-store] 📧 SIMULACIÓN CORREO ENVIADO A:`, destinatariosUnicos);
-          console.log(`[workflows-store] ASUNTO:`, asuntoFinal);
-          console.log(`[workflows-store] CUERPO:`, cuerpoFinal);
+          log.info("SIMULACION CORREO ENVIADO", {
+            destinatarios: destinatariosUnicos,
+            asunto: asuntoFinal,
+            cuerpo: cuerpoFinal,
+          });
         }
       },
 
       clearMailLog: () => set({ sentMailLog: [] })
     }),
     {
-      name: "monitoring-workflows-storage"
+      name: "monitoring-workflows-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

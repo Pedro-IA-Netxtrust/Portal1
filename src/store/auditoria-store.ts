@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auditoria-store");
 
 // ─────────────────────────────────────────────────────────────
 //  Tipos
@@ -71,6 +74,8 @@ interface AuditoriaState {
   entradas: EntradaAuditoria[];
   totalRemoto: number;
   cargando: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
 
   /** Registra una nueva entrada de auditoria (local + Supabase) */
   registrar: (
@@ -105,6 +110,7 @@ export const useAuditoriaStore = create<AuditoriaState>()(
       entradas: [],
       totalRemoto: 0,
       cargando: false,
+      hydrated: false,
 
       registrar: async (entrada) => {
         const nuevaEntrada: EntradaAuditoria = {
@@ -138,14 +144,11 @@ export const useAuditoriaStore = create<AuditoriaState>()(
           ]);
 
           if (error && process.env.NODE_ENV === "development") {
-            console.warn(
-              "[auditoria-store] No se pudo persistir entrada en Supabase:",
-              error.message
-            );
+            log.warn("No se pudo persistir entrada en Supabase", error.message);
           }
         } catch (err) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[auditoria-store] Error de red al registrar:", err);
+            log.warn("Error de red al registrar", err);
           }
         }
       },
@@ -177,10 +180,7 @@ export const useAuditoriaStore = create<AuditoriaState>()(
 
           if (error) {
             if (process.env.NODE_ENV === "development") {
-              console.warn(
-                "[auditoria-store] Supabase no disponible, usando cache local:",
-                error.message
-              );
+              log.warn("Supabase no disponible, usando cache local", error.message);
             }
             return;
           }
@@ -205,7 +205,7 @@ export const useAuditoriaStore = create<AuditoriaState>()(
           }
         } catch (err) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[auditoria-store] Error de red:", err);
+            log.warn("Error de red", err);
           }
         } finally {
           set({ cargando: false });
@@ -218,6 +218,11 @@ export const useAuditoriaStore = create<AuditoriaState>()(
       getByEntidad: (id_entidad) =>
         get().entradas.filter((e) => e.id_entidad === id_entidad),
     }),
-    { name: "monitoring-auditoria-v1" }
+    {
+      name: "monitoring-auditoria-v1",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

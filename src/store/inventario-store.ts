@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+
+const log = createLogger("inventario-store");
 
 export interface Bodega {
   id_bodega: string;
@@ -58,6 +61,8 @@ interface InventarioState {
   lotes: InventarioLote[];
   descuentos: DescuentoInventario[];
   loading: boolean;
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
 
   fetchInventarioData: () => Promise<void>;
   addProducto: (p: Omit<Producto, "id_producto">) => Promise<boolean>;
@@ -130,6 +135,7 @@ export const useInventarioStore = create<InventarioState>()(
       lotes: mockLotes,
       descuentos: [],
       loading: false,
+      hydrated: false,
 
       fetchInventarioData: async () => {
         set({ loading: true });
@@ -172,7 +178,7 @@ export const useInventarioStore = create<InventarioState>()(
           });
 
         } catch (err) {
-          console.warn("[inventario-store] Fallback a datos locales o caché:", err);
+          log.warn("Fallback a datos locales o cache", err);
         } finally {
           set({ loading: false });
         }
@@ -198,7 +204,7 @@ export const useInventarioStore = create<InventarioState>()(
           }
           return true;
         } catch (err) {
-          console.error("[inventario-store] Error al crear producto en Supabase:", err);
+          log.error("Error al crear producto en Supabase", err);
           return true; // Continuamos local
         }
       },
@@ -223,7 +229,7 @@ export const useInventarioStore = create<InventarioState>()(
           }
           return true;
         } catch (err) {
-          console.error("[inventario-store] Error al crear bodega en Supabase:", err);
+          log.error("Error al crear bodega en Supabase", err);
           return true; // Continuamos local
         }
       },
@@ -311,7 +317,7 @@ export const useInventarioStore = create<InventarioState>()(
           return true;
 
         } catch (err) {
-          console.error("[inventario-store] Error al persistir la compra en Supabase:", err);
+          log.error("Error al persistir la compra en Supabase", err);
           
           await useAuditoriaStore.getState().registrar({
             modulo: "Control",
@@ -347,7 +353,7 @@ export const useInventarioStore = create<InventarioState>()(
         // Calcular stock disponible total
         const totalDisponible = lotesCandidatos.reduce((sum, l) => sum + l.cantidad_actual, 0);
         if (totalDisponible < cantidadADescontar) {
-          console.error(`[inventario-store] Stock insuficiente para descontar. Solicitado: ${cantidadADescontar}, Disponible: ${totalDisponible}`);
+          log.error("Stock insuficiente para descontar", { solicitado: cantidadADescontar, disponible: totalDisponible });
           return { exito: false, detalleDescuentos: [] };
         }
 
@@ -427,7 +433,7 @@ export const useInventarioStore = create<InventarioState>()(
           }
 
         } catch (dbErr) {
-          console.warn("[inventario-store] Error al persistir el descuento FIFO en Supabase:", dbErr);
+          log.warn("Error al persistir el descuento FIFO en Supabase", dbErr);
         }
 
         return { exito: true, detalleDescuentos: descuentosGenerados };
@@ -465,7 +471,10 @@ export const useInventarioStore = create<InventarioState>()(
       }
     }),
     {
-      name: "monitoring-inventario-storage"
+      name: "monitoring-inventario-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

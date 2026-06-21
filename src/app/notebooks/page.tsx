@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useActivosStore, Activo } from "@/store/activos-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import ActivoForm from "@/components/custom/activo-form";
@@ -8,7 +9,6 @@ import ActivoAsignar from "@/components/custom/activo-asignar";
 import { 
   Plus, 
   Search, 
-  Cpu, 
   Layers, 
   UserCheck, 
   User, 
@@ -22,8 +22,10 @@ import {
 } from "lucide-react";
 
 export default function NotebooksPage() {
-  const { activos, deleteActivo } = useActivosStore();
-  const { trabajadores } = useTrabajadoresStore();
+  const { activos, deleteActivo } = useActivosStore(
+    useShallow((s) => ({ activos: s.activos, deleteActivo: s.deleteActivo }))
+  );
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState<"Todos" | "Disponible" | "Asignado" | "Baja">("Todos");
@@ -230,7 +232,7 @@ export default function NotebooksPage() {
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Disponibilidad</span>
               <select
                 value={filterEstado}
-                onChange={(e) => setFilterEstado(e.target.value as any)}
+                onChange={(e) => setFilterEstado(e.target.value as "Todos" | "Disponible" | "Asignado" | "Baja")}
                 className="select py-2 px-3 text-xs min-h-0 w-36"
               >
                 <option value="Todos">Todos los Estados</option>
@@ -276,7 +278,7 @@ export default function NotebooksPage() {
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Licencias</span>
               <select
                 value={filterLicenses}
-                onChange={(e) => setFilterLicenses(e.target.value as any)}
+                onChange={(e) => setFilterLicenses(e.target.value as "Todas" | "Con Licencias" | "Sin Licencias")}
                 className="select py-2 px-3 text-xs min-h-0 w-36"
               >
                 <option value="Todas">Todas las Licencias</option>
@@ -291,7 +293,7 @@ export default function NotebooksPage() {
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Ordenar por</span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="select py-2 px-3 text-xs min-h-0 w-48 font-semibold text-primary"
             >
               <option value="fecha_asignacion_desc">Fecha de Entrega (Recientes)</option>
@@ -588,6 +590,6 @@ export default function NotebooksPage() {
   );
 }
 // Helper check mock just to keep page validation happy
-const CheckCircle2 = ({ className, size }: { className?: string; size?: number }) => (
+const CheckCircle2 = ({ className, size: _size }: { className?: string; size?: number }) => (
   <span className={className}>✓</span>
 );

@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
+
+const log = createLogger("comunicaciones-store");
 
 export type TipoComunicacion = 
   | "Cumpleaños" 
@@ -33,6 +36,8 @@ export interface Comunicado {
 interface ComunicacionesState {
   plantillas: Plantilla[];
   historial: Comunicado[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchHistorial: () => Promise<void>;
   addComunicado: (c: Omit<Comunicado, "id" | "fecha_generacion">) => Promise<void>;
   updateEstadoComunicado: (id: string, estado: "Borrador" | "Enviado" | "Impreso") => Promise<void>;
@@ -75,9 +80,10 @@ const mockPlantillas: Plantilla[] = [
 
 export const useComunicacionesStore = create<ComunicacionesState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       plantillas: mockPlantillas,
       historial: [],
+      hydrated: false,
 
       fetchHistorial: async () => {
         try {
@@ -87,7 +93,7 @@ export const useComunicacionesStore = create<ComunicacionesState>()(
             .order("created_at", { ascending: false });
 
           if (error) {
-            if (process.env.NODE_ENV === "development") console.warn("[browser] Supabase no tiene tabla comunicados, usando mock", error);
+            if (process.env.NODE_ENV === "development") log.warn("Supabase no tiene tabla comunicados, usando mock", error);
             return;
           }
 
@@ -105,7 +111,7 @@ export const useComunicacionesStore = create<ComunicacionesState>()(
             });
           }
         } catch (err) {
-          console.error("Failed to load comunicados", err);
+          log.error("Failed to load comunicados", err);
         }
       },
 
@@ -133,7 +139,7 @@ export const useComunicacionesStore = create<ComunicacionesState>()(
             .select();
 
           if (error) {
-            if (process.env.NODE_ENV === "development") console.warn("[browser] Error insertando comunicado:", error);
+            if (process.env.NODE_ENV === "development") log.warn("Error insertando comunicado", error);
             return;
           }
 
@@ -155,7 +161,7 @@ export const useComunicacionesStore = create<ComunicacionesState>()(
             });
           }
         } catch (err) {
-          console.error("Failed to insert comunicado", err);
+          log.error("Failed to insert comunicado", err);
         }
       },
 
@@ -176,10 +182,15 @@ export const useComunicacionesStore = create<ComunicacionesState>()(
             if (error) throw error;
           }
         } catch (err) {
-          console.error("Failed to update status", err);
+          log.error("Failed to update status", err);
         }
       }
     }),
-    { name: "monitoring-comunicaciones-store" }
+    {
+      name: "monitoring-comunicaciones-store",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

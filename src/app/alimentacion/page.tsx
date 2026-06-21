@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useAlimentacionStore,
   ALIMENTACION_CONFIG,
@@ -14,11 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  AlertTriangle,
   ArrowLeft,
   FileText,
   Filter,
-  CheckCircle2,
   Building2,
   Coffee,
   X,
@@ -47,10 +46,6 @@ function getTodayStr(): string {
 
 function dateStr(anio: number, mes: number, dia: number): string {
   return `${anio}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
-}
-
-function getDayOfWeek(anio: number, mes: number, dia: number): number {
-  return new Date(anio, mes - 1, dia).getDay();
 }
 
 function prevMes(anio: number, mes: number) {
@@ -134,10 +129,19 @@ export default function AlimentacionPage() {
   const [tempPresupuestoVal, setTempPresupuestoVal] = useState<string>("");
 
   // ── Stores ──────────────────────────────────────────────────────────────────
-  const { registros, auditoria, toggleEstado, setEstados, getPresupuestoMensual, setPresupuestoMensual } = useAlimentacionStore();
-  const { contratos, fetchContratos } = useContratosStore();
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
-  const { proveedores } = useProveedoresStore();
+  const { registros, setEstados, getPresupuestoMensual, setPresupuestoMensual } = useAlimentacionStore(
+    useShallow((s) => ({
+      registros: s.registros,
+      setEstados: s.setEstados,
+      getPresupuestoMensual: s.getPresupuestoMensual,
+      setPresupuestoMensual: s.setPresupuestoMensual,
+    }))
+  );
+  const { contratos, fetchContratos } = useContratosStore(
+    useShallow((s) => ({ contratos: s.contratos, fetchContratos: s.fetchContratos }))
+  );
+  const fetchTrabajadores = useTrabajadoresStore((s) => s.fetchTrabajadores);
+  const proveedores = useProveedoresStore((s) => s.proveedores);
 
   React.useEffect(() => { fetchContratos(); fetchTrabajadores(); }, [fetchContratos, fetchTrabajadores]);
 
@@ -156,22 +160,18 @@ export default function AlimentacionPage() {
 
   // ── Dashboard stats ─────────────────────────────────────────────────────────
   const dashStats = useMemo(() => {
-    let totalDotacion = 0;
-    let globalRacionesHoy = 0;
-
     const contratoCards = activeContratos.map((c) => {
       const activos = c.trabajadores_asignados.filter((a) => a.activo);
-      totalDotacion += activos.length;
+      let racionesHoy_inner = 0;
 
-      let racionesHoy = 0;
       for (const a of activos) {
         const est = registroMap.get(`${c.id_contrato}|${a.id_trabajador}|${todayStr}`);
-        if (est) racionesHoy += est.length;
+        if (est) racionesHoy_inner += est.length;
       }
-      globalRacionesHoy += racionesHoy;
+      const racionesHoy = racionesHoy_inner;
 
       const metaMensual = getPresupuestoMensual(c.id_contrato);
-      const mesStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+      const mesStr = todayStr.slice(0, 7); // YYYY-MM
       
       let consumosMes = 0;
       for (const r of registros) {
@@ -189,6 +189,8 @@ export default function AlimentacionPage() {
       };
     });
 
+    const totalDotacion = contratoCards.reduce((s, c) => s + c.activos, 0);
+    const globalRacionesHoy = contratoCards.reduce((s, c) => s + c.racionesHoy, 0);
     return { totalDotacion, globalRacionesHoy, contratoCards };
   }, [activeContratos, registros, registroMap, todayStr, getPresupuestoMensual]);
 
@@ -298,12 +300,6 @@ export default function AlimentacionPage() {
     if (!editingCell || !selectedContratoId) return null;
     const currentEstados = registroMap.get(`${selectedContratoId}|${editingCell.id_trabajador}|${editingCell.fecha}`) || [];
     
-    // local state for the modal
-    const toggleLocalEstado = (st: EstadoAlimentacion, selected: EstadoAlimentacion[], setSelected: any) => {
-      if (selected.includes(st)) setSelected(selected.filter((e: any) => e !== st));
-      else setSelected([...selected, st]);
-    };
-
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn p-4">
         <div className="bg-surface w-full max-w-sm rounded-2xl shadow-2xl border border-border overflow-hidden">
@@ -670,8 +666,6 @@ export default function AlimentacionPage() {
                           {diasSemana.map((dObj, i) => {
                             const dNum = dObj.getDate();
                             const fecha = dateStr(dObj.getFullYear(), dObj.getMonth() + 1, dNum);
-                            const dow = dObj.getDay();
-                            const isWE = dow === 0 || dow === 6;
                             const isToday = fecha === todayStr;
                             
                             const estadosList = registroMap.get(`${selectedContratoId}|${w.id_trabajador}|${fecha}`) || [];

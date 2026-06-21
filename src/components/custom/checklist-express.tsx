@@ -10,8 +10,8 @@ interface ChecklistExpressProps {
 }
 
 export default function ChecklistExpress({ onClose }: ChecklistExpressProps) {
-  const { addVerificacionExpress } = useInspeccionesStore();
-  const { activos } = useActivosStore();
+  const addVerificacionExpress = useInspeccionesStore((s) => s.addVerificacionExpress);
+  const activos = useActivosStore((s) => s.activos);
 
   const vehiculos = activos.filter(a => a.tipo === "Vehículo");
   const today = new Date().toISOString().split("T")[0];

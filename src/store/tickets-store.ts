@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
 import type { EstadoTicket, PrioridadTicket } from "@/lib/enums";
+
+const log = createLogger("tickets-store");
 
 export interface ComentarioTicket {
   id_comentario: string;
@@ -37,6 +40,8 @@ export interface Ticket {
 interface TicketsState {
   tickets: Ticket[];
   comentarios: ComentarioTicket[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchTickets: () => Promise<void>;
   addTicket: (t: Omit<Ticket, "id_ticket" | "codigo_ticket" | "fecha_creacion" | "sla_respuesta_hasta" | "sla_resolucion_hasta" | "cumplio_sla_respuesta" | "cumplio_sla_resolucion" | "estado">) => Promise<void>;
   updateTicket: (id: string, updatedFields: Partial<Ticket>) => Promise<void>;
@@ -171,6 +176,7 @@ export const useTicketsStore = create<TicketsState>()(
     (set, get) => ({
       tickets: mockTickets,
       comentarios: mockComentarios,
+      hydrated: false,
       
       fetchTickets: async () => {
         try {
@@ -183,7 +189,7 @@ export const useTicketsStore = create<TicketsState>()(
           if (tkError) {
             // Only log in development so the console stays clean in prod
             if (process.env.NODE_ENV === "development") {
-              console.warn("[tickets-store] Supabase no disponible, usando datos locales.", tkError.message);
+              log.warn("Supabase no disponible, usando datos locales", tkError.message);
             }
             // Keep whatever is already in the persisted store (or mock defaults)
             return;
@@ -196,7 +202,7 @@ export const useTicketsStore = create<TicketsState>()(
 
           if (comError) {
             if (process.env.NODE_ENV === "development") {
-              console.warn("[tickets-store] Error cargando comentarios, usando datos locales.", comError.message);
+              log.warn("Error cargando comentarios, usando datos locales", comError.message);
             }
             return;
           }
@@ -209,7 +215,7 @@ export const useTicketsStore = create<TicketsState>()(
             const seededComments: ComentarioTicket[] = [];
 
             for (const mockTk of mockTickets) {
-              const { id_ticket, ...dbInsertFields } = mockTk;
+              const { id_ticket: _id_ticket, ...dbInsertFields } = mockTk;
               const { data: createdTks, error: createError } = await supabase
                 .from("tickets")
                 .insert([dbInsertFields])
@@ -217,7 +223,7 @@ export const useTicketsStore = create<TicketsState>()(
 
               if (createError) {
                 if (process.env.NODE_ENV === "development") {
-                  console.warn("[tickets-store] No se pudo hacer seed:", createError.message);
+                  log.warn("No se pudo hacer seed", createError.message);
                 }
                 break;
               }
@@ -255,7 +261,7 @@ export const useTicketsStore = create<TicketsState>()(
         } catch (err) {
           // Network error or unexpected failure → stay silent, keep local data
           if (process.env.NODE_ENV === "development") {
-            console.warn("[tickets-store] Error de red al conectar con Supabase:", err);
+            log.warn("Error de red al conectar con Supabase", err);
           }
         }
       },
@@ -320,7 +326,7 @@ export const useTicketsStore = create<TicketsState>()(
             });
           }
         } catch (err) {
-          console.error("Failed to persist ticket to Supabase:", err);
+          log.error("Failed to persist ticket to Supabase", err);
         }
       },
 
@@ -339,7 +345,7 @@ export const useTicketsStore = create<TicketsState>()(
  
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to update ticket ${id} in Supabase:`, err);
+          log.error(`Failed to update ticket ${id} in Supabase`, err);
         }
       },
 
@@ -357,7 +363,7 @@ export const useTicketsStore = create<TicketsState>()(
  
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to delete ticket ${id} from Supabase:`, err);
+          log.error(`Failed to delete ticket ${id} from Supabase`, err);
         }
       },
 
@@ -407,7 +413,7 @@ export const useTicketsStore = create<TicketsState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to assign ticket ${id} in Supabase:`, err);
+          log.error(`Failed to assign ticket ${id} in Supabase`, err);
         }
       },
 
@@ -455,7 +461,7 @@ export const useTicketsStore = create<TicketsState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to close ticket ${id} in Supabase:`, err);
+          log.error(`Failed to close ticket ${id} in Supabase`, err);
         }
       },
 
@@ -489,12 +495,15 @@ export const useTicketsStore = create<TicketsState>()(
             }));
           }
         } catch (err) {
-          console.error("Failed to persist ticket comment to Supabase:", err);
+          log.error("Failed to persist ticket comment to Supabase", err);
         }
       }
     }),
     {
-      name: "monitoring-tickets-storage"
+      name: "monitoring-tickets-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

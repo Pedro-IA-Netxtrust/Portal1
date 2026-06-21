@@ -20,8 +20,6 @@ import {
   Trash2, 
   Edit3, 
   Eye, 
-  Mail, 
-  Phone,
   AlertTriangle,
   CheckCircle2,
   Zap

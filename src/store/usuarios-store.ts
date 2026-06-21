@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("usuarios-store");
 
 export type RolGlobal = "Super Admin" | "Usuario";
 export type NivelAcceso = "No Ver" | "Ver y Operar" | "Administrar";
@@ -44,6 +47,8 @@ export interface UsuarioConfig {
 interface UsuariosState {
   roles: RolGlobalDB[];
   permisos: PermisoModuloDB[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   
   fetchConfiguracion: () => Promise<void>;
   setRolGlobal: (id_trabajador: string, rol_global: RolGlobal) => Promise<void>;
@@ -58,6 +63,7 @@ export const useUsuariosStore = create<UsuariosState>()(
     (set, get) => ({
       roles: [{ id_trabajador: "t-1", rol_global: "Super Admin" }], // Mock default para que t-1 sea Super Admin
       permisos: [],
+      hydrated: false,
 
       fetchConfiguracion: async () => {
         try {
@@ -67,7 +73,7 @@ export const useUsuariosStore = create<UsuariosState>()(
           
           if (rolesError) {
             if (process.env.NODE_ENV === "development") {
-              console.warn("[usuarios-store] Tabla de roles no disponible. Usando datos locales.", rolesError.message);
+              log.warn("Tabla de roles no disponible. Usando datos locales", rolesError.message);
             }
             return;
           }
@@ -78,7 +84,7 @@ export const useUsuariosStore = create<UsuariosState>()(
 
           if (permisosError) {
             if (process.env.NODE_ENV === "development") {
-              console.warn("[usuarios-store] Tabla de permisos no disponible. Usando datos locales.", permisosError.message);
+              log.warn("Tabla de permisos no disponible. Usando datos locales", permisosError.message);
             }
             return;
           }
@@ -92,7 +98,7 @@ export const useUsuariosStore = create<UsuariosState>()(
 
         } catch (err) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[usuarios-store] Fallo de red al conectar con Supabase:", err);
+            log.warn("Fallo de red al conectar con Supabase", err);
           }
         }
       },
@@ -116,7 +122,7 @@ export const useUsuariosStore = create<UsuariosState>()(
           
           if (error) throw error;
         } catch (err) {
-          console.warn("Fallo persistiendo rol en Supabase:", err);
+          log.warn("Fallo persistiendo rol en Supabase", err);
         }
       },
 
@@ -144,7 +150,7 @@ export const useUsuariosStore = create<UsuariosState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.warn("Fallo persistiendo permiso en Supabase:", err);
+          log.warn("Fallo persistiendo permiso en Supabase", err);
         }
       },
 
@@ -169,7 +175,10 @@ export const useUsuariosStore = create<UsuariosState>()(
       }
     }),
     {
-      name: "monitoring-usuarios-v1"
+      name: "monitoring-usuarios-v1",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
     }
   )
 );

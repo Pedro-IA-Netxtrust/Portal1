@@ -18,6 +18,7 @@ import {
   X,
   Clock,
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useAuditoriaStore,
   type EntradaAuditoria,
@@ -181,7 +182,9 @@ function AccionBadge({ accion }: { accion: TipoAccion }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function AuditoriaPage() {
-  const { entradas, cargando, fetchAuditoria } = useAuditoriaStore();
+  const { entradas, cargando, fetchAuditoria } = useAuditoriaStore(
+    useShallow((s) => ({ entradas: s.entradas, cargando: s.cargando, fetchAuditoria: s.fetchAuditoria }))
+  );
 
   const [busqueda, setBusqueda] = useState("");
   const [moduloFiltro, setModuloFiltro] = useState<ModuloAuditoria | "">("");

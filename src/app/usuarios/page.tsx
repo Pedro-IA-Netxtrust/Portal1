@@ -12,13 +12,15 @@ import {
   ArrowLeft,
   Building2,
   Mail,
-  Smartphone
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
-import { useUsuariosStore, MODULOS_SISTEMA, NivelAcceso, RolGlobal } from "@/store/usuarios-store";
+import { useUsuariosStore, MODULOS_SISTEMA, NivelAcceso } from "@/store/usuarios-store";
 
 export default function UsuariosPage() {
-  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore();
+  const { trabajadores, fetchTrabajadores } = useTrabajadoresStore(
+    useShallow((s) => ({ trabajadores: s.trabajadores, fetchTrabajadores: s.fetchTrabajadores }))
+  );
   const { 
     roles, 
     permisos, 
@@ -26,7 +28,16 @@ export default function UsuariosPage() {
     setRolGlobal, 
     setPermisoModulo, 
     getUsuarioConfig 
-  } = useUsuariosStore();
+  } = useUsuariosStore(
+    useShallow((s) => ({
+      roles: s.roles,
+      permisos: s.permisos,
+      fetchConfiguracion: s.fetchConfiguracion,
+      setRolGlobal: s.setRolGlobal,
+      setPermisoModulo: s.setPermisoModulo,
+      getUsuarioConfig: s.getUsuarioConfig,
+    }))
+  );
 
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -59,7 +70,7 @@ export default function UsuariosPage() {
   const userConfig = useMemo(() => {
     if (!selectedUserId) return null;
     return getUsuarioConfig(selectedUserId);
-  }, [selectedUserId, roles, permisos, getUsuarioConfig]);
+  }, [selectedUserId, getUsuarioConfig]);
 
   // Contadores rápidos para el dashboard
   const stats = useMemo(() => {

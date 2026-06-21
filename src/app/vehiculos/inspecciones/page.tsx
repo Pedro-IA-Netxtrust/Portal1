@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useInspeccionesStore } from "@/store/inspecciones-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useActivosStore } from "@/store/activos-store";
@@ -10,8 +11,6 @@ import ChecklistExpress from "@/components/custom/checklist-express";
 import { 
   ClipboardCheck, 
   Search, 
-  ShieldAlert, 
-  CheckCircle2, 
   Clock, 
   Plus, 
   Trash2, 
@@ -19,7 +18,6 @@ import {
   FileText, 
   Activity, 
   ShieldCheck, 
-  AlertTriangle 
 } from "lucide-react";
 
 export default function InspeccionesPage() {
@@ -33,9 +31,18 @@ export default function InspeccionesPage() {
     deleteInspeccionDiaria,
     deleteAuditoria,
     deleteVerificacionExpress
-  } = useInspeccionesStore();
-  const { trabajadores } = useTrabajadoresStore();
-  const { activos } = useActivosStore();
+  } = useInspeccionesStore(
+    useShallow((s) => ({
+      inspeccionesDiarias: s.inspeccionesDiarias,
+      auditorias: s.auditorias,
+      verificacionesExpress: s.verificacionesExpress,
+      deleteInspeccionDiaria: s.deleteInspeccionDiaria,
+      deleteAuditoria: s.deleteAuditoria,
+      deleteVerificacionExpress: s.deleteVerificacionExpress,
+    }))
+  );
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const activos = useActivosStore((s) => s.activos);
 
   // Navigation and search states
   const [activeTab, setActiveTab] = useState<"diario" | "auditoria" | "express">("diario");

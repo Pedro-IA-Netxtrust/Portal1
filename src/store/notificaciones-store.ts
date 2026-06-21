@@ -35,6 +35,9 @@ interface NotificacionesState {
   scheduleReminder: (n: Notificacion, at: string) => string | null;
   cancelReminder: (recordatorioId: string) => void;
 
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
+
   /** Reprograma timers en memoria a partir de los recordatorios persistidos.
    *  Idempotente; debe llamarse una vez del lado cliente tras rehidratación. */
   rehydrateTimers: () => void;
@@ -48,6 +51,7 @@ export const useNotificacionesStore = create<NotificacionesState>()(
       notificaciones: [],
       recordatorios: [],
       timers: {},
+      hydrated: false,
 
       addNotification: (n) => {
         const id = n.id || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -193,6 +197,7 @@ export const useNotificacionesStore = create<NotificacionesState>()(
         recordatorios: state.recordatorios,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
         // Reprograma los recordatorios en el siguiente tick del cliente.
         if (state && isBrowser) {
           setTimeout(() => state.rehydrateTimers(), 0);

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { X, Save, FileText, Stethoscope, GraduationCap } from "lucide-react";
-import { useControlStore } from "@/store/control-store";
+import { useShallow } from "zustand/react/shallow";
+import { useControlStore, type EstadoDocumento, type EstadoCurso, type ResultadoExamen } from "@/store/control-store";
 
 interface Props {
   type: "documento" | "curso" | "examen";
@@ -10,26 +11,47 @@ interface Props {
   onClose: () => void;
 }
 
+type Modalidad = "Presencial" | "E-learning" | "Virtual";
+
 export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
-  const { 
+  const {
     catalogoDocumentos, catalogoCursos, catalogoExamenes,
     addDocumento, addCurso, addExamen,
     addCursoCatalogo, addExamenCatalogo, addDocumentoCatalogo
-  } = useControlStore();
+  } = useControlStore(
+    useShallow((s) => ({
+      catalogoDocumentos: s.catalogoDocumentos,
+      catalogoCursos: s.catalogoCursos,
+      catalogoExamenes: s.catalogoExamenes,
+      addDocumento: s.addDocumento,
+      addCurso: s.addCurso,
+      addExamen: s.addExamen,
+      addCursoCatalogo: s.addCursoCatalogo,
+      addExamenCatalogo: s.addExamenCatalogo,
+      addDocumentoCatalogo: s.addDocumentoCatalogo,
+    }))
+  );
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    catalogo_id: string;
+    numero_documento: string;
+    estado_documento: EstadoDocumento;
+    institucion: string;
+    modalidad: Modalidad;
+    estado_curso: EstadoCurso;
+    resultado_examen: ResultadoExamen;
+    fecha_emision: string;
+    fecha_vencimiento: string;
+    observaciones: string;
+  }>({
     catalogo_id: "",
-    // Para Documento
     numero_documento: "",
-    estado_documento: "Vigente" as any,
-    // Para Curso
+    estado_documento: "Vigente",
     institucion: "",
-    modalidad: "Presencial" as any,
-    estado_curso: "Aprobado" as any,
-    // Para Examen
-    resultado_examen: "Apto" as any,
-    
-    // Fechas comunes
+    modalidad: "Presencial",
+    estado_curso: "Aprobado",
+    resultado_examen: "Aprobado",
+
     fecha_emision: new Date().toISOString().split("T")[0],
     fecha_vencimiento: "",
     observaciones: ""
@@ -56,7 +78,9 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
         }
       }
     }
-  }, [formData.catalogo_id, formData.fecha_emision, type, catalogoCursos]);
+    // El guard `formData.fecha_vencimiento !== fechaStr` evita el loop al
+    // re-ejecutar el effect con `fecha_vencimiento` como dep.
+  }, [formData.catalogo_id, formData.fecha_emision, formData.fecha_vencimiento, type, catalogoCursos]);
 
   const getTitle = () => {
     switch (type) {
@@ -150,7 +174,7 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
                     const validezStr = prompt("Tiempo de validez en meses (vacío para sin vencimiento):", "");
                     if (validezStr === null) return;
                     const valMeses = validezStr.trim() ? parseInt(validezStr.trim(), 10) : null;
-                    await addCursoCatalogo(name, cat, isNaN(valMeses as any) ? null : valMeses);
+                    await addCursoCatalogo(name, cat, valMeses !== null && isNaN(valMeses) ? null : valMeses);
                   } else if (type === "examen") {
                     await addExamenCatalogo(name, cat);
                   }
@@ -183,7 +207,7 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
               <div className="space-y-1.5">
                 <label className="text-xs text-zinc-400 font-semibold">Estado</label>
                 <select className="input bg-zinc-900 border-zinc-800 text-sm"
-                  value={formData.estado_documento} onChange={e => setFormData({...formData, estado_documento: e.target.value as any})}>
+                  value={formData.estado_documento} onChange={e => setFormData({...formData, estado_documento: e.target.value as EstadoDocumento})}>
                   <option value="Vigente">Vigente</option>
                   <option value="Vencido">Vencido</option>
                   <option value="En Trámite">En Trámite</option>
@@ -205,7 +229,7 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
                 <div className="space-y-1.5">
                   <label className="text-xs text-zinc-400 font-semibold">Modalidad</label>
                   <select className="input bg-zinc-900 border-zinc-800 text-sm"
-                    value={formData.modalidad} onChange={e => setFormData({...formData, modalidad: e.target.value as any})}>
+                    value={formData.modalidad} onChange={e => setFormData({...formData, modalidad: e.target.value as Modalidad})}>
                     <option value="Presencial">Presencial</option>
                     <option value="E-learning">E-learning</option>
                     <option value="Híbrido">Híbrido</option>
@@ -215,7 +239,7 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
                 <div className="space-y-1.5">
                   <label className="text-xs text-zinc-400 font-semibold">Estado</label>
                   <select className="input bg-zinc-900 border-zinc-800 text-sm"
-                    value={formData.estado_curso} onChange={e => setFormData({...formData, estado_curso: e.target.value as any})}>
+                    value={formData.estado_curso} onChange={e => setFormData({...formData, estado_curso: e.target.value as EstadoCurso})}>
                     <option value="Aprobado">Aprobado</option>
                     <option value="Reprobado">Reprobado</option>
                     <option value="Pendiente">Pendiente</option>
@@ -230,7 +254,7 @@ export function AsignarControlModal({ type, trabajadorId, onClose }: Props) {
             <div className="space-y-1.5">
               <label className="text-xs text-zinc-400 font-semibold">Resultado</label>
               <select className="input bg-zinc-900 border-zinc-800 text-sm"
-                value={formData.resultado_examen} onChange={e => setFormData({...formData, resultado_examen: e.target.value as any})}>
+                value={formData.resultado_examen} onChange={e => setFormData({...formData, resultado_examen: e.target.value as ResultadoExamen})}>
                 <option value="Apto">Apto</option>
                 <option value="Apto con Restricciones">Apto con Restricciones</option>
                 <option value="No Apto">No Apto</option>

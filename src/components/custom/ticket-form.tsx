@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Ticket, useTicketsStore } from "@/store/tickets-store";
+import React, { useState, useEffect, useMemo } from "react";
+import { useTicketsStore } from "@/store/tickets-store";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
 import { useActivosStore } from "@/store/activos-store";
 import { X, Save, AlertCircle, Info } from "lucide-react";
@@ -11,9 +11,9 @@ interface TicketFormProps {
 }
 
 export default function TicketForm({ onClose }: TicketFormProps) {
-  const { addTicket } = useTicketsStore();
-  const { trabajadores } = useTrabajadoresStore();
-  const { activos } = useActivosStore();
+  const addTicket = useTicketsStore((s) => s.addTicket);
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const activos = useActivosStore((s) => s.activos);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -30,26 +30,42 @@ export default function TicketForm({ onClose }: TicketFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Filter assets owned by the selected requester (Very premium cross-referencing!)
-  const [requesterAssets, setRequesterAssets] = useState<typeof activos>([]);
+  const requesterAssets = useMemo(
+    () =>
+      formData.id_trabajador_solicitante
+        ? activos.filter(
+            (a) =>
+              a.id_trabajador_asignado === formData.id_trabajador_solicitante &&
+              a.estado !== "Baja"
+          )
+        : [],
+    [formData.id_trabajador_solicitante, activos]
+  );
 
   useEffect(() => {
-    if (formData.id_trabajador_solicitante) {
-      const owned = activos.filter(
-        a => a.id_trabajador_asignado === formData.id_trabajador_solicitante && a.estado !== "Baja"
-      );
-      setRequesterAssets(owned);
-      
-      // Auto-select asset if there's only one
-      if (owned.length === 1) {
-        setFormData(prev => ({ ...prev, id_activo_relacionado: owned[0].id_activo }));
-      } else {
-        setFormData(prev => ({ ...prev, id_activo_relacionado: "" }));
+    if (!formData.id_trabajador_solicitante) {
+      if (formData.id_activo_relacionado !== "") {
+        setFormData((prev) => ({ ...prev, id_activo_relacionado: "" }));
       }
-    } else {
-      setRequesterAssets([]);
-      setFormData(prev => ({ ...prev, id_activo_relacionado: "" }));
+      return;
     }
-  }, [formData.id_trabajador_solicitante, activos]);
+
+    if (requesterAssets.length === 1) {
+      const onlyAssetId = requesterAssets[0].id_activo;
+      if (formData.id_activo_relacionado !== onlyAssetId) {
+        setFormData((prev) => ({ ...prev, id_activo_relacionado: onlyAssetId }));
+      }
+      return;
+    }
+
+    const hasSelectedAsset =
+      !!formData.id_activo_relacionado &&
+      requesterAssets.some((a) => a.id_activo === formData.id_activo_relacionado);
+
+    if (!hasSelectedAsset && formData.id_activo_relacionado !== "") {
+      setFormData((prev) => ({ ...prev, id_activo_relacionado: "" }));
+    }
+  }, [formData.id_trabajador_solicitante, formData.id_activo_relacionado, requesterAssets]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

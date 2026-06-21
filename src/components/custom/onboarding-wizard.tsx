@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Trabajador } from "@/store/trabajadores-store";
 import { useCicloVidaStore } from "@/store/ciclo-vida-store";
 import { useOnboardingStore } from "@/store/onboarding-store";
@@ -36,8 +37,13 @@ interface OnboardingWizardProps {
 export default function OnboardingWizard({ trabajador, onComplete, onCancel }: OnboardingWizardProps) {
   const [pasoActual, setPasoActual] = useState<number>(0);
   const [loading, setLoading] = useState(false);
-  const { transicionarEstado } = useCicloVidaStore();
-  const { createTareasForTrabajador, getTareasByFase } = useOnboardingStore();
+  const transicionarEstado = useCicloVidaStore((s) => s.transicionarEstado);
+  const { createTareasForTrabajador, getTareasByFase } = useOnboardingStore(
+    useShallow((s) => ({
+      createTareasForTrabajador: s.createTareasForTrabajador,
+      getTareasByFase: s.getTareasByFase,
+    }))
+  );
 
   const faseActual = FASES[pasoActual];
   const esUltimoPaso = pasoActual === FASES.length - 1;
@@ -226,7 +232,9 @@ interface FaseContentProps {
 }
 
 function FaseContent({ fase, trabajador }: FaseContentProps) {
-  const { examenes, catalogoExamenes } = useControlStore();
+  const { examenes, catalogoExamenes } = useControlStore(
+    useShallow((s) => ({ examenes: s.examenes, catalogoExamenes: s.catalogoExamenes }))
+  );
 
   // Busca el examen vigente más reciente del trabajador por nombre de catálogo.
   // "Vigente" = existe registro y NO está vencido (o no tiene fecha de vencimiento).

@@ -151,6 +151,8 @@ interface AlimentacionState {
   registros: RegistroAlimentacion[];
   auditoria: AuditoriaAlimentacionEntry[];
   presupuestos: PresupuestoAlimentacion[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
 
   toggleEstado: (params: {
     id_contrato: string;
@@ -182,6 +184,7 @@ export const useAlimentacionStore = create<AlimentacionState>()(
       registros: generateMockRegistros(),
       auditoria: [],
       presupuestos: INITIAL_PRESUPUESTOS,
+      hydrated: false,
 
       toggleEstado: ({ id_contrato, id_trabajador, id_asignacion, nombre_trabajador, fecha, estado }) => {
         const existing = get().registros.find(
@@ -265,6 +268,11 @@ export const useAlimentacionStore = create<AlimentacionState>()(
             : [...state.presupuestos, { id_contrato, presupuesto_mensual }],
         })),
     }),
-    { name: "monitoring-alimentacion-v1" }
+    {
+      name: "monitoring-alimentacion-v1",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

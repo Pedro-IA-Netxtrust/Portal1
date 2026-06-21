@@ -1,13 +1,20 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Download, Printer, User, Mail } from "lucide-react";
+import { Printer, User, Mail } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { useTrabajadoresStore } from "@/store/trabajadores-store";
-import { useComunicacionesStore, Plantilla, TipoComunicacion } from "@/store/comunicaciones-store";
+import { useComunicacionesStore } from "@/store/comunicaciones-store";
 
 export function GeneradorTarjetas() {
-  const { trabajadores } = useTrabajadoresStore();
-  const { plantillas, historial, addComunicado } = useComunicacionesStore();
+  const trabajadores = useTrabajadoresStore((s) => s.trabajadores);
+  const { plantillas, historial, addComunicado } = useComunicacionesStore(
+    useShallow((s) => ({
+      plantillas: s.plantillas,
+      historial: s.historial,
+      addComunicado: s.addComunicado,
+    }))
+  );
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContrato, setSelectedContrato] = useState("");

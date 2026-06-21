@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
 import { useAuditoriaStore } from "@/store/auditoria-store";
 import { useWorkflowsStore } from "@/store/workflows-store";
+
+const log = createLogger("solicitudes-store");
 
 /** Genera un codigo de solicitud unico basado en anio + timestamp parcial */
 function generarCodigoSolicitud(): string {
@@ -223,6 +226,8 @@ const mockComentarios: ComentarioSolicitud[] = [
 interface SolicitudesState {
   solicitudes: Solicitud[];
   comentarios: ComentarioSolicitud[];
+  /** True una vez que el middleware `persist` terminó de leer del storage. */
+  hydrated: boolean;
   fetchSolicitudes: () => Promise<void>;
   addSolicitud: (
     s: Omit<Solicitud, "id_solicitud" | "codigo_solicitud" | "fecha_creacion" | "estado">
@@ -275,6 +280,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
     (set, get) => ({
       solicitudes: mockSolicitudes,
       comentarios: mockComentarios,
+      hydrated: false,
 
       fetchSolicitudes: async () => {
         try {
@@ -285,7 +291,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
 
           if (reqError) {
             if (process.env.NODE_ENV === "development") {
-              console.warn("[browser] Supabase no tiene tabla solicitudes, usando mock", reqError.message);
+              log.warn("Supabase no tiene tabla solicitudes, usando mock", reqError.message);
             }
             return;
           }
@@ -296,7 +302,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             .order("fecha", { ascending: true });
 
           if (comError && process.env.NODE_ENV === "development") {
-            console.warn("[browser] Supabase no tiene solicitud_comentarios, ignorando comentarios remotos");
+            log.warn("Supabase no tiene solicitud_comentarios, ignorando comentarios remotos");
           }
 
           if (reqData && reqData.length > 0) {
@@ -365,7 +371,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
           }
         } catch (err) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[browser] Error al cargar/seed solicitudes:", err);
+            log.warn("Error al cargar/seed solicitudes", err);
           }
         }
       },
@@ -420,7 +426,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             useWorkflowsStore.getState().dispararNotificacion(finalSol, "Pendiente");
           }
         } catch (err) {
-          console.error("Failed to persist request to Supabase:", err);
+          log.error("Failed to persist request to Supabase", err);
           // Disparar notificación en modo local/desarrollo offline
           useWorkflowsStore.getState().dispararNotificacion(nuevoTemp, "Pendiente");
         }
@@ -445,7 +451,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
         }));
 
         try {
-          const updateFields: any = {
+          const updateFields: Record<string, unknown> = {
             status: estado
           };
           if (opts.motivo_rechazo !== undefined) updateFields.rejection_reason = opts.motivo_rechazo;
@@ -483,7 +489,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             });
           }
         } catch (err) {
-          console.error(`Failed to update request state in Supabase:`, err);
+          log.error("Failed to update request state in Supabase", err);
           // Disparar notificación en modo local/desarrollo offline
           const sol = get().solicitudes.find((s) => s.id_solicitud === id);
           if (sol) {
@@ -516,7 +522,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             useWorkflowsStore.getState().dispararNotificacion(sol, "Cancelada");
           }
         } catch (err) {
-          console.error(`Failed to cancel request ${id} in Supabase:`, err);
+          log.error(`Failed to cancel request ${id} in Supabase`, err);
           // Disparar notificación en modo local/desarrollo offline
           const sol = get().solicitudes.find((s) => s.id_solicitud === id);
           if (sol) {
@@ -558,7 +564,7 @@ export const useSolicitudesStore = create<SolicitudesState>()(
             }));
           }
         } catch (err) {
-          console.error("Failed to persist request comment to Supabase:", err);
+          log.error("Failed to persist request comment to Supabase", err);
         }
       },
 
@@ -576,10 +582,15 @@ export const useSolicitudesStore = create<SolicitudesState>()(
 
           if (error) throw error;
         } catch (err) {
-          console.error(`Failed to delete request ${id} from Supabase:`, err);
+          log.error(`Failed to delete request ${id} from Supabase`, err);
         }
       }
     }),
-    { name: "monitoring-solicitudes-storage" }
+    {
+      name: "monitoring-solicitudes-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hydrated = true;
+      },
+    }
   )
 );

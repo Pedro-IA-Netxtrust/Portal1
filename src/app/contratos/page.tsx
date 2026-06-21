@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useShallow } from "zustand/react/shallow";
 import { useContratosStore } from "@/store/contratos-store";
 import { useMandantesStore } from "@/store/mandantes-store";
 import ContratoForm from "@/components/custom/contrato-form";
 import {
   Plus, Search, Layers, CreditCard, FileText,
-  Calendar, Activity, Edit3, ArrowRight, Trash2,
-  Building2, Users, Briefcase, X, Check, Save
+  Activity, Edit3, ArrowRight, Trash2,
+  Building2, Users, X, Check,
 } from "lucide-react";
 
 const ESTADO_COLOR: Record<string, string> = {
@@ -32,7 +33,14 @@ function progress(start: string, end: string) {
 // ─── Modal mandantes ──────────────────────────────────────────
 
 function MandanteModal({ onClose }: { onClose: () => void }) {
-  const { mandantes, addMandante, updateMandante, deleteMandante } = useMandantesStore();
+  const { mandantes, addMandante, updateMandante, deleteMandante } = useMandantesStore(
+    useShallow((s) => ({
+      mandantes: s.mandantes,
+      addMandante: s.addMandante,
+      updateMandante: s.updateMandante,
+      deleteMandante: s.deleteMandante,
+    }))
+  );
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ rut: "", nombre: "", razon_social: "", rubro: "", contacto_nombre: "", contacto_email: "", contacto_telefono: "", activo: true });
 
@@ -103,8 +111,14 @@ function MandanteModal({ onClose }: { onClose: () => void }) {
 // ─── Main page ────────────────────────────────────────────────
 
 export default function ContratosPage() {
-  const { contratos, deleteContrato, fetchContratos } = useContratosStore();
-  const { mandantes } = useMandantesStore();
+  const { contratos, deleteContrato, fetchContratos } = useContratosStore(
+    useShallow((s) => ({
+      contratos: s.contratos,
+      deleteContrato: s.deleteContrato,
+      fetchContratos: s.fetchContratos,
+    }))
+  );
+  const mandantes = useMandantesStore((s) => s.mandantes);
 
   useEffect(() => {
     fetchContratos();
